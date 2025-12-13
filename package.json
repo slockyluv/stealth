@@ -1,0 +1,22 @@
+{
+  "name": "stealth",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --loader ts-node/esm src/app.ts",
+    "build": "tsc",
+    "start": "node dist/src/app.js",
+    "register:commands": "node --loader ts-node/esm scripts/registerCommands.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.10.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "prisma": "^5.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --loader ts-node/esm src/app.ts",
-    "build": "tsc",
+    "dev": "prisma generate && node --loader ts-node/esm src/app.ts",
+    "build": "prisma generate && tsc",
     "start": "node dist/src/app.js",
     "register:commands": "node --loader ts-node/esm scripts/registerCommands.ts"
   },

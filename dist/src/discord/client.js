@@ -5,7 +5,11 @@ import { modalHandlers } from './components/modals/index.js';
 import { selectMenuHandlers } from './components/selectMenus/index.js';
 export function createClient() {
     const client = new Client({
-        intents: [GatewayIntentBits.Guilds]
+        intents: [
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildMembers,
+            GatewayIntentBits.GuildPresences
+        ]
     });
     client.commands = new Map();
     for (const command of commands) {

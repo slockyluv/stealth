@@ -1,4 +1,5 @@
 import { ping } from './ping.js';
 import { ui } from './ui.js';
-export const commands = [ping, ui];
+import { server } from './server.js';
+export const commands = [ping, ui, server];
 //# sourceMappingURL=index.js.map

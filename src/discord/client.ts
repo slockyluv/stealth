@@ -14,7 +14,11 @@ import type {
 
 export function createClient() {
   const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildPresences
+    ]
   });
 
   client.commands = new Map<string, Command>();

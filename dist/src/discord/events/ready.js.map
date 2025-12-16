@@ -1,1 +1,0 @@
-{"version":3,"file":"ready.js","sourceRoot":"","sources":["../../../../src/discord/events/ready.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,MAAM,EAAE,MAAM,wBAAwB,CAAC;AAEhD,MAAM,UAAU,KAAK,CAAC,MAAc;IAClC,IAAI,CAAC,MAAM,CAAC,IAAI;QAAE,OAAO;IACzB,MAAM,CAAC,IAAI,CAAC,gBAAgB,MAAM,CAAC,IAAI,CAAC,GAAG,EAAE,CAAC,CAAC;AACjD,CAAC"}

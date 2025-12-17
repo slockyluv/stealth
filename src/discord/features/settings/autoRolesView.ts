@@ -13,10 +13,8 @@ import { buildCustomId } from '../../../shared/customId.js';
 
 const PAGE_SIZE = 15;
 
-type ColorEmoji = string;
-
-function resolveColorEmoji(role: Role): ColorEmoji {
-  if (role.color === 0) return '⚪️';
+function resolveColorEmoji(role: Role): string {
+  if (role.color === 0) return '⚪';
 
   const [r, g, b] = [
     (role.color >> 16) & 0xff,
@@ -24,18 +22,10 @@ function resolveColorEmoji(role: Role): ColorEmoji {
     role.color & 0xff
   ];
 
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
-
-  if (delta === 0) return '⚫️';
-
-  if (max === r && g >= b) return '🔴';
-  if (max === r) return '🟥';
-  if (max === g && r >= b) return '🟢';
-  if (max === g) return '🟩';
-  if (max === b && r >= g) return '🔵';
-  return '🟦';
+  if (r === g && g === b) return '⚫';
+  if (r >= g && r >= b) return '🔴';
+  if (g >= r && g >= b) return '🟢';
+  return '🔵';
 }
 
 function buildSelectedRolesDescription(selectedRoleIds: string[], roles: Role[]): string {
@@ -111,7 +101,7 @@ export async function buildAutoRolesView(options: {
         new StringSelectMenuOptionBuilder()
           .setLabel(role.name)
           .setValue(role.id)
-          .setEmoji(resolveColorEmoji(role))
+          .setEmoji({ name: resolveColorEmoji(role) })
           .setDefault(selectedSet.has(role.id))
       );
     }

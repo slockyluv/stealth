@@ -1,35 +1,40 @@
 import { prisma } from '../database/prisma.js';
 
-let ensureSchemaPromise: Promise<void> | null = null;
+const AUTO_ROLE_TABLE_DDL = [
+  `CREATE TABLE IF NOT EXISTS "AutoRole" (
+    "id" BIGSERIAL PRIMARY KEY,
+    "guildId" BIGINT NOT NULL,
+    "roleId" BIGINT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );`,
+  'CREATE UNIQUE INDEX IF NOT EXISTS "AutoRole_guildId_roleId_key" ON "AutoRole"("guildId", "roleId");',
+  'CREATE INDEX IF NOT EXISTS "AutoRole_guildId_idx" ON "AutoRole"("guildId");'
+];
 
-async function ensureSchema() {
-  if (ensureSchemaPromise) return ensureSchemaPromise;
+let ensureAutoRoleTablePromise: Promise<void> | null = null;
 
-  ensureSchemaPromise = (async () => {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "AutoRole" (
-        "id" BIGSERIAL PRIMARY KEY,
-        "guildId" BIGINT NOT NULL,
-        "roleId" BIGINT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+async function ensureAutoRoleTable(): Promise<void> {
+  if (!ensureAutoRoleTablePromise) {
+    ensureAutoRoleTablePromise = (async () => {
+      const [existing] = await prisma.$queryRaw<{ exists: boolean }[]>`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'AutoRole'
+        ) as "exists";
+      `;
 
-    await prisma.$executeRawUnsafe(
-      'CREATE UNIQUE INDEX IF NOT EXISTS "AutoRole_guildId_roleId_key" ON "AutoRole"("guildId", "roleId");'
-    );
-
-    await prisma.$executeRawUnsafe(
-      'CREATE INDEX IF NOT EXISTS "AutoRole_guildId_idx" ON "AutoRole"("guildId");'
-    );
-  })();
-
-  try {
-    await ensureSchemaPromise;
-  } catch (error) {
-    ensureSchemaPromise = null;
-    throw error;
+      if (!existing?.exists) {
+        for (const statement of AUTO_ROLE_TABLE_DDL) {
+          await prisma.$executeRawUnsafe(statement);
+        }
+      }
+    })().catch((error) => {
+      ensureAutoRoleTablePromise = null;
+      throw error;
+    });
   }
+
+  return ensureAutoRoleTablePromise;
 }
 
 function toBigInt(id: string): bigint {
@@ -41,7 +46,7 @@ function mapIdsFromBigInt(rows: { roleId: bigint }[]): string[] {
 }
 
 export async function getAutoRoles(guildId: string): Promise<string[]> {
-  await ensureSchema();
+  await ensureAutoRoleTable();
 
   const rows = await prisma.autoRole.findMany({
     where: { guildId: toBigInt(guildId) },
@@ -52,7 +57,7 @@ export async function getAutoRoles(guildId: string): Promise<string[]> {
 }
 
 export async function setAutoRoles(guildId: string, roleIds: string[]): Promise<string[]> {
-  await ensureSchema();
+  await ensureAutoRoleTable();
 
   const guild = toBigInt(guildId);
   const uniqueRoleIds = Array.from(new Set(roleIds)).map(toBigInt);

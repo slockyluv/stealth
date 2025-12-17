@@ -152,11 +152,14 @@ export function buildSettingsMainView(guild) {
         type: ComponentType.Container,
         components: [
             {
-                type: ComponentType.File,
-                file: {
-                    url: `attachment://${SETTINGS_BANNER_NAME}`
-                },
-                spoiler: false
+                type: ComponentType.MediaGallery,
+                items: [
+                    {
+                        media: {
+                            url: `attachment://${SETTINGS_BANNER_NAME}`
+                        }
+                    }
+                ]
             },
             {
                 type: ComponentType.TextDisplay,

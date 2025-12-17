@@ -59,7 +59,11 @@ export const settingsAutoRolesSelect: SelectMenuHandler = {
       const savedRoles = await setAutoRoles(interaction.guild.id, nextSelection);
       const view = await buildAutoRolesView({ guild: interaction.guild, selectedRoleIds: savedRoles, page });
 
-      await interaction.editReply({ embeds: [view.embed], components: view.components });
+      await interaction.editReply({
+        embeds: [view.embed],
+        components: view.components,
+        attachments: view.removeAttachments ? [] : undefined
+      });
       await interaction.followUp({
         embeds: [
           {

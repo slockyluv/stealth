@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
@@ -7,11 +8,22 @@ import {
   roleMention,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  type MessageActionRowComponentBuilder,
   type Role
 } from 'discord.js';
+import { join } from 'node:path';
 import { buildCustomId } from '../../../shared/customId.js';
 
 const PAGE_SIZE = 15;
+const SETTINGS_BANNER_NAME = 'settings-banner.png';
+const SETTINGS_BANNER_PATH = join(process.cwd(), 'src/assets/settings/banner.png');
+
+export type SettingsView = {
+  embed: EmbedBuilder;
+  components: ActionRowBuilder<MessageActionRowComponentBuilder>[];
+  files?: AttachmentBuilder[];
+  removeAttachments?: boolean;
+};
 
 function resolveColorEmoji(role: Role): string {
   if (role.color === 0) return '⚪';
@@ -59,7 +71,7 @@ export async function buildAutoRolesView(options: {
   guild: Guild;
   selectedRoleIds: string[];
   page?: number;
-}) {
+}): Promise<SettingsView & { currentPage: number; totalPages: number; pageRoles: Role[] }> {
   const { guild, selectedRoleIds } = options;
   const requestedPage = options.page ?? 1;
 
@@ -147,16 +159,31 @@ export async function buildAutoRolesView(options: {
     components: [selectRow, navigationRow],
     currentPage,
     totalPages,
-    pageRoles
+    pageRoles,
+    removeAttachments: true
   };
 }
 
-export function buildSettingsMainView(guild: Guild) {
+export function buildSettingsMainView(guild: Guild): SettingsView {
+  const bannerAttachment = new AttachmentBuilder(SETTINGS_BANNER_PATH).setName(SETTINGS_BANNER_NAME);
+
   const embed = new EmbedBuilder()
-    .setTitle('Настройки сервера:')
-    .setDescription('Взаимодействуйте с выпадающим меню выбора для настройки сервера')
-    .setColor(0x5865f2)
-    .setThumbnail(guild.iconURL({ size: 256 }));
+    .setTitle('Настройки сервера')
+    .setDescription(
+      [
+        'Перед началом изучите основные требования, затем выберите нужный раздел ниже.',
+        '',
+        '**Требования:**',
+        '• Иметь 15+ лет',
+        '• Сохранять стрессоустойчивость и адекватность',
+        '• Знать правила сервера',
+        '• Уметь работать в коллективе и помогать другим'
+      ].join('\n')
+    )
+    .setColor(0x2b2d31)
+    .setThumbnail(guild.iconURL({ size: 256 }))
+    .setImage(`attachment://${SETTINGS_BANNER_NAME}`)
+    .setFooter({ text: 'Используйте меню ниже для настройки сервера' });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(buildCustomId('settings', 'section'))
@@ -171,6 +198,7 @@ export function buildSettingsMainView(guild: Guild) {
 
   return {
     embed,
-    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)]
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)],
+    files: [bannerAttachment]
   };
 }

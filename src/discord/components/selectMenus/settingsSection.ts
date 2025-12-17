@@ -43,7 +43,12 @@ export const settingsSectionSelect: SelectMenuHandler = {
         const selectedRoles = await getAutoRoles(interaction.guild.id);
         const view = await buildAutoRolesView({ guild: interaction.guild, selectedRoleIds: selectedRoles });
 
-        await interaction.editReply({ embeds: [view.embed], components: view.components });
+        await interaction.editReply({
+          embeds: [view.embed],
+          components: view.components,
+          files: view.files,
+          attachments: view.removeAttachments ? [] : undefined
+        });
       } catch (error) {
         logger.error(error);
         await interaction.followUp({
@@ -56,6 +61,11 @@ export const settingsSectionSelect: SelectMenuHandler = {
     }
 
     const view = buildSettingsMainView(interaction.guild);
-    await interaction.update({ embeds: [view.embed], components: view.components });
+    await interaction.update({
+      embeds: [view.embed],
+      components: view.components,
+      files: view.files,
+      attachments: []
+    });
   }
 };

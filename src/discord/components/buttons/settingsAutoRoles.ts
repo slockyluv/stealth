@@ -46,7 +46,12 @@ async function renderAutoRoles(interaction: Parameters<ButtonHandler['execute']>
   const selectedRoles = await getAutoRoles(guild.id);
   const view = await buildAutoRolesView({ guild, selectedRoleIds: selectedRoles, page });
 
-  await interaction.editReply({ embeds: [view.embed], components: view.components });
+  await interaction.editReply({
+    embeds: [view.embed],
+    components: view.components,
+    files: view.files,
+    attachments: view.removeAttachments ? [] : undefined
+  });
 }
 
 export const settingsBackButton: ButtonHandler = {
@@ -57,7 +62,12 @@ export const settingsBackButton: ButtonHandler = {
     if (!guild) return;
 
     const view = buildSettingsMainView(guild);
-    await interaction.update({ embeds: [view.embed], components: view.components });
+    await interaction.update({
+      embeds: [view.embed],
+      components: view.components,
+      files: view.files,
+      attachments: []
+    });
   }
 };
 

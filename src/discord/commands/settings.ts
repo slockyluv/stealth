@@ -41,7 +41,7 @@ export const settings: Command = {
     await interaction.reply({
       embeds: [view.embed],
       components: view.components,
-      flags: MessageFlags.Ephemeral
+      files: view.files
     });
   }
 };

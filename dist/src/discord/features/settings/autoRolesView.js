@@ -1,8 +1,8 @@
-import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, roleMention, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, roleMention, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import { join } from 'node:path';
 import { buildCustomId } from '../../../shared/customId.js';
 const PAGE_SIZE = 15;
-const SETTINGS_BANNER_NAME = 'settings-banner.png';
+const SETTINGS_BANNER_NAME = 'banner.png';
 const SETTINGS_BANNER_PATH = join(process.cwd(), 'src/assets/settings/banner.png');
 function resolveColorEmoji(role) {
     if (role.color === 0)
@@ -78,12 +78,7 @@ export async function buildAutoRolesView(options) {
                 .setDefault(selectedSet.has(role.id)));
         }
     }
-    const embed = new EmbedBuilder()
-        .setTitle('Автоматические роли')
-        .setColor(0x5865f2)
-        .setDescription(buildSelectedRolesDescription(selectedRoleIds, manageableRoles))
-        .setThumbnail(guild.iconURL({ size: 256 }))
-        .setFooter({ text: `Страница ${currentPage} / ${totalPages}` });
+    const description = buildSelectedRolesDescription(selectedRoleIds, manageableRoles);
     const navigationRow = new ActionRowBuilder().addComponents(new ButtonBuilder()
         .setCustomId(buildCustomId('settings', 'back'))
         .setStyle(ButtonStyle.Secondary)
@@ -105,9 +100,24 @@ export async function buildAutoRolesView(options) {
         .setEmoji('▶️')
         .setDisabled(currentPage >= totalPages));
     const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+    const framed = {
+        type: ComponentType.Container,
+        accentColor: 0x2b2d31,
+        components: [
+            {
+                type: ComponentType.TextDisplay,
+                content: ['**Автоматические роли**', description].join('\n')
+            },
+            {
+                type: ComponentType.TextDisplay,
+                content: `Страница ${currentPage} / ${totalPages}`
+            },
+            selectRow.toJSON(),
+            navigationRow.toJSON()
+        ]
+    };
     return {
-        embed,
-        components: [selectRow, navigationRow],
+        components: [framed],
         currentPage,
         totalPages,
         pageRoles,
@@ -115,10 +125,13 @@ export async function buildAutoRolesView(options) {
     };
 }
 export function buildSettingsMainView(guild) {
-    const bannerAttachment = new AttachmentBuilder(SETTINGS_BANNER_PATH).setName(SETTINGS_BANNER_NAME);
-    const embed = new EmbedBuilder()
-        .setTitle('Настройки сервера')
-        .setDescription([
+    const bannerAttachment = {
+        attachment: SETTINGS_BANNER_PATH,
+        name: SETTINGS_BANNER_NAME,
+        description: 'Баннер настроек'
+    };
+    const description = [
+        '**Настройки сервера**',
         'Перед началом изучите основные требования, затем выберите нужный раздел ниже.',
         '',
         '**Требования:**',
@@ -126,11 +139,7 @@ export function buildSettingsMainView(guild) {
         '• Сохранять стрессоустойчивость и адекватность',
         '• Знать правила сервера',
         '• Уметь работать в коллективе и помогать другим'
-    ].join('\n'))
-        .setColor(0x2b2d31)
-        .setThumbnail(guild.iconURL({ size: 256 }))
-        .setImage(`attachment://${SETTINGS_BANNER_NAME}`)
-        .setFooter({ text: 'Используйте меню ниже для настройки сервера' });
+    ].join('\n');
     const selectMenu = new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('settings', 'section'))
         .setPlaceholder('Выберите параметр для настройки')
@@ -139,9 +148,25 @@ export function buildSettingsMainView(guild) {
         .setValue('auto_roles')
         .setDescription('Настройка автоматической выдачи ролей новым участникам')
         .setEmoji('🛡️'));
+    const framed = {
+        type: ComponentType.Container,
+        components: [
+            {
+                type: ComponentType.File,
+                file: {
+                    url: `attachment://${SETTINGS_BANNER_NAME}`
+                },
+                spoiler: false
+            },
+            {
+                type: ComponentType.TextDisplay,
+                content: description
+            },
+            new ActionRowBuilder().addComponents(selectMenu).toJSON()
+        ]
+    };
     return {
-        embed,
-        components: [new ActionRowBuilder().addComponents(selectMenu)],
+        components: [framed],
         files: [bannerAttachment]
     };
 }

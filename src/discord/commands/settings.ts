@@ -39,9 +39,9 @@ export const settings: Command = {
     const view = buildSettingsMainView(interaction.guild);
 
     await interaction.reply({
-      embeds: [view.embed],
       components: view.components,
-      files: view.files
+      files: view.files,
+      flags: MessageFlags.IsComponentsV2
     });
   }
 };

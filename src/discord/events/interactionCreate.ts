@@ -19,12 +19,8 @@ async function safeReply(interaction: Interaction, message: string) {
 
 export async function interactionCreate(interaction: Interaction) {
   // Пользовательский фундамент (не блокируем команды при сбоях БД)
-  try {
-    if ('user' in interaction && interaction.user) {
-      await upsertUser(interaction.user.id);
-    }
-  } catch (err) {
-    logger.error(err);
+  if ('user' in interaction && interaction.user) {
+    void upsertUser(interaction.user.id).catch((err) => logger.error(err));
   }
 
   // Slash-команды

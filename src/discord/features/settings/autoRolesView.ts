@@ -202,6 +202,13 @@ export function buildSettingsMainView(guild: Guild): SettingsView {
         .setValue('auto_roles')
         .setDescription('Настройка автоматической выдачи ролей новым участникам')
         .setEmoji('🛡️')
+    )
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('Цвет эмодзи')
+        .setValue('emoji_color')
+        .setDescription('Изменение цвета эмодзи бота для сообщений')
+        .setEmoji('🎨')
     );
 
   const framed: ContainerComponentData = {

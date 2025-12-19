@@ -21,3 +21,10 @@ model AutoRole {
   @@unique([guildId, roleId])
   @@index([guildId])
 }
+
+model GuildSettings {
+  guildId    BigInt   @id
+  emojiColor String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

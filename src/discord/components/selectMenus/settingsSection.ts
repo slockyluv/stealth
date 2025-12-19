@@ -1,8 +1,16 @@
-import { MessageFlags, PermissionsBitField } from 'discord.js';
+import {
+  ActionRowBuilder,
+  MessageFlags,
+  ModalBuilder,
+  PermissionsBitField,
+  TextInputBuilder,
+  TextInputStyle
+} from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildSettingsMainView, buildAutoRolesView } from '../../features/settings/autoRolesView.js';
 import { getAutoRoles } from '../../../services/autoRoleService.js';
 import { logger } from '../../../shared/logger.js';
+import { buildCustomId } from '../../../shared/customId.js';
 
 export const settingsSectionSelect: SelectMenuHandler = {
   key: 'settings:section',
@@ -54,6 +62,38 @@ export const settingsSectionSelect: SelectMenuHandler = {
         logger.error(error);
         await interaction.followUp({
           content: 'Не удалось открыть автоматические роли. Попробуйте позже.',
+          flags: MessageFlags.Ephemeral
+        });
+      }
+
+      return;
+    }
+
+    if (selection === 'emoji_color') {
+      try {
+        const modal = new ModalBuilder()
+          .setCustomId(buildCustomId('settings', 'emojiColor'))
+          .setTitle('Цвет эмодзи')
+          .addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              (() => {
+                const input = new TextInputBuilder()
+                  .setCustomId('emojiColor')
+                  .setLabel('Введите HEX-код цвета (например, #5865F2)')
+                  .setStyle(TextInputStyle.Short)
+                  .setPlaceholder('#5865F2')
+                  .setRequired(false);
+
+                return input;
+              })()
+            )
+          );
+
+        await interaction.showModal(modal);
+      } catch (error) {
+        logger.error(error);
+        await interaction.reply({
+          content: 'Не удалось открыть настройку цвета эмодзи. Попробуйте позже.',
           flags: MessageFlags.Ephemeral
         });
       }

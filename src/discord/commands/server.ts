@@ -7,6 +7,7 @@ import {
 } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import type { Command } from '../../types/command.js';
+import { createEmojiFormatter } from '../emoji.js';
 
 const numberFormatter = new Intl.NumberFormat('ru-RU');
 
@@ -54,8 +55,7 @@ export const server: Command = {
     await interaction.deferReply();
 
     try {
-      const [members, channels, emojis] = await Promise.all([
-        interaction.guild.members.fetch({ withPresences: true }),
+      const [channels, emojis] = await Promise.all([
         interaction.guild.channels.fetch(),
         interaction.guild.emojis.fetch()
       ]);
@@ -63,15 +63,16 @@ export const server: Command = {
       const validChannels = channels.filter((channel): channel is NonNullable<typeof channel> => channel !== null);
 
       const totalMembers = interaction.guild.memberCount;
-      const botCount = members.filter((member) => member.user.bot).size;
+      const cachedMembers = interaction.guild.members.cache;
+      const botCount = cachedMembers.filter((member) => member.user.bot).size;
       const humanCount = Math.max(totalMembers - botCount, 0);
 
       let online = 0;
       let idle = 0;
       let dnd = 0;
 
-      for (const member of members.values()) {
-        const status = member.presence?.status ?? 'offline';
+      for (const presence of interaction.guild.presences.cache.values()) {
+        const status = presence.status ?? 'offline';
         if (status === 'online') online += 1;
         else if (status === 'idle') idle += 1;
         else if (status === 'dnd') dnd += 1;
@@ -93,37 +94,41 @@ export const server: Command = {
       ).size;
 
       const ownerMention = userMention(interaction.guild.ownerId);
+      const emoji = await createEmojiFormatter({
+        client: interaction.client,
+        guildId: interaction.guild.id
+      });
 
       const embed = new EmbedBuilder()
         .setAuthor({
           name: interaction.guild.name,
           iconURL: interaction.guild.iconURL({ size: 64 }) ?? undefined
         })
-        .setTitle('<:information:1446810596040507505> Информация о сервере')
+        .setTitle(`${emoji('information')} Информация о сервере`)
         .setColor(0x5865f2)
         .setDescription(
           [
-            '> **<:family:1446810283703271484> Участники**',
-            `<:more:1446810368570560572> ➜  Всего: \`${numberFormatter.format(totalMembers)}\``,
-            `<:bots:1446810531527655454> ➜  Ботов: \`${numberFormatter.format(botCount)}\``,
-            `<:user:1446810410786357430> ➜  Людей: \`${numberFormatter.format(humanCount)}\``,
+            `> **${emoji('family')} Участники**`,
+            `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalMembers)}\``,
+            `${emoji('bots')} ➜  Ботов: \`${numberFormatter.format(botCount)}\``,
+            `${emoji('user')} ➜  Людей: \`${numberFormatter.format(humanCount)}\``,
             '',
-            '> **<:channel:1446810583201484812> Каналы**',
-            `<:voice_chat:1446810661769314416> ➜  Голосовые: \`${numberFormatter.format(voiceChannels)}\``,
-            `<:message:1446810566076268558> ➜  Текстовые: \`${numberFormatter.format(textChannels)}\``,
-            `<:more:1446810368570560572> ➜  Всего: \`${numberFormatter.format(totalChannels)}\``,
+            `> **${emoji('channel')} Каналы**`,
+            `${emoji('voice_chat')} ➜  Голосовые: \`${numberFormatter.format(voiceChannels)}\``,
+            `${emoji('message')} ➜  Текстовые: \`${numberFormatter.format(textChannels)}\``,
+            `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalChannels)}\``,
             '',
-            '> **<:star:1446810292226097213> Статусы пользователей**',
-            `<:online:1446810473944055940> ➜  В сети: \`${numberFormatter.format(online)}\``,
-            `<:noactive:1450507067344421016> ➜  Неактивны: \`${numberFormatter.format(idle)}\``,
-            `<:disturb:1450506236192882729> ➜  Не беспокоить: \`${numberFormatter.format(dnd)}\``,
-            `<:offline:1450507527736266824> ➜  Не в сети: \`${numberFormatter.format(offline)}\``,
+            `> **${emoji('star')} Статусы пользователей**`,
+            `${emoji('online')} ➜  В сети: \`${numberFormatter.format(online)}\``,
+            `${emoji('noactive')} ➜  Неактивны: \`${numberFormatter.format(idle)}\``,
+            `${emoji('disturb')} ➜  Не беспокоить: \`${numberFormatter.format(dnd)}\``,
+            `${emoji('offline')} ➜  Не в сети: \`${numberFormatter.format(offline)}\``,
             '',
-            '> **<:list:1446810426896683153> Сервер**',
-            `<:action_profile:1446810638759497738> ➜  Бустов: \`${numberFormatter.format(interaction.guild.premiumSubscriptionCount ?? 0)}\``,
-            `<:clock:1446810203373834262> ➜  Сервер создан: \`${formatFullDateTime(interaction.guild.createdAt)}\``,
-            `<:promo:1446810450967789678> ➜  Всего эмодзи: \`${numberFormatter.format(emojis.size)}\``,
-            `<:owner:1446810194406412429> ➜  Владелец сервера: ${ownerMention}`
+            `> **${emoji('list')} Сервер**`,
+            `${emoji('action_profile')} ➜  Бустов: \`${numberFormatter.format(interaction.guild.premiumSubscriptionCount ?? 0)}\``,
+            `${emoji('clock')} ➜  Сервер создан: \`${formatFullDateTime(interaction.guild.createdAt)}\``,
+            `${emoji('promo')} ➜  Всего эмодзи: \`${numberFormatter.format(emojis.size)}\``,
+            `${emoji('owner')} ➜  Владелец сервера: ${ownerMention}`
           ].join('\n')
         )
         .setFooter({

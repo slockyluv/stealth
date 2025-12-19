@@ -1,13 +1,14 @@
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
-  EmbedBuilder,
   ChannelType,
-  userMention
+  userMention,
+  MessageFlags
 } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
+import { buildTextView } from '../components/v2Message.js';
 
 const numberFormatter = new Intl.NumberFormat('ru-RU');
 
@@ -47,7 +48,8 @@ export const server: Command = {
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild) {
       await interaction.reply({
-        content: 'Эта команда доступна только на сервере.'
+        components: buildTextView('Эта команда доступна только на сервере.'),
+        flags: MessageFlags.IsComponentsV2
       });
       return;
     }
@@ -96,57 +98,55 @@ export const server: Command = {
       const ownerMention = userMention(interaction.guild.ownerId);
       const emoji = await createEmojiFormatter({
         client: interaction.client,
-        guildId: interaction.guild.id
+        guildId: interaction.guild.id,
+        guildEmojis: emojis.values()
       });
 
-      const embed = new EmbedBuilder()
-        .setAuthor({
-          name: interaction.guild.name,
-          iconURL: interaction.guild.iconURL({ size: 64 }) ?? undefined
-        })
-        .setTitle(`${emoji('information')} Информация о сервере`)
-        .setColor(0x5865f2)
-        .setDescription(
-          [
-            `> **${emoji('family')} Участники**`,
-            `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalMembers)}\``,
-            `${emoji('bots')} ➜  Ботов: \`${numberFormatter.format(botCount)}\``,
-            `${emoji('user')} ➜  Людей: \`${numberFormatter.format(humanCount)}\``,
-            '',
-            `> **${emoji('channel')} Каналы**`,
-            `${emoji('voice_chat')} ➜  Голосовые: \`${numberFormatter.format(voiceChannels)}\``,
-            `${emoji('message')} ➜  Текстовые: \`${numberFormatter.format(textChannels)}\``,
-            `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalChannels)}\``,
-            '',
-            `> **${emoji('star')} Статусы пользователей**`,
-            `${emoji('online')} ➜  В сети: \`${numberFormatter.format(online)}\``,
-            `${emoji('noactive')} ➜  Неактивны: \`${numberFormatter.format(idle)}\``,
-            `${emoji('disturb')} ➜  Не беспокоить: \`${numberFormatter.format(dnd)}\``,
-            `${emoji('offline')} ➜  Не в сети: \`${numberFormatter.format(offline)}\``,
-            '',
-            `> **${emoji('list')} Сервер**`,
-            `${emoji('action_profile')} ➜  Бустов: \`${numberFormatter.format(interaction.guild.premiumSubscriptionCount ?? 0)}\``,
-            `${emoji('clock')} ➜  Сервер создан: \`${formatFullDateTime(interaction.guild.createdAt)}\``,
-            `${emoji('promo')} ➜  Всего эмодзи: \`${numberFormatter.format(emojis.size)}\``,
-            `${emoji('owner')} ➜  Владелец сервера: ${ownerMention}`
-          ].join('\n')
-        )
-        .setFooter({
-          text: `Запрос от: ${interaction.user.username} • ${formatRequestTimestamp(new Date())}`
-        });
+      const description = [
+        `**${emoji('information')} Информация о сервере**`,
+        `Сервер: **${interaction.guild.name}**`,
+        '',
+        `> **${emoji('family')} Участники**`,
+        `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalMembers)}\``,
+        `${emoji('bots')} ➜  Ботов: \`${numberFormatter.format(botCount)}\``,
+        `${emoji('user')} ➜  Людей: \`${numberFormatter.format(humanCount)}\``,
+        '',
+        `> **${emoji('channel')} Каналы**`,
+        `${emoji('voice_chat')} ➜  Голосовые: \`${numberFormatter.format(voiceChannels)}\``,
+        `${emoji('message')} ➜  Текстовые: \`${numberFormatter.format(textChannels)}\``,
+        `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalChannels)}\``,
+        '',
+        `> **${emoji('star')} Статусы пользователей**`,
+        `${emoji('online')} ➜  В сети: \`${numberFormatter.format(online)}\``,
+        `${emoji('noactive')} ➜  Неактивны: \`${numberFormatter.format(idle)}\``,
+        `${emoji('disturb')} ➜  Не беспокоить: \`${numberFormatter.format(dnd)}\``,
+        `${emoji('offline')} ➜  Не в сети: \`${numberFormatter.format(offline)}\``,
+        '',
+        `> **${emoji('list')} Сервер**`,
+        `${emoji('action_profile')} ➜  Бустов: \`${numberFormatter.format(interaction.guild.premiumSubscriptionCount ?? 0)}\``,
+        `${emoji('clock')} ➜  Сервер создан: \`${formatFullDateTime(interaction.guild.createdAt)}\``,
+        `${emoji('promo')} ➜  Всего эмодзи: \`${numberFormatter.format(emojis.size)}\``,
+        `${emoji('owner')} ➜  Владелец сервера: ${ownerMention}`,
+        '',
+        `Запрос от: ${interaction.user.username} • ${formatRequestTimestamp(new Date())}`
+      ].join('\n');
 
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({
+        components: buildTextView(description),
+        flags: MessageFlags.IsComponentsV2
+      });
     } catch (error) {
       logger.error(error);
 
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({
-          content: 'Не удалось получить информацию о сервере. Попробуйте позже.',
-          embeds: []
+          components: buildTextView('Не удалось получить информацию о сервере. Попробуйте позже.'),
+          flags: MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({
-          content: 'Не удалось получить информацию о сервере. Попробуйте позже.'
+          components: buildTextView('Не удалось получить информацию о сервере. Попробуйте позже.'),
+          flags: MessageFlags.IsComponentsV2
         });
       }
     }

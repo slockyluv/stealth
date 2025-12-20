@@ -14,6 +14,7 @@ import {
 } from 'discord.js';
 import { join } from 'node:path';
 import { buildCustomId } from '../../../shared/customId.js';
+import { createEmojiFormatter } from '../../emoji.js';
 
 const PAGE_SIZE = 15;
 const SETTINGS_BANNER_NAME = 'banner.png';
@@ -151,18 +152,13 @@ export async function buildAutoRolesView(options: {
 
   const framed: ContainerComponentData = {
     type: ComponentType.Container,
-    accentColor: 0x2b2d31,
     components: [
       {
         type: ComponentType.TextDisplay,
         content: ['**Автоматические роли**', description].join('\n')
       },
-      {
-        type: ComponentType.TextDisplay,
-        content: `Страница ${currentPage} / ${totalPages}`
-      },
-      selectRow.toJSON(),
-      navigationRow.toJSON()
+      selectRow,
+      navigationRow
     ]
   };
 
@@ -175,7 +171,7 @@ export async function buildAutoRolesView(options: {
   };
 }
 
-export function buildSettingsMainView(guild: Guild): SettingsView {
+export async function buildSettingsMainView(guild: Guild): Promise<SettingsView> {
   const bannerAttachment: AttachmentPayload = {
     attachment: SETTINGS_BANNER_PATH,
     name: SETTINGS_BANNER_NAME,
@@ -193,6 +189,12 @@ export function buildSettingsMainView(guild: Guild): SettingsView {
     '• Уметь работать в коллективе и помогать другим'
   ].join('\n');
 
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(buildCustomId('settings', 'section'))
     .setPlaceholder('Выберите параметр для настройки')
@@ -201,14 +203,14 @@ export function buildSettingsMainView(guild: Guild): SettingsView {
         .setLabel('Автоматические роли')
         .setValue('auto_roles')
         .setDescription('Настройка автоматической выдачи ролей новым участникам')
-        .setEmoji('🛡️')
+        .setEmoji(formatEmoji('action_system'))
     )
     .addOptions(
       new StringSelectMenuOptionBuilder()
         .setLabel('Цвет эмодзи')
         .setValue('emoji_color')
         .setDescription('Изменение цвета эмодзи бота для сообщений')
-        .setEmoji('🎨')
+        .setEmoji(formatEmoji('uwu'))
     );
 
   const framed: ContainerComponentData = {

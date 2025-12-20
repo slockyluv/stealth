@@ -36,7 +36,7 @@ export const settings: Command = {
       return;
     }
 
-    const view = buildSettingsMainView(interaction.guild);
+    const view = await buildSettingsMainView(interaction.guild);
 
     await interaction.reply({
       components: view.components,

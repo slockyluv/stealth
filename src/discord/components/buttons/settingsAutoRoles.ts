@@ -62,7 +62,7 @@ export const settingsBackButton: ButtonHandler = {
     const guild = await ensurePermissions(interaction);
     if (!guild) return;
 
-    const view = buildSettingsMainView(guild);
+    const view = await buildSettingsMainView(guild);
     await interaction.update({
       embeds: [],
       components: view.components,

@@ -3,6 +3,7 @@ import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildAutoRolesView } from '../../features/settings/autoRolesView.js';
 import { getAutoRoles, setAutoRoles } from '../../../services/autoRoleService.js';
 import { logger } from '../../../shared/logger.js';
+import { buildTextView } from '../v2Message.js';
 
 function parsePage(args: string[]): number {
   const [raw] = args;
@@ -66,14 +67,10 @@ export const settingsAutoRolesSelect: SelectMenuHandler = {
         flags: MessageFlags.IsComponentsV2
       });
       await interaction.followUp({
-        embeds: [
-          {
-            title: 'Список ролей успешно обновлен',
-            description: 'Автоматические роли обновлены и будут выдаваться новым участникам.',
-            color: 0x57f287
-          }
-        ],
-        flags: MessageFlags.Ephemeral
+        components: buildTextView(
+          'Список ролей успешно обновлен.\nАвтоматические роли будут выдаваться новым участникам.'
+        ),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);

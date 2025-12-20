@@ -73,7 +73,7 @@ export const settingsSectionSelect: SelectMenuHandler = {
     if (selection === 'emoji_color') {
       try {
         const modal = new ModalBuilder()
-          .setCustomId(buildCustomId('settings', 'emojiColor'))
+          .setCustomId(buildCustomId('settings', 'emojiColor', interaction.message.id))
           .setTitle('Цвет эмодзи')
           .addComponents(
             new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -102,7 +102,7 @@ export const settingsSectionSelect: SelectMenuHandler = {
       return;
     }
 
-    const view = buildSettingsMainView(interaction.guild);
+    const view = await buildSettingsMainView(interaction.guild);
     await interaction.update({
       embeds: [],
       components: view.components,

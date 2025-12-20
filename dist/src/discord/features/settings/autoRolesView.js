@@ -1,6 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, roleMention, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import { join } from 'node:path';
 import { buildCustomId } from '../../../shared/customId.js';
+import { createEmojiFormatter } from '../../emoji.js';
 const PAGE_SIZE = 15;
 const SETTINGS_BANNER_NAME = 'banner.png';
 const SETTINGS_BANNER_PATH = join(process.cwd(), 'src/assets/settings/banner.png');
@@ -102,18 +103,13 @@ export async function buildAutoRolesView(options) {
     const selectRow = new ActionRowBuilder().addComponents(selectMenu);
     const framed = {
         type: ComponentType.Container,
-        accentColor: 0x2b2d31,
         components: [
             {
                 type: ComponentType.TextDisplay,
                 content: ['**Автоматические роли**', description].join('\n')
             },
-            {
-                type: ComponentType.TextDisplay,
-                content: `Страница ${currentPage} / ${totalPages}`
-            },
-            selectRow.toJSON(),
-            navigationRow.toJSON()
+            selectRow,
+            navigationRow
         ]
     };
     return {
@@ -124,7 +120,7 @@ export async function buildAutoRolesView(options) {
         removeAttachments: true
     };
 }
-export function buildSettingsMainView(guild) {
+export async function buildSettingsMainView(guild) {
     const bannerAttachment = {
         attachment: SETTINGS_BANNER_PATH,
         name: SETTINGS_BANNER_NAME,
@@ -140,6 +136,11 @@ export function buildSettingsMainView(guild) {
         '• Знать правила сервера',
         '• Уметь работать в коллективе и помогать другим'
     ].join('\n');
+    const formatEmoji = await createEmojiFormatter({
+        client: guild.client,
+        guildId: guild.id,
+        guildEmojis: guild.emojis.cache.values()
+    });
     const selectMenu = new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('settings', 'section'))
         .setPlaceholder('Выберите параметр для настройки')
@@ -147,12 +148,12 @@ export function buildSettingsMainView(guild) {
         .setLabel('Автоматические роли')
         .setValue('auto_roles')
         .setDescription('Настройка автоматической выдачи ролей новым участникам')
-        .setEmoji('🛡️'))
+        .setEmoji(formatEmoji('action_system')))
         .addOptions(new StringSelectMenuOptionBuilder()
         .setLabel('Цвет эмодзи')
         .setValue('emoji_color')
         .setDescription('Изменение цвета эмодзи бота для сообщений')
-        .setEmoji('🎨'));
+        .setEmoji(formatEmoji('uwu')));
     const framed = {
         type: ComponentType.Container,
         components: [

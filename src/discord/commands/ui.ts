@@ -7,8 +7,7 @@ import {
   ComponentType,
   MessageFlags,
   type ContainerComponentData,
-  type Message,
-  type TextBasedChannel
+  type Message
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildCustomId } from '../../shared/customId.js';
@@ -66,9 +65,8 @@ export const ui: Command = {
       ]
     };
 
-    if (!message.channel?.isTextBased()) return;
-    const channel = message.channel as TextBasedChannel;
-    await channel.send({
+    if (!message.channel?.isSendable()) return;
+    await message.channel.send({
       components: [framedMessage],
       flags: MessageFlags.IsComponentsV2
     });

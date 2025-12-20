@@ -3,8 +3,7 @@ import {
   type ChatInputCommandInteraction,
   PermissionsBitField,
   MessageFlags,
-  type Message,
-  type TextBasedChannel
+  type Message
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildSettingsMainView } from '../features/settings/autoRolesView.js';
@@ -58,33 +57,29 @@ export const settings: Command = {
 
   async executeMessage(message: Message) {
     if (!message.guild) {
-      if (!message.channel?.isTextBased()) return;
-      const channel = message.channel as TextBasedChannel;
-      await channel.send('Команда доступна только на сервере.');
+      if (!message.channel?.isSendable()) return;
+      await message.channel.send('Команда доступна только на сервере.');
       return;
     }
 
     if (!hasManageRolesMessage(message)) {
-      if (!message.channel?.isTextBased()) return;
-      const channel = message.channel as TextBasedChannel;
-      await channel.send('Требуется право **Управление ролями**.');
+      if (!message.channel?.isSendable()) return;
+      await message.channel.send('Требуется право **Управление ролями**.');
       return;
     }
 
     const botMember = message.guild.members.me;
 
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-      if (!message.channel?.isTextBased()) return;
-      const channel = message.channel as TextBasedChannel;
-      await channel.send('У бота нет права **Управление ролями** для изменения настроек.');
+      if (!message.channel?.isSendable()) return;
+      await message.channel.send('У бота нет права **Управление ролями** для изменения настроек.');
       return;
     }
 
     const view = await buildSettingsMainView(message.guild);
 
-    if (!message.channel?.isTextBased()) return;
-    const channel = message.channel as TextBasedChannel;
-    await channel.send({
+    if (!message.channel?.isSendable()) return;
+    await message.channel.send({
       components: view.components,
       files: view.files,
       flags: MessageFlags.IsComponentsV2

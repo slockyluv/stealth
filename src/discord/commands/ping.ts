@@ -2,8 +2,7 @@ import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
   MessageFlags,
-  type Message,
-  type TextBasedChannel
+  type Message
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 
@@ -20,8 +19,7 @@ export const ping: Command = {
   },
 
   async executeMessage(message: Message) {
-    if (!message.channel?.isTextBased()) return;
-    const channel = message.channel as TextBasedChannel;
-    await channel.send({ content: '🏓 Pong!' });
+    if (!message.channel?.isSendable()) return;
+    await message.channel.send({ content: '🏓 Pong!' });
   }
 };

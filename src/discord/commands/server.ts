@@ -4,8 +4,7 @@ import {
   ChannelType,
   userMention,
   MessageFlags,
-  type Message,
-  type TextBasedChannel
+  type Message
 } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import type { Command } from '../../types/command.js';
@@ -155,18 +154,16 @@ export const server: Command = {
 
   async executeMessage(message: Message) {
     if (!message.guild) {
-      if (!message.channel?.isTextBased()) return;
-      const channel = message.channel as TextBasedChannel;
-      await channel.send({
+      if (!message.channel?.isSendable()) return;
+      await message.channel.send({
         components: buildTextView('Эта команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
     }
 
-    if (!message.channel?.isTextBased()) return;
-    const channel = message.channel as TextBasedChannel;
-    const pendingReply = await channel.send({
+    if (!message.channel?.isSendable()) return;
+    const pendingReply = await message.channel.send({
       components: buildTextView('Собираю информацию о сервере...'),
       flags: MessageFlags.IsComponentsV2
     });

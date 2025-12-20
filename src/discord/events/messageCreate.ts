@@ -1,13 +1,12 @@
-import type { Message, TextBasedChannel } from 'discord.js';
+import type { Message } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import { upsertUser } from '../../services/userService.js';
 import { COMMAND_PREFIX } from '../../config/bot.js';
 
 async function safeReply(message: Message, content: string) {
   try {
-    if (!message.channel?.isTextBased()) return;
-    const channel = message.channel as TextBasedChannel;
-    await channel.send({ content });
+    if (!message.channel?.isSendable()) return;
+    await message.channel.send({ content });
   } catch {
     // ignore
   }

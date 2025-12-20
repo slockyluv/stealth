@@ -6,7 +6,9 @@ import {
   ButtonStyle,
   ComponentType,
   MessageFlags,
-  type ContainerComponentData
+  type ContainerComponentData,
+  type Message,
+  type TextBasedChannel
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildCustomId } from '../../shared/customId.js';
@@ -40,6 +42,35 @@ export const ui: Command = {
     await interaction.reply({
       components: [framedMessage],
       flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+    });
+  },
+
+  async executeMessage(message: Message) {
+    const id = buildCustomId('demo', 'hello');
+
+    const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(id)
+        .setLabel('Say hello')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    const framedMessage: ContainerComponentData = {
+      type: ComponentType.Container,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: '**UI demo**\nНажми кнопку ниже, чтобы проверить роутинг интерфейса.'
+        },
+        buttonRow.toJSON()
+      ]
+    };
+
+    if (!message.channel?.isTextBased()) return;
+    const channel = message.channel as TextBasedChannel;
+    await channel.send({
+      components: [framedMessage],
+      flags: MessageFlags.IsComponentsV2
     });
   }
 };

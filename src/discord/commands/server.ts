@@ -3,7 +3,9 @@ import {
   type ChatInputCommandInteraction,
   ChannelType,
   userMention,
-  MessageFlags
+  MessageFlags,
+  type Message,
+  type TextBasedChannel
 } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import type { Command } from '../../types/command.js';
@@ -148,6 +150,112 @@ export const server: Command = {
           flags: MessageFlags.IsComponentsV2
         });
       }
+    }
+  },
+
+  async executeMessage(message: Message) {
+    if (!message.guild) {
+      if (!message.channel?.isTextBased()) return;
+      const channel = message.channel as TextBasedChannel;
+      await channel.send({
+        components: buildTextView('Эта команда доступна только на сервере.'),
+        flags: MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (!message.channel?.isTextBased()) return;
+    const channel = message.channel as TextBasedChannel;
+    const pendingReply = await channel.send({
+      components: buildTextView('Собираю информацию о сервере...'),
+      flags: MessageFlags.IsComponentsV2
+    });
+
+    try {
+      const [channels, emojis] = await Promise.all([
+        message.guild.channels.fetch(),
+        message.guild.emojis.fetch()
+      ]);
+
+      const validChannels = channels.filter((channel): channel is NonNullable<typeof channel> => channel !== null);
+
+      const totalMembers = message.guild.memberCount;
+      const cachedMembers = message.guild.members.cache;
+      const botCount = cachedMembers.filter((member) => member.user.bot).size;
+      const humanCount = Math.max(totalMembers - botCount, 0);
+
+      let online = 0;
+      let idle = 0;
+      let dnd = 0;
+
+      for (const presence of message.guild.presences.cache.values()) {
+        const status = presence.status ?? 'offline';
+        if (status === 'online') online += 1;
+        else if (status === 'idle') idle += 1;
+        else if (status === 'dnd') dnd += 1;
+      }
+
+      const offline = Math.max(totalMembers - online - idle - dnd, 0);
+
+      const voiceChannels = validChannels.filter(
+        (channel) =>
+          channel.type === ChannelType.GuildVoice || channel.type === ChannelType.GuildStageVoice
+      ).size;
+
+      const textChannels = validChannels.filter(
+        (channel) => channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement
+      ).size;
+
+      const totalChannels = validChannels.filter(
+        (channel) => channel.isTextBased() || channel.isVoiceBased()
+      ).size;
+
+      const ownerMention = userMention(message.guild.ownerId);
+      const emoji = await createEmojiFormatter({
+        client: message.client,
+        guildId: message.guild.id,
+        guildEmojis: emojis.values()
+      });
+
+      const description = [
+        `**${emoji('information')} Информация о сервере:**`,
+        '',
+        `> **${emoji('family')} Участники**`,
+        `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalMembers)}\``,
+        `${emoji('bots')} ➜  Ботов: \`${numberFormatter.format(botCount)}\``,
+        `${emoji('user')} ➜  Людей: \`${numberFormatter.format(humanCount)}\``,
+        '',
+        `> **${emoji('channel')} Каналы**`,
+        `${emoji('voice_chat')} ➜  Голосовые: \`${numberFormatter.format(voiceChannels)}\``,
+        `${emoji('message')} ➜  Текстовые: \`${numberFormatter.format(textChannels)}\``,
+        `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalChannels)}\``,
+        '',
+        `> **${emoji('star')} Статусы пользователей**`,
+        `${emoji('online')} ➜  В сети: \`${numberFormatter.format(online)}\``,
+        `${emoji('noactive')} ➜  Неактивны: \`${numberFormatter.format(idle)}\``,
+        `${emoji('disturb')} ➜  Не беспокоить: \`${numberFormatter.format(dnd)}\``,
+        `${emoji('offline')} ➜  Не в сети: \`${numberFormatter.format(offline)}\``,
+        '',
+        `> **${emoji('list')} Сервер**`,
+        `${emoji('action_profile')} ➜  Бустов: \`${numberFormatter.format(message.guild.premiumSubscriptionCount ?? 0)}\``,
+        `${emoji('clock')} ➜  Сервер создан: \`${formatFullDateTime(message.guild.createdAt)}\``,
+        `${emoji('promo')} ➜  Всего эмодзи: \`${numberFormatter.format(emojis.size)}\``,
+        `${emoji('owner')} ➜  Владелец сервера: ${ownerMention}`,
+        '',
+        `Запрос от: ${message.author.username} • ${formatRequestTimestamp(new Date())}`
+      ].join('\n');
+
+      await pendingReply.edit({
+        components: buildTextView(description),
+        flags: MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+
+      await pendingReply.edit({
+        components: buildTextView('Не удалось получить информацию о сервере. Попробуйте позже.'),
+        flags: MessageFlags.IsComponentsV2
+      });
     }
   }
 };

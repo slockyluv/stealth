@@ -1,4 +1,10 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction, MessageFlags } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+  MessageFlags,
+  type Message,
+  type TextBasedChannel
+} from 'discord.js';
 import type { Command } from '../../types/command.js';
 
 export const ping: Command = {
@@ -11,5 +17,11 @@ export const ping: Command = {
       content: '🏓 Pong!',
       flags: MessageFlags.Ephemeral
     });
+  },
+
+  async executeMessage(message: Message) {
+    if (!message.channel?.isTextBased()) return;
+    const channel = message.channel as TextBasedChannel;
+    await channel.send({ content: '🏓 Pong!' });
   }
 };

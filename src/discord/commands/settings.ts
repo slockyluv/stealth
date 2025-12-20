@@ -1,9 +1,20 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction, PermissionsBitField, MessageFlags } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+  PermissionsBitField,
+  MessageFlags,
+  type Message,
+  type TextBasedChannel
+} from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildSettingsMainView } from '../features/settings/autoRolesView.js';
 
 function hasManageRoles(interaction: ChatInputCommandInteraction) {
   return interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageRoles) ?? false;
+}
+
+function hasManageRolesMessage(message: Message) {
+  return message.member?.permissions.has(PermissionsBitField.Flags.ManageRoles) ?? false;
 }
 
 export const settings: Command = {
@@ -39,6 +50,41 @@ export const settings: Command = {
     const view = await buildSettingsMainView(interaction.guild);
 
     await interaction.reply({
+      components: view.components,
+      files: view.files,
+      flags: MessageFlags.IsComponentsV2
+    });
+  },
+
+  async executeMessage(message: Message) {
+    if (!message.guild) {
+      if (!message.channel?.isTextBased()) return;
+      const channel = message.channel as TextBasedChannel;
+      await channel.send('Команда доступна только на сервере.');
+      return;
+    }
+
+    if (!hasManageRolesMessage(message)) {
+      if (!message.channel?.isTextBased()) return;
+      const channel = message.channel as TextBasedChannel;
+      await channel.send('Требуется право **Управление ролями**.');
+      return;
+    }
+
+    const botMember = message.guild.members.me;
+
+    if (!botMember?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+      if (!message.channel?.isTextBased()) return;
+      const channel = message.channel as TextBasedChannel;
+      await channel.send('У бота нет права **Управление ролями** для изменения настроек.');
+      return;
+    }
+
+    const view = await buildSettingsMainView(message.guild);
+
+    if (!message.channel?.isTextBased()) return;
+    const channel = message.channel as TextBasedChannel;
+    await channel.send({
       components: view.components,
       files: view.files,
       flags: MessageFlags.IsComponentsV2

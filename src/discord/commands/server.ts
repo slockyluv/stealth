@@ -103,8 +103,7 @@ export const server: Command = {
       });
 
       const description = [
-        `**${emoji('information')} Информация о сервере**`,
-        `Сервер: **${interaction.guild.name}**`,
+        `**${emoji('information')} Информация о сервере:**`,
         '',
         `> **${emoji('family')} Участники**`,
         `${emoji('more')} ➜  Всего: \`${numberFormatter.format(totalMembers)}\``,

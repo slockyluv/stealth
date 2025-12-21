@@ -10,6 +10,7 @@ import {
   ComponentType,
   type ContainerComponentData,
   type ComponentInContainerData,
+  type MediaGalleryComponentData,
   type SectionComponentData,
   type SeparatorComponentData,
   type TextDisplayComponentData,
@@ -144,10 +145,11 @@ async function fetchServerStats(guild: Guild): Promise<ServerStats> {
 
 function buildHeaderSection(
   guild: Guild,
-  iconUrl: string | null
+  iconUrl: string | null,
+  formatEmoji: (name: string) => string
 ): SectionComponentData | TextDisplayComponentData {
   const headerLines = [
-    `**Информация о сервере < ${guild.name} >**`,
+    `**${formatEmoji('information')} Информация о сервере < ${guild.name} >**`,
     `**ID сервера:** \`${guild.id}\``
   ];
 
@@ -219,7 +221,7 @@ export async function buildServerView(options: {
 
   const iconUrl = guild.iconURL({ size: 256 });
   const containerComponents: ComponentInContainerData[] = [
-    buildHeaderSection(guild, iconUrl),
+    buildHeaderSection(guild, iconUrl, emoji),
     buildTabButtons(tab).toJSON(),
     buildSeparator()
   ];
@@ -257,6 +259,7 @@ export async function buildServerView(options: {
       ])
     );
 
+    containerComponents.push({ type: ComponentType.TextDisplay, content: '\u200B' });
     containerComponents.push({
       type: ComponentType.TextDisplay,
       content: `**${emoji('star')} Статусы пользователей:**`
@@ -282,6 +285,19 @@ export async function buildServerView(options: {
         `${emoji('dnd')} Трибун: \`${numberFormatter.format(stats.stageChannels)}\``
       ])
     );
+  }
+
+  const bannerUrl = guild.bannerURL({ size: 1024 });
+  if (bannerUrl) {
+    const bannerGallery: MediaGalleryComponentData = {
+      type: ComponentType.MediaGallery,
+      items: [
+        {
+          media: { url: bannerUrl }
+        }
+      ]
+    };
+    containerComponents.push(bannerGallery);
   }
 
   const container: ContainerComponentData = {
@@ -361,7 +377,7 @@ export const server: Command = {
       logger.error(error);
 
       await pendingReply.edit({
-        components: buildTextView('Не удлось получить информацию о сервере. Попробуйте позже.'),
+        components: buildTextView('Не удалось получить информацию о сервере. Попробуйте позже.'),
         flags: MessageFlags.IsComponentsV2
       });
     }

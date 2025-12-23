@@ -8,6 +8,7 @@ import type { Command } from '../../types/command.js';
 import { buildMutesView } from '../features/mutesView.js';
 import { buildTextView } from '../components/v2Message.js';
 import { logger } from '../../shared/logger.js';
+import { ALLOW_MUTES, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 
 const mutesCommand = new SlashCommandBuilder()
   .setName('mutes')
@@ -32,6 +33,8 @@ export const mutes: Command = {
       return;
     }
 
+    if (!(await enforceInteractionAllow(interaction, ALLOW_MUTES))) return;
+
     await interaction.deferReply();
 
     try {
@@ -55,6 +58,8 @@ export const mutes: Command = {
       });
       return;
     }
+
+    if (!(await enforceMessageAllow(message, ALLOW_MUTES))) return;
 
     const page = parsePageArg(args[0]);
 

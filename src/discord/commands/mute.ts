@@ -16,6 +16,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { clearMute, upsertMute } from '../../services/muteService.js';
+import { ALLOW_MUTE, ALLOW_UNMUTE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 
 const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
 
@@ -202,6 +203,8 @@ export const mute: Command = {
       return;
     }
 
+    if (!(await enforceInteractionAllow(interaction, ALLOW_MUTE))) return;
+
     if (!hasModerateMembers(interaction)) {
       await interaction.reply({
         components: buildTextView('Требуется право **Модерация участников**.'),
@@ -309,6 +312,8 @@ export const mute: Command = {
       });
       return;
     }
+
+    if (!(await enforceMessageAllow(message, ALLOW_MUTE))) return;
 
     if (!hasModerateMembersMessage(message)) {
       if (!message.channel?.isSendable()) return;
@@ -456,6 +461,8 @@ export const unmute: Command = {
       return;
     }
 
+    if (!(await enforceInteractionAllow(interaction, ALLOW_UNMUTE))) return;
+
     if (!hasModerateMembers(interaction)) {
       await interaction.reply({
         components: buildTextView('Требуется право **Модерация участников**.'),
@@ -538,6 +545,8 @@ export const unmute: Command = {
       });
       return;
     }
+
+    if (!(await enforceMessageAllow(message, ALLOW_UNMUTE))) return;
 
     if (!hasModerateMembersMessage(message)) {
       if (!message.channel?.isSendable()) return;

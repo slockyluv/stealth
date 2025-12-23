@@ -11,6 +11,7 @@ import {
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildCustomId } from '../../shared/customId.js';
+import { ALLOW_UI, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 
 export const ui: Command = {
   data: new SlashCommandBuilder()
@@ -18,6 +19,8 @@ export const ui: Command = {
     .setDescription('UI demo: button routing example'),
 
   async execute(interaction: ChatInputCommandInteraction) {
+    if (!(await enforceInteractionAllow(interaction, ALLOW_UI))) return;
+
     const id = buildCustomId('demo', 'hello');
 
     const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -45,6 +48,8 @@ export const ui: Command = {
   },
 
   async executeMessage(message: Message) {
+    if (!(await enforceMessageAllow(message, ALLOW_UI))) return;
+
     const id = buildCustomId('demo', 'hello');
 
     const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(

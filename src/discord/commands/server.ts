@@ -24,6 +24,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildTextView } from '../components/v2Message.js';
 import { buildCustomId } from '../../shared/customId.js';
+import { ALLOW_SERVER, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 
 const numberFormatter = new Intl.NumberFormat('ru-RU');
 
@@ -320,6 +321,8 @@ export const server: Command = {
       return;
     }
 
+    if (!(await enforceInteractionAllow(interaction, ALLOW_SERVER))) return;
+
     await interaction.deferReply();
 
     try {
@@ -357,6 +360,8 @@ export const server: Command = {
       });
       return;
     }
+
+    if (!(await enforceMessageAllow(message, ALLOW_SERVER))) return;
 
     if (!message.channel?.isSendable()) return;
     const pendingReply = await message.channel.send({

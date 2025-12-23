@@ -7,6 +7,7 @@ import {
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildSettingsMainView } from '../features/settings/autoRolesView.js';
+import { ALLOW_SETTINGS, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 
 function hasManageRoles(interaction: ChatInputCommandInteraction) {
   return interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageRoles) ?? false;
@@ -28,6 +29,8 @@ export const settings: Command = {
       return;
     }
 
+    if (!(await enforceInteractionAllow(interaction, ALLOW_SETTINGS))) return;
+    
     if (!hasManageRoles(interaction)) {
       await interaction.reply({
         content: 'Требуется право **Управление ролями**.',
@@ -61,6 +64,8 @@ export const settings: Command = {
       await message.channel.send('Команда доступна только на сервере.');
       return;
     }
+
+    if (!(await enforceMessageAllow(message, ALLOW_SETTINGS))) return;
 
     if (!hasManageRolesMessage(message)) {
       if (!message.channel?.isSendable()) return;

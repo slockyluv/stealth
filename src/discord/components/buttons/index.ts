@@ -7,6 +7,7 @@ import {
   settingsClearRolesButton
 } from './settingsAutoRoles.js';
 import { serverTabsButton } from './serverTabs.js';
+import { mutesPageButton } from './mutes.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
@@ -14,5 +15,6 @@ export const buttonHandlers: ButtonHandler[] = [
   settingsClearRolesButton,
   settingsAutoPrevButton,
   settingsAutoNextButton,
-  serverTabsButton
+  serverTabsButton,
+  mutesPageButton
 ];

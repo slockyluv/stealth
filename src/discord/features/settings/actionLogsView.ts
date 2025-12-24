@@ -99,27 +99,27 @@ export async function buildActionLogsOverview(guild: Guild): Promise<ActionLogsV
           '*Выберите каналы для журнала различных действий пользователей и администраторов.*'
         ].join('\n')
       },
-      { type: ComponentType.TextDisplay, content: '—' },
+      { type: ComponentType.Separator, divider: true },
       {
         type: ComponentType.TextDisplay,
         content: `**Модерирование:** *${formatChannelDisplay(settings.moderationChannelId, channelMap)}*`
       },
-      { type: ComponentType.TextDisplay, content: '—' },
+      { type: ComponentType.Separator, divider: true },
       {
         type: ComponentType.TextDisplay,
         content: `**Управление ролями:** *${formatChannelDisplay(settings.rolesChannelId, channelMap)}*`
       },
-      { type: ComponentType.TextDisplay, content: '—' },
+      { type: ComponentType.Separator, divider: true },
       {
         type: ComponentType.TextDisplay,
         content: `**Сообщения:** *${formatChannelDisplay(settings.messagesChannelId, channelMap)}*`
       },
-      { type: ComponentType.TextDisplay, content: '—' },
+      { type: ComponentType.Separator, divider: true },
       {
         type: ComponentType.TextDisplay,
         content: `**Трафик:** *${formatChannelDisplay(settings.trafficChannelId, channelMap)}*`
       },
-      { type: ComponentType.TextDisplay, content: '—' },
+      { type: ComponentType.Separator, divider: true },
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select).toJSON()
     ]
   };
@@ -193,22 +193,22 @@ export async function buildActionLogCategoryView(options: {
 
   const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(buildCustomId('actionLogs', 'page', category, '1'))
+      .setCustomId(buildCustomId('actionLogs', 'page', category, 'first', '1'))
       .setStyle(ButtonStyle.Secondary)
       .setEmoji(emoji('angledoublesmallleft'))
       .setDisabled(currentPage <= 1),
     new ButtonBuilder()
-      .setCustomId(buildCustomId('actionLogs', 'page', category, String(Math.max(1, currentPage - 1))))
+      .setCustomId(buildCustomId('actionLogs', 'page', category, 'prev', String(Math.max(1, currentPage - 1))))
       .setStyle(ButtonStyle.Secondary)
       .setEmoji(emoji('anglesmallleft'))
       .setDisabled(currentPage <= 1),
     new ButtonBuilder()
-      .setCustomId(buildCustomId('actionLogs', 'page', category, String(Math.min(totalPages, currentPage + 1))))
+      .setCustomId(buildCustomId('actionLogs', 'page', category, 'next', String(Math.min(totalPages, currentPage + 1))))
       .setStyle(ButtonStyle.Secondary)
       .setEmoji(emoji('anglesmallright'))
       .setDisabled(currentPage >= totalPages),
     new ButtonBuilder()
-      .setCustomId(buildCustomId('actionLogs', 'page', category, String(totalPages)))
+      .setCustomId(buildCustomId('actionLogs', 'page', category, 'last', String(totalPages)))
       .setStyle(ButtonStyle.Secondary)
       .setEmoji(emoji('angledoublesmallright'))
       .setDisabled(currentPage >= totalPages)
@@ -217,8 +217,7 @@ export async function buildActionLogCategoryView(options: {
   const overviewButton = new ButtonBuilder()
     .setCustomId(buildCustomId('actionLogs', 'home'))
     .setStyle(ButtonStyle.Secondary)
-    .setEmoji('↩️')
-    .setLabel('К списку');
+    .setEmoji(emoji('undonew'));
 
   const adminId = settings[`${category}UpdatedBy` as const];
   const channelId = settings[`${category}ChannelId` as const];
@@ -230,7 +229,7 @@ export async function buildActionLogCategoryView(options: {
         type: ComponentType.TextDisplay,
         content: [`# ${emoji(meta.emoji)} ${meta.label}`, meta.description].join('\n')
       },
-      { type: ComponentType.TextDisplay, content: '—' },
+      { type: ComponentType.Separator, divider: true },
       {
         type: ComponentType.TextDisplay,
         content: [
@@ -238,7 +237,7 @@ export async function buildActionLogCategoryView(options: {
           `**Администратор:** ${formatAdmin(adminId)}`
         ].join('\n')
       },
-      { type: ComponentType.TextDisplay, content: '—' },
+      { type: ComponentType.Separator, divider: true },
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select).toJSON(),
       navRow.toJSON(),
       new ActionRowBuilder<ButtonBuilder>().addComponents(overviewButton).toJSON()

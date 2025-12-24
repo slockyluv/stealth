@@ -44,7 +44,8 @@ export const actionLogsPageButton: ButtonHandler = {
       return;
     }
 
-    const [category, pageRaw] = parsed.args as [ActionLogCategory, string];
+    const [category, ...rest] = parsed.args as [ActionLogCategory, ...string[]];
+    const pageRaw = rest.at(-1) ?? '1';
     const page = Number.parseInt(pageRaw, 10) || 1;
 
     await interaction.deferUpdate();

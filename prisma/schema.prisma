@@ -29,6 +29,21 @@ model GuildSettings {
   updatedAt  DateTime @updatedAt
 }
 
+model ActionLogSetting {
+  guildId                  BigInt   @id
+  moderationChannelId      BigInt?
+  moderationUpdatedBy      BigInt?
+  rolesChannelId           BigInt?
+  rolesUpdatedBy           BigInt?
+  messagesChannelId        BigInt?
+  messagesUpdatedBy        BigInt?
+  trafficChannelId         BigInt?
+  trafficUpdatedBy         BigInt?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+
 model Mute {
   id          BigInt   @id @default(autoincrement())
   guildId     BigInt

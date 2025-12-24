@@ -8,6 +8,7 @@ import {
 } from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildSettingsMainView, buildAutoRolesView } from '../../features/settings/autoRolesView.js';
+import { buildActionLogsOverview } from '../../features/settings/actionLogsView.js';
 import { getAutoRoles } from '../../../services/autoRoleService.js';
 import { logger } from '../../../shared/logger.js';
 import { buildCustomId } from '../../../shared/customId.js';
@@ -95,6 +96,29 @@ export const settingsSectionSelect: SelectMenuHandler = {
         logger.error(error);
         await interaction.reply({
           components: buildTextView('Не удалось открыть настройку цвета эмодзи. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
+
+      return;
+    }
+
+    if (selection === 'action_logs') {
+      await interaction.deferUpdate();
+
+      try {
+        const view = await buildActionLogsOverview(interaction.guild);
+        await interaction.editReply({
+          embeds: [],
+          components: view.components,
+          files: [],
+          attachments: [],
+          flags: MessageFlags.IsComponentsV2
+        });
+      } catch (error) {
+        logger.error(error);
+        await interaction.followUp({
+          components: buildTextView('Не удалось открыть журнал действий. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }

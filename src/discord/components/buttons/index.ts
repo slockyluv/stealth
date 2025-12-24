@@ -1,5 +1,6 @@
 import type { ButtonHandler } from '../../../types/component.js';
 import { demoHelloButton } from './demoHello.js';
+import { actionLogsHomeButton, actionLogsPageButton } from './actionLogs.js';
 import {
   settingsAutoNextButton,
   settingsAutoPrevButton,
@@ -11,6 +12,8 @@ import { mutesPageButton } from './mutes.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
+  actionLogsPageButton,
+  actionLogsHomeButton,
   settingsBackButton,
   settingsClearRolesButton,
   settingsAutoPrevButton,

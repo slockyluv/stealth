@@ -153,7 +153,12 @@ export async function buildSettingsMainView(guild) {
         .setLabel('Цвет эмодзи')
         .setValue('emoji_color')
         .setDescription('Изменение цвета эмодзи бота для сообщений')
-        .setEmoji(formatEmoji('uwu')));
+        .setEmoji(formatEmoji('uwu')))
+        .addOptions(new StringSelectMenuOptionBuilder()
+        .setLabel('Журнал действий')
+        .setValue('action_logs')
+        .setDescription('Настройка каналов для журналов действий')
+        .setEmoji(formatEmoji('action_book')));
     const framed = {
         type: ComponentType.Container,
         components: [

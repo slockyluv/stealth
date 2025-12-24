@@ -65,6 +65,21 @@ export async function clearExpiredMutes(options: { guildId: string; now: Date })
   });
 }
 
+export async function getMute(options: { guildId: string; userId: string }): Promise<MuteRecord | null> {
+  const { guildId, userId } = options;
+
+  const record = await prisma.mute.findUnique({
+    where: {
+      guildId_userId: {
+        guildId: BigInt(guildId),
+        userId: BigInt(userId)
+      }
+    }
+  });
+
+  return record ?? null;
+}
+
 export async function listMutes(guildId: string): Promise<MuteRecord[]> {
   return prisma.mute.findMany({
     where: {

@@ -19,6 +19,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_ADD_ROLE, ALLOW_TAKE_ROLE, ALLOW_TEMP_ROLE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { addTempRole } from '../services/actionLogState.js';
 
 const ROLE_PROMPT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 90 * 24 * 60 * 60 * 1000;
@@ -585,6 +586,15 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
       return;
     }
 
+    addTempRole({
+      guildId: interaction.guild.id,
+      userId: targetMember.id,
+      roleId: role.id,
+      durationLabel: parsed.label,
+      expiresAt: new Date(Date.now() + parsed.ms),
+      moderatorId: interaction.user.id
+    });
+
     scheduleRoleRemoval({ clientGuild: interaction.guild, userId: targetMember.id, roleId: role.id, durationMs: parsed.ms });
 
     const view = buildRoleActionSuccessView({
@@ -732,6 +742,15 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
       });
       return;
     }
+
+    addTempRole({
+      guildId: message.guild.id,
+      userId: targetMember.id,
+      roleId: role.id,
+      durationLabel: parsed.label,
+      expiresAt: new Date(Date.now() + parsed.ms),
+      moderatorId: message.author.id
+    });
 
     scheduleRoleRemoval({ clientGuild: message.guild, userId: targetMember.id, roleId: role.id, durationMs: parsed.ms });
 

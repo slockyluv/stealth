@@ -1,5 +1,5 @@
 import type { Message, PartialMessage } from 'discord.js';
-import { logMessageEdit } from '../services/actionLogger.js';
+import { logMessageEdit } from '../../services/actionLogger.js'
 import { logger } from '../../shared/logger.js';
 
 export async function messageUpdate(oldMessage: Message | PartialMessage, newMessage: Message | PartialMessage) {

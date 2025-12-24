@@ -19,7 +19,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_ADD_ROLE, ALLOW_TAKE_ROLE, ALLOW_TEMP_ROLE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
-import { addTempRole } from '../services/actionLogState.js';
+import { addTempRole } from '../../services/actionLogState.js';
 
 const ROLE_PROMPT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 90 * 24 * 60 * 60 * 1000;

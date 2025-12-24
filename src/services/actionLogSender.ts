@@ -1,6 +1,6 @@
 import { MessageFlags, type Guild, ComponentType, type TopLevelComponentData } from 'discord.js';
-import { getActionLogSettings, type ActionLogCategory } from '../../services/actionLogSettingsService.js';
-import { logger } from '../../shared/logger.js';
+import { getActionLogSettings, type ActionLogCategory } from './actionLogSettingsService.js';
+import { logger } from '../shared/logger.js';
 
 async function resolveChannel(guild: Guild, channelId: string | null) {
   if (!channelId) return null;

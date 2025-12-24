@@ -1,6 +1,6 @@
 import { AuditLogEvent, type Message, type PartialMessage } from 'discord.js';
-import { fetchAuditEntry } from '../services/auditLog.js';
-import { logMessageDelete } from '../services/actionLogger.js';
+import { fetchAuditEntry } from '../../services/auditLog.js';
+import { logMessageDelete } from '../../services/actionLogger.js';
 import { logger } from '../../shared/logger.js';
 
 export async function messageDelete(message: Message | PartialMessage) {

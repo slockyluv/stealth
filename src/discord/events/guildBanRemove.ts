@@ -1,8 +1,8 @@
 import type { GuildBan } from 'discord.js';
 import { AuditLogEvent } from 'discord.js';
-import { fetchAuditEntry } from '../services/auditLog.js';
-import { logUnban } from '../services/actionLogger.js';
-import { clearBanInfo, getBanInfo } from '../services/actionLogState.js';
+import { fetchAuditEntry } from '../../services/auditLog.js';
+import { logUnban } from '../../services/actionLogger.js';
+import { clearBanInfo, getBanInfo } from '../../services/actionLogState.js';
 
 export async function guildBanRemove(ban: GuildBan) {
   const guild = ban.guild;

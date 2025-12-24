@@ -1,5 +1,5 @@
 import type { Collection, Invite, Guild } from 'discord.js';
-import { logger } from '../../shared/logger.js';
+import { logger } from '../shared/logger.js';
 
 type InviteState = {
   uses: number;

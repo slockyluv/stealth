@@ -5,7 +5,7 @@ import {
   type GuildAuditLogsFetchOptions,
   type Snowflake
 } from 'discord.js';
-import { logger } from '../../shared/logger.js';
+import { logger } from '../shared/logger.js';
 
 export async function fetchAuditEntry(options: {
   guild: Guild;

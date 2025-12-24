@@ -1,7 +1,7 @@
 import { channelMention, roleMention, userMention, type Guild, type User } from 'discord.js';
-import { createEmojiFormatter } from '../emoji.js';
+import { createEmojiFormatter } from '../discord/emoji.js';
 import { sendActionLog, buildBaseContainer } from './actionLogSender.js';
-import { formatDateTime, formatDuration, formatRelative } from '../../shared/time.js';
+import { formatDateTime, formatDuration, formatRelative } from '../shared/time.js';
 
 function formatMention(id: string | null | undefined, italic = false): string {
   if (!id) return italic ? '*неизвестно*' : 'неизвестно';

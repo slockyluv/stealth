@@ -1,9 +1,9 @@
 import { PermissionsBitField, type GuildMember } from 'discord.js';
 import { getAutoRoles } from '../../services/autoRoleService.js';
 import { logger } from '../../shared/logger.js';
-import { resolveInviteUsage } from '../services/inviteTracker.js';
-import { setTrafficInviter } from '../services/actionLogState.js';
-import { logTrafficJoin } from '../services/actionLogger.js';
+import { resolveInviteUsage } from '../../services/inviteTracker.js';
+import { setTrafficInviter } from '../../services/actionLogState.js';
+import { logTrafficJoin } from '../../services/actionLogger.js';
 
 export async function guildMemberAdd(member: GuildMember) {
   try {

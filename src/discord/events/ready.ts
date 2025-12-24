@@ -1,6 +1,6 @@
 import type { Client } from 'discord.js';
 import { logger } from '../../shared/logger.js';
-import { snapshotGuildInvites } from '../services/inviteTracker.js';
+import { snapshotGuildInvites } from '../../services/inviteTracker.js';
 
 export async function ready(client: Client) {
   if (!client.user) return;

@@ -1,14 +1,14 @@
 import { AuditLogEvent, type GuildMember, type PartialGuildMember } from 'discord.js';
-import { fetchAuditEntry } from '../services/auditLog.js';
+import { fetchAuditEntry } from '../../services/auditLog.js';
 import {
   logMute,
   logNicknameChange,
   logRoleGrant,
   logRoleRevoke,
   logUnmute
-} from '../services/actionLogger.js';
+} from '../../services/actionLogger.js';
 import { clearMute, getMute, upsertMute } from '../../services/muteService.js';
-import { consumeTempRole } from '../services/actionLogState.js';
+import { consumeTempRole } from '../../services/actionLogState.js';
 
 export async function guildMemberUpdate(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
   const guild = newMember.guild;

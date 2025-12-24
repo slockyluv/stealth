@@ -1,8 +1,8 @@
 import type { GuildMember, PartialGuildMember } from 'discord.js';
 import { AuditLogEvent } from 'discord.js';
-import { fetchAuditEntry } from '../services/auditLog.js';
-import { logKick, logTrafficLeave } from '../services/actionLogger.js';
-import { consumeTrafficInviter } from '../services/actionLogState.js';
+import { fetchAuditEntry } from '../../services/auditLog.js';
+import { logKick, logTrafficLeave } from '../../services/actionLogger.js';
+import { consumeTrafficInviter } from '../../services/actionLogState.js';
 
 export async function guildMemberRemove(member: GuildMember | PartialGuildMember) {
   const guild = member.guild;

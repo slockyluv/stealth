@@ -6,5 +6,6 @@ import { mute, unmute } from './mute.js';
 import { mutes } from './mutes.js';
 import { ban, unban } from './ban.js';
 import { kick } from './kick.js';
+import { setnick } from './setnick.js';
 
-export const commands = [ping, ui, server, settings, mute, unmute, mutes, ban, unban, kick];
+export const commands = [ping, ui, server, settings, mute, unmute, mutes, ban, unban, kick, setnick];

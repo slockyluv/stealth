@@ -20,6 +20,9 @@ export const ALLOW_BAN: AllowList = [];
 export const ALLOW_UNBAN: AllowList = [];
 export const ALLOW_KICK: AllowList = [];
 export const ALLOW_SETNICK: AllowList = [];
+export const ALLOW_ADD_ROLE: AllowList = [];
+export const ALLOW_TAKE_ROLE: AllowList = [];
+export const ALLOW_TEMP_ROLE: AllowList = [];
 
 const NO_PERMISSIONS_MESSAGE = 'У вас нет прав для использования этой команды.';
 

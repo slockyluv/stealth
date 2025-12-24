@@ -7,5 +7,21 @@ import { mutes } from './mutes.js';
 import { ban, unban } from './ban.js';
 import { kick } from './kick.js';
 import { setnick } from './setnick.js';
+import { addRole, takeRole, tempRole } from './roles.js';
 
-export const commands = [ping, ui, server, settings, mute, unmute, mutes, ban, unban, kick, setnick];
+export const commands = [
+  ping,
+  ui,
+  server,
+  settings,
+  mute,
+  unmute,
+  mutes,
+  ban,
+  unban,
+  kick,
+  setnick,
+  addRole,
+  takeRole,
+  tempRole
+];

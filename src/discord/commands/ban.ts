@@ -158,6 +158,11 @@ export const ban: Command = {
     }
 
     const botMember = interaction.guild.members.me;
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guild.id,
+      guildEmojis: interaction.guild.emojis.cache.values()
+    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.BanMembers)) {
       await interaction.reply({
         components: buildTextView('У бота нет права **Банить участников**.'),
@@ -171,7 +176,7 @@ export const ban: Command = {
 
     if (targetUser.id === interaction.user.id) {
       await interaction.reply({
-        components: buildTextView('Нельзя заблокировать самого себя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно заблокировать самого себя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -179,7 +184,7 @@ export const ban: Command = {
 
     if (targetUser.id === interaction.client.user?.id) {
       await interaction.reply({
-        components: buildTextView('Нельзя заблокировать бота.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно выдать блокировку на сервере боту!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -192,7 +197,7 @@ export const ban: Command = {
 
     if (targetMember && !targetMember.bannable) {
       await interaction.reply({
-        components: buildTextView('Нельзя заблокировать этого пользователя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно заблокировать указанного пользователя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -209,17 +214,11 @@ export const ban: Command = {
       return;
     }
 
-    const emoji = await createEmojiFormatter({
-      client: interaction.client,
-      guildId: interaction.guild.id,
-      guildEmojis: interaction.guild.emojis.cache.values()
-    });
-
     const view = await buildBanSuccessView({
       moderatorMention: `<@${interaction.user.id}>`,
       targetMention: `<@${targetUser.id}>`,
       reason,
-      formatEmoji: emoji
+      formatEmoji
     });
 
     await interaction.reply({
@@ -250,6 +249,11 @@ export const ban: Command = {
     }
 
     const botMember = message.guild.members.me;
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guild.id,
+      guildEmojis: message.guild.emojis.cache.values()
+    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.BanMembers)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
@@ -277,7 +281,7 @@ export const ban: Command = {
     if (targetId === message.author.id) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Нельзя заблокировать самого себя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно заблокировать самого себя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -286,7 +290,7 @@ export const ban: Command = {
     if (targetId === message.client.user?.id) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Нельзя заблокировать бота.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно выдать блокировку на сервере боту!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -296,7 +300,7 @@ export const ban: Command = {
     if (!targetUser) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Пользователь не найден.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -310,7 +314,7 @@ export const ban: Command = {
     if (targetMember && !targetMember.bannable) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Нельзя заблокировать этого пользователя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно заблокировать указанного пользователя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -328,17 +332,11 @@ export const ban: Command = {
       return;
     }
 
-    const emoji = await createEmojiFormatter({
-      client: message.client,
-      guildId: message.guild.id,
-      guildEmojis: message.guild.emojis.cache.values()
-    });
-
     const view = await buildBanSuccessView({
       moderatorMention: `<@${message.author.id}>`,
       targetMention: `<@${targetUser.id}>`,
       reason,
-      formatEmoji: emoji
+      formatEmoji
     });
 
     if (!message.channel?.isSendable()) return;
@@ -377,6 +375,11 @@ export const unban: Command = {
     }
 
     const botMember = interaction.guild.members.me;
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guild.id,
+      guildEmojis: interaction.guild.emojis.cache.values()
+    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.BanMembers)) {
       await interaction.reply({
         components: buildTextView('У бота нет права **Банить участников**.'),
@@ -390,7 +393,7 @@ export const unban: Command = {
     const banInfo = await interaction.guild.bans.fetch(targetUser.id).catch(() => null);
     if (!banInfo) {
       await interaction.reply({
-        components: buildTextView('Пользователь не найден в списке блокировок.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден в списке заблокированных!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -407,15 +410,9 @@ export const unban: Command = {
       return;
     }
 
-    const emoji = await createEmojiFormatter({
-      client: interaction.client,
-      guildId: interaction.guild.id,
-      guildEmojis: interaction.guild.emojis.cache.values()
-    });
-
     const view = buildUnbanView({
       targetMention: `<@${targetUser.id}>`,
-      formatEmoji: emoji
+      formatEmoji
     });
 
     await interaction.reply({
@@ -446,6 +443,11 @@ export const unban: Command = {
     }
 
     const botMember = message.guild.members.me;
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guild.id,
+      guildEmojis: message.guild.emojis.cache.values()
+    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.BanMembers)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
@@ -460,7 +462,9 @@ export const unban: Command = {
     if (!targetRaw) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Укажите пользователя для разблокировки.'),
+        components: buildTextView(
+          `**${formatEmoji('staff_warn')} Укажите пользователя для снятия блокировки на сервере!**`
+        ),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -473,7 +477,7 @@ export const unban: Command = {
     if (!banInfo) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Пользователь не найден в списке блокировок.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден в списке заблокированных!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -491,15 +495,9 @@ export const unban: Command = {
       return;
     }
 
-    const emoji = await createEmojiFormatter({
-      client: message.client,
-      guildId: message.guild.id,
-      guildEmojis: message.guild.emojis.cache.values()
-    });
-
     const view = buildUnbanView({
       targetMention: `<@${targetId}>`,
-      formatEmoji: emoji
+      formatEmoji
     });
 
     if (!message.channel?.isSendable()) return;

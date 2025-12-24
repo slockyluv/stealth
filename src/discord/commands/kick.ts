@@ -133,6 +133,11 @@ export const kick: Command = {
     }
 
     const botMember = interaction.guild.members.me;
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guild.id,
+      guildEmojis: interaction.guild.emojis.cache.values()
+    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.KickMembers)) {
       await interaction.reply({
         components: buildTextView('У бота нет права **Выгонять участников**.'),
@@ -146,7 +151,7 @@ export const kick: Command = {
 
     if (targetUser.id === interaction.user.id) {
       await interaction.reply({
-        components: buildTextView('Нельзя кикнуть самого себя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно кикнуть самого себя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -154,7 +159,7 @@ export const kick: Command = {
 
     if (targetUser.id === interaction.client.user?.id) {
       await interaction.reply({
-        components: buildTextView('Нельзя кикнуть бота.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно кикнуть бота!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -167,7 +172,7 @@ export const kick: Command = {
 
     if (!targetMember) {
       await interaction.reply({
-        components: buildTextView('Пользователь не найден на сервере.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Указанный пользователь не найден на сервере!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -175,7 +180,7 @@ export const kick: Command = {
 
     if (!targetMember.kickable) {
       await interaction.reply({
-        components: buildTextView('Нельзя кикнуть этого пользователя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно кикнуть указанного пользователя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -192,17 +197,11 @@ export const kick: Command = {
       return;
     }
 
-    const emoji = await createEmojiFormatter({
-      client: interaction.client,
-      guildId: interaction.guild.id,
-      guildEmojis: interaction.guild.emojis.cache.values()
-    });
-
     const view = await buildKickSuccessView({
       moderatorMention: `<@${interaction.user.id}>`,
       targetMention: `<@${targetUser.id}>`,
       reason,
-      formatEmoji: emoji
+      formatEmoji
     });
 
     await interaction.reply({
@@ -233,6 +232,11 @@ export const kick: Command = {
     }
 
     const botMember = message.guild.members.me;
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guild.id,
+      guildEmojis: message.guild.emojis.cache.values()
+    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.KickMembers)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
@@ -260,7 +264,7 @@ export const kick: Command = {
     if (targetId === message.author.id) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Нельзя кикнуть самого себя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно кикнуть самого себя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -269,7 +273,7 @@ export const kick: Command = {
     if (targetId === message.client.user?.id) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Нельзя кикнуть бота.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно кикнуть бота!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -283,7 +287,7 @@ export const kick: Command = {
     if (!targetMember) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Пользователь не найден на сервере.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден на сервере!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -292,7 +296,7 @@ export const kick: Command = {
     if (!targetMember.kickable) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Нельзя кикнуть этого пользователя.'),
+        components: buildTextView(`**${formatEmoji('staff_warn')} Невозможно кикнуть указанного пользователя!**`),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -310,17 +314,11 @@ export const kick: Command = {
       return;
     }
 
-    const emoji = await createEmojiFormatter({
-      client: message.client,
-      guildId: message.guild.id,
-      guildEmojis: message.guild.emojis.cache.values()
-    });
-
     const view = await buildKickSuccessView({
       moderatorMention: `<@${message.author.id}>`,
       targetMention: `<@${targetMember.id}>`,
       reason,
-      formatEmoji: emoji
+      formatEmoji
     });
 
     if (!message.channel?.isSendable()) return;

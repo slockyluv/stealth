@@ -16,6 +16,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_BAN, ALLOW_UNBAN, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { setPendingActionModerator } from '../../services/actionLogState.js';
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -204,6 +205,12 @@ export const ban: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: interaction.guild.id,
+        targetId: targetUser.id,
+        action: 'ban',
+        moderatorId: interaction.user.id
+      });
       await interaction.guild.members.ban(targetUser, { reason: reason ?? undefined });
     } catch (error) {
       logger.error(error);
@@ -321,6 +328,12 @@ export const ban: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: message.guild.id,
+        targetId: targetUser.id,
+        action: 'ban',
+        moderatorId: message.author.id
+      });
       await message.guild.members.ban(targetUser, { reason: reason ?? undefined });
     } catch (error) {
       logger.error(error);
@@ -400,6 +413,12 @@ export const unban: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: interaction.guild.id,
+        targetId: targetUser.id,
+        action: 'unban',
+        moderatorId: interaction.user.id
+      });
       await interaction.guild.bans.remove(targetUser.id);
     } catch (error) {
       logger.error(error);
@@ -484,6 +503,12 @@ export const unban: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: message.guild.id,
+        targetId: targetId,
+        action: 'unban',
+        moderatorId: message.author.id
+      });
       await message.guild.bans.remove(targetId);
     } catch (error) {
       logger.error(error);

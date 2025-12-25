@@ -19,7 +19,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_ADD_ROLE, ALLOW_TAKE_ROLE, ALLOW_TEMP_ROLE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
-import { addTempRole } from '../../services/actionLogState.js';
+import { addTempRole, setPendingActionModerator } from '../../services/actionLogState.js';
 
 const ROLE_PROMPT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 90 * 24 * 60 * 60 * 1000;
@@ -429,9 +429,17 @@ async function performRoleChange(options: {
   role: Role;
   action: 'add' | 'remove';
   reason?: string;
+  moderatorId: string;
 }): Promise<boolean> {
-  const { target, role, action, reason } = options;
+  const { target, role, action, reason, moderatorId } = options;
   try {
+    setPendingActionModerator({
+      guildId: target.guild.id,
+      targetId: target.id,
+      action: action === 'add' ? 'role-add' : 'role-remove',
+      extraId: role.id,
+      moderatorId
+    });
     if (action === 'add') {
       await target.roles.add(role, reason ?? undefined);
     } else {
@@ -575,7 +583,12 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
       return;
     }
 
-    const success = await performRoleChange({ target: targetMember, role, action: 'add' });
+    const success = await performRoleChange({
+      target: targetMember,
+      role,
+      action: 'add',
+      moderatorId: interaction.user.id
+    });
     if (!success) {
       const components = buildTextView('Не удалось выдать роль. Проверьте права бота.');
       if (interaction.replied || interaction.deferred) {
@@ -616,7 +629,12 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
     return;
   }
 
-  const success = await performRoleChange({ target: targetMember, role, action: action === 'remove' ? 'remove' : 'add' });
+  const success = await performRoleChange({
+    target: targetMember,
+    role,
+    action: action === 'remove' ? 'remove' : 'add',
+    moderatorId: interaction.user.id
+  });
   if (!success) {
     const components = buildTextView('Не удалось изменить роль. Проверьте права бота.');
     if (interaction.replied || interaction.deferred) {
@@ -733,7 +751,12 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
       return;
     }
 
-    const success = await performRoleChange({ target: targetMember, role, action: 'add' });
+    const success = await performRoleChange({
+      target: targetMember,
+      role,
+      action: 'add',
+      moderatorId: message.author.id
+    });
     if (!success) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
@@ -769,7 +792,12 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
     return;
   }
 
-  const success = await performRoleChange({ target: targetMember, role, action: action === 'remove' ? 'remove' : 'add' });
+  const success = await performRoleChange({
+    target: targetMember,
+    role,
+    action: action === 'remove' ? 'remove' : 'add',
+    moderatorId: message.author.id
+  });
   if (!success) {
     if (!message.channel?.isSendable()) return;
     await message.channel.send({

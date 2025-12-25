@@ -2,7 +2,7 @@ import type { GuildBan } from 'discord.js';
 import { AuditLogEvent } from 'discord.js';
 import { fetchAuditEntry } from '../../services/auditLog.js';
 import { logUnban } from '../../services/actionLogger.js';
-import { clearBanInfo, getBanInfo } from '../../services/actionLogState.js';
+import { clearBanInfo, consumePendingActionModerator, getBanInfo } from '../../services/actionLogState.js';
 
 export async function guildBanRemove(ban: GuildBan) {
   const guild = ban.guild;
@@ -17,7 +17,10 @@ export async function guildBanRemove(ban: GuildBan) {
   const banInfo = getBanInfo(guild.id, user.id);
   clearBanInfo(guild.id, user.id);
 
-  const moderatorId = audit?.executorId ?? null;
+  const moderatorId =
+    consumePendingActionModerator({ guildId: guild.id, targetId: user.id, action: 'unban' }) ??
+    audit?.executorId ??
+    null;
 
   await logUnban({
     guild,

@@ -1,6 +1,7 @@
 type BanKey = `${string}:${string}`;
 type RoleKey = `${string}:${string}:${string}`;
 type TrafficKey = `${string}:${string}`;
+type ActionKey = `${string}:${string}:${string}`;
 
 export type BanInfo = {
   reason: string | null;
@@ -24,6 +25,7 @@ export type TrafficInfo = {
 const banHistory = new Map<BanKey, BanInfo>();
 const tempRoles = new Map<RoleKey, TempRoleInfo>();
 const trafficInviters = new Map<TrafficKey, TrafficInfo>();
+const actionModerators = new Map<ActionKey, string>();
 
 export function setBanInfo(guildId: string, userId: string, info: BanInfo) {
   banHistory.set(`${guildId}:${userId}`, info);
@@ -57,4 +59,29 @@ export function consumeTrafficInviter(guildId: string, userId: string): TrafficI
   const value = trafficInviters.get(key) ?? null;
   if (value) trafficInviters.delete(key);
   return value;
+}
+
+export function setPendingActionModerator(options: {
+  guildId: string;
+  targetId: string;
+  action: string;
+  extraId?: string;
+  moderatorId: string;
+}) {
+  const { guildId, targetId, action, extraId, moderatorId } = options;
+  const key: ActionKey = `${guildId}:${targetId}:${action}${extraId ? `:${extraId}` : ''}`;
+  actionModerators.set(key, moderatorId);
+}
+
+export function consumePendingActionModerator(options: {
+  guildId: string;
+  targetId: string;
+  action: string;
+  extraId?: string;
+}): string | null {
+  const { guildId, targetId, action, extraId } = options;
+  const key: ActionKey = `${guildId}:${targetId}:${action}${extraId ? `:${extraId}` : ''}`;
+  const moderatorId = actionModerators.get(key) ?? null;
+  if (moderatorId) actionModerators.delete(key);
+  return moderatorId;
 }

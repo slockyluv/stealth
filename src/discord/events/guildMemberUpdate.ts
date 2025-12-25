@@ -8,7 +8,7 @@ import {
   logUnmute
 } from '../../services/actionLogger.js';
 import { clearMute, getMute, upsertMute } from '../../services/muteService.js';
-import { consumeTempRole } from '../../services/actionLogState.js';
+import { consumePendingActionModerator, consumeTempRole } from '../../services/actionLogState.js';
 
 export async function guildMemberUpdate(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
   const guild = newMember.guild;
@@ -26,7 +26,10 @@ export async function guildMemberUpdate(oldMember: GuildMember | PartialGuildMem
       predicate: (entry) => entry.changes?.some((change) => change.key === 'communication_disabled_until') ?? false
     });
 
-    const moderatorId = audit?.executorId ?? null;
+    const moderatorId =
+      consumePendingActionModerator({ guildId: guild.id, targetId: newMember.id, action: 'mute' }) ??
+      audit?.executorId ??
+      null;
     const reason = audit?.reason ?? null;
     const createdAt = audit?.createdAt ?? new Date();
     const durationMs = Math.max(0, newTimeout - (audit?.createdTimestamp ?? Date.now()));
@@ -60,7 +63,10 @@ export async function guildMemberUpdate(oldMember: GuildMember | PartialGuildMem
     });
 
     const record = await getMute({ guildId: guild.id, userId: newMember.id });
-    const moderatorId = audit?.executorId ?? null;
+    const moderatorId =
+      consumePendingActionModerator({ guildId: guild.id, targetId: newMember.id, action: 'unmute' }) ??
+      audit?.executorId ??
+      null;
 
     await logUnmute({
       guild,
@@ -90,7 +96,10 @@ export async function guildMemberUpdate(oldMember: GuildMember | PartialGuildMem
     await logNicknameChange({
       guild,
       user: newMember.user,
-      moderatorId: audit?.executorId ?? null,
+      moderatorId:
+        consumePendingActionModerator({ guildId: guild.id, targetId: newMember.id, action: 'nickname' }) ??
+        audit?.executorId ??
+        null,
       oldNickname,
       newNickname: newMember.nickname,
       changedAt: audit?.createdAt ?? new Date()
@@ -130,7 +139,13 @@ export async function guildMemberUpdate(oldMember: GuildMember | PartialGuildMem
         guild,
         roleId,
         userId: newMember.id,
-        moderatorId,
+        moderatorId:
+          consumePendingActionModerator({
+            guildId: guild.id,
+            targetId: newMember.id,
+            action: 'role-add',
+            extraId: roleId
+          }) ?? moderatorId,
         at: timestamp,
         temporary: Boolean(tempRole),
         durationLabel: tempRole?.durationLabel,
@@ -143,7 +158,13 @@ export async function guildMemberUpdate(oldMember: GuildMember | PartialGuildMem
         guild,
         roleId,
         userId: newMember.id,
-        moderatorId,
+        moderatorId:
+          consumePendingActionModerator({
+            guildId: guild.id,
+            targetId: newMember.id,
+            action: 'role-remove',
+            extraId: roleId
+          }) ?? moderatorId,
         at: timestamp
       });
     }

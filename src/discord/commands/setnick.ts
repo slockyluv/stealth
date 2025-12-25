@@ -16,6 +16,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_SETNICK, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { setPendingActionModerator } from '../../services/actionLogState.js';
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -192,6 +193,12 @@ export const setnick: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: interaction.guild.id,
+        targetId: targetMember.id,
+        action: 'nickname',
+        moderatorId: interaction.user.id
+      });
       await targetMember.setNickname(nickname);
     } catch (error) {
       logger.error(error);
@@ -302,6 +309,12 @@ export const setnick: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: message.guild.id,
+        targetId: targetMember.id,
+        action: 'nickname',
+        moderatorId: message.author.id
+      });
       await targetMember.setNickname(nickname);
     } catch (error) {
       logger.error(error);

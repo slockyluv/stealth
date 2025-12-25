@@ -2,7 +2,7 @@ import type { GuildMember, PartialGuildMember } from 'discord.js';
 import { AuditLogEvent } from 'discord.js';
 import { fetchAuditEntry } from '../../services/auditLog.js';
 import { logKick, logTrafficLeave } from '../../services/actionLogger.js';
-import { consumeTrafficInviter } from '../../services/actionLogState.js';
+import { consumePendingActionModerator, consumeTrafficInviter } from '../../services/actionLogState.js';
 
 export async function guildMemberRemove(member: GuildMember | PartialGuildMember) {
   const guild = member.guild;
@@ -29,7 +29,10 @@ export async function guildMemberRemove(member: GuildMember | PartialGuildMember
       await logKick({
         guild,
         user,
-        moderatorId: kickEntry.executorId ?? null,
+        moderatorId:
+          consumePendingActionModerator({ guildId: guild.id, targetId: member.id, action: 'kick' }) ??
+          kickEntry.executorId ??
+          null,
         reason: kickEntry.reason ?? null,
         createdAt: kickEntry.createdAt ?? new Date()
       });

@@ -16,6 +16,7 @@ import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_KICK, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { setPendingActionModerator } from '../../services/actionLogState.js';
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -187,6 +188,12 @@ export const kick: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: interaction.guild.id,
+        targetId: targetUser.id,
+        action: 'kick',
+        moderatorId: interaction.user.id
+      });
       await targetMember.kick(reason ?? undefined);
     } catch (error) {
       logger.error(error);
@@ -303,6 +310,12 @@ export const kick: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: message.guild.id,
+        targetId: targetMember.id,
+        action: 'kick',
+        moderatorId: message.author.id
+      });
       await targetMember.kick(reason ?? undefined);
     } catch (error) {
       logger.error(error);

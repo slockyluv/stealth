@@ -17,6 +17,7 @@ import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { clearMute, upsertMute } from '../../services/muteService.js';
 import { ALLOW_MUTE, ALLOW_UNMUTE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { setPendingActionModerator } from '../../services/actionLogState.js';
 
 const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
 
@@ -264,6 +265,12 @@ export const mute: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: interaction.guild.id,
+        targetId: targetUser.id,
+        action: 'mute',
+        moderatorId: interaction.user.id
+      });
       await applyMute({
         targetMember,
         durationMs: duration.ms,
@@ -392,6 +399,12 @@ export const mute: Command = {
     const reason = reasonParts.join(' ').trim() || undefined;
 
     try {
+      setPendingActionModerator({
+        guildId: message.guild.id,
+        targetId: targetMember.id,
+        action: 'mute',
+        moderatorId: message.author.id
+      });
       await applyMute({
         targetMember,
         durationMs: duration.ms,
@@ -512,6 +525,12 @@ export const unmute: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: interaction.guild.id,
+        targetId: targetUser.id,
+        action: 'unmute',
+        moderatorId: interaction.user.id
+      });
       await applyUnmute({ targetMember });
     } catch (error) {
       logger.error(error);
@@ -616,6 +635,12 @@ export const unmute: Command = {
     }
 
     try {
+      setPendingActionModerator({
+        guildId: message.guild.id,
+        targetId: targetMember.id,
+        action: 'unmute',
+        moderatorId: message.author.id
+      });
       await applyUnmute({ targetMember });
     } catch (error) {
       logger.error(error);

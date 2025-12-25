@@ -20,40 +20,49 @@ import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_ADD_ROLE, ALLOW_TAKE_ROLE, ALLOW_TEMP_ROLE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { addTempRole, setPendingActionModerator } from '../../services/actionLogState.js';
+import { pluralize } from '../../shared/time.js';
 
 const ROLE_PROMPT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 90 * 24 * 60 * 60 * 1000;
 const SAFE_TIMEOUT_MS = 2_147_483_647;
 
-const DURATION_MULTIPLIERS: Record<string, number> = {
-  s: 1000,
-  c: 1000,
-  'с': 1000,
-  m: 60 * 1000,
-  'м': 60 * 1000,
-  'мин': 60 * 1000,
-  h: 60 * 60 * 1000,
-  'ч': 60 * 60 * 1000,
-  d: 24 * 60 * 60 * 1000,
-  'д': 24 * 60 * 60 * 1000,
-  'дн': 24 * 60 * 60 * 1000,
-  'мес': 30 * 24 * 60 * 60 * 1000
+type DurationUnit = 'second' | 'minute' | 'hour' | 'day' | 'month';
+
+const DURATION_MULTIPLIERS: Record<DurationUnit, number> = {
+  second: 1000,
+  minute: 60 * 1000,
+  hour: 60 * 60 * 1000,
+  day: 24 * 60 * 60 * 1000,
+  month: 30 * 24 * 60 * 60 * 1000
 };
 
-const DURATION_LABELS: Record<string, string> = {
-  s: 'с',
-  c: 'с',
-  'с': 'с',
-  m: 'м',
-  'м': 'м',
-  'мин': 'м',
-  h: 'ч',
-  'ч': 'ч',
-  d: 'д',
-  'д': 'д',
-  'дн': 'д',
-  'мес': 'мес'
+const DURATION_ALIASES: Record<string, DurationUnit> = {
+  s: 'second',
+  c: 'second',
+  'с': 'second',
+  m: 'minute',
+  'м': 'minute',
+  'мин': 'minute',
+  h: 'hour',
+  'ч': 'hour',
+  d: 'day',
+  'д': 'day',
+  'дн': 'day',
+  'мес': 'month'
 };
+
+function formatDurationLabel(value: number, unit: DurationUnit): string {
+  const forms: Record<DurationUnit, [string, string, string]> = {
+    second: ['секунду', 'секунды', 'секунд'],
+    minute: ['минуту', 'минуты', 'минут'],
+    hour: ['час', 'часа', 'часов'],
+    day: ['день', 'дня', 'дней'],
+    month: ['месяц', 'месяца', 'месяцев']
+  };
+
+  const unitForms = forms[unit];
+  return `${value} ${pluralize(value, ...unitForms)}`;
+}
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -155,14 +164,16 @@ function parseDuration(input: string): { ms: number; label: string } | null {
   const unit = match[2]?.toLowerCase();
   if (!unit) return null;
 
-  const multiplier = DURATION_MULTIPLIERS[unit];
-  if (!multiplier) return null;
+  const unitKey = DURATION_ALIASES[unit];
+  if (!unitKey) return null;
+
+  const multiplier = DURATION_MULTIPLIERS[unitKey];
 
   const ms = value * multiplier;
   if (ms > MAX_TIMEOUT_MS) return null;
 
-  const labelUnit = DURATION_LABELS[unit] ?? unit;
-  return { ms, label: `${value}${labelUnit}` };
+  const label = formatDurationLabel(value, unitKey);
+  return { ms, label };
 }
 
 async function ensureGuildMember(options: { guildMembers: GuildMember['guild']['members']; userId: string }) {

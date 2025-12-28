@@ -8,6 +8,7 @@ import { ban, unban } from './ban.js';
 import { kick } from './kick.js';
 import { setnick } from './setnick.js';
 import { addRole, takeRole, tempRole } from './roles.js';
+import { nabor } from './nabor.js';
 
 export const commands = [
   ping,
@@ -21,6 +22,7 @@ export const commands = [
   unban,
   kick,
   setnick,
+  nabor,
   addRole,
   takeRole,
   tempRole

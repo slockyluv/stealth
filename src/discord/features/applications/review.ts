@@ -2,7 +2,7 @@ import {
   ActionRowBuilder,
   ComponentType,
   StringSelectMenuBuilder,
-  type APISelectMenuOption,
+  StringSelectMenuOptionBuilder,
   type ContainerComponentData,
   type TopLevelComponentData
 } from 'discord.js';
@@ -12,10 +12,10 @@ import {
   PLUS_EMOJI,
   REJECT_EMOJI,
   formatEmoji,
-  resolveComponentEmoji,
   type VacancyConfig
 } from './config.js';
 import type { Guild } from 'discord.js';
+import { createEmojiFormatter } from '../../emoji.js';
 
 export type ApplicationPayload = {
   vacancy: VacancyConfig;
@@ -43,7 +43,19 @@ function text(content: string) {
   return { type: ComponentType.TextDisplay as const, content };
 }
 
-export function buildReviewDisplay(options: ReviewDisplayOptions): { components: TopLevelComponentData[] } {
+async function resolveActionEmojiFormatter(guild?: Guild | null) {
+  if (!guild) {
+    return (name: string) => `:${name}:`;
+  }
+
+  return createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+}
+
+export async function buildReviewDisplay(options: ReviewDisplayOptions): Promise<{ components: TopLevelComponentData[] }> {
   const {
     payload,
     status,
@@ -81,10 +93,7 @@ export function buildReviewDisplay(options: ReviewDisplayOptions): { components:
   };
 
   if (includeActions && actionCustomId && framed.components) {
-    const selectMenuOptions: APISelectMenuOption[] = [
-      { label: 'Одобрить', value: 'approve', emoji: resolveComponentEmoji(APPROVE_EMOJI, guild) },
-      { label: 'Отклонить', value: 'reject', emoji: resolveComponentEmoji(REJECT_EMOJI, guild) }
-    ];
+    const formatComponentEmoji = await resolveActionEmojiFormatter(guild);
 
     const selectMenuRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
       new StringSelectMenuBuilder()
@@ -92,7 +101,16 @@ export function buildReviewDisplay(options: ReviewDisplayOptions): { components:
         .setPlaceholder('Выберите действие')
         .setMinValues(1)
         .setMaxValues(1)
-        .setOptions(selectMenuOptions)
+        .addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel('Одобрить')
+            .setValue('approve')
+            .setEmoji(formatComponentEmoji(APPROVE_EMOJI.name)),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('Отклонить')
+            .setValue('reject')
+            .setEmoji(formatComponentEmoji(REJECT_EMOJI.name))
+        )
     );
 
     framed.components = [...framed.components, selectMenuRow.toJSON()];

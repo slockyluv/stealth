@@ -7,7 +7,6 @@ import {
   REJECT_EMOJI,
   buildApproveRoleKey,
   buildReviewRoleKey,
-  formatEmoji,
   resolveVacancy,
   reviewChannelId,
   vacancyApproveRoles,
@@ -19,6 +18,7 @@ import {
   type ApplicationPayload
 } from '../../features/applications/review.js';
 import { logger } from '../../../shared/logger.js';
+import { createEmojiFormatter } from '../../emoji.js';
 
 function display(lines: string[]): TopLevelComponentData[] {
   return [
@@ -44,6 +44,18 @@ function extractAnswers(description: string | null | undefined) {
     experience: pick(experienceIndex),
     timezone: pick(timezoneIndex)
   };
+}
+
+async function resolveEmojiFormatter(interaction: ModalSubmitInteraction) {
+  if (!interaction.inCachedGuild()) {
+    return (name: string) => `:${name}:`;
+  }
+
+  return createEmojiFormatter({
+    client: interaction.client,
+    guildId: interaction.guildId,
+    guildEmojis: interaction.guild.emojis.cache.values()
+  });
 }
 
 export const applicationSubmitModal: ModalHandler = {
@@ -91,7 +103,7 @@ export const applicationSubmitModal: ModalHandler = {
         answers
       };
 
-      const reviewDisplay = buildReviewDisplay({
+      const reviewDisplay = await buildReviewDisplay({
         payload,
         status: 'На рассмотрении',
         reviewerMention,
@@ -116,7 +128,8 @@ export const applicationSubmitModal: ModalHandler = {
 
       await channel.send({ components: reviewDisplay.components, flags: MessageFlags.IsComponentsV2 });
 
-      const slideEmoji = formatEmoji(APPROVE_EMOJI, interaction.guild);
+      const formatEmoji = await resolveEmojiFormatter(interaction);
+      const slideEmoji = formatEmoji(APPROVE_EMOJI.name);
 
       await interaction.editReply({
         components: display([`${slideEmoji} Ваша заявка успешно отправлена на рассмотрение!`]),
@@ -199,7 +212,7 @@ export const applicationDecisionModal: ModalHandler = {
       const reviewKey = buildReviewRoleKey(vacancy);
       const reviewerMention = vacancyReviewRoles[reviewKey]?.map((id) => `<@&${id}>`).join('\n') ?? '—';
 
-      const updatedDisplay = buildReviewDisplay({
+      const updatedDisplay = await buildReviewDisplay({
         payload: applicationPayload,
         status: decisionStatus,
         reviewerMention,
@@ -244,7 +257,8 @@ export const applicationDecisionModal: ModalHandler = {
         logger.error(error);
       }
 
-      const decisionEmoji = formatEmoji(decision === 'approve' ? APPROVE_EMOJI : REJECT_EMOJI, interaction.guild);
+      const formatEmoji = await resolveEmojiFormatter(interaction);
+      const decisionEmoji = formatEmoji(decision === 'approve' ? APPROVE_EMOJI.name : REJECT_EMOJI.name);
 
       await interaction.editReply({
         components: display([`${decisionEmoji} Решение по заявке зафиксировано.`]),

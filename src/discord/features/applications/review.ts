@@ -7,11 +7,15 @@ import {
   type TopLevelComponentData
 } from 'discord.js';
 import {
-  APPROVE_EMOJI_NAME,
+  APPROVE_EMOJI,
   MESSAGE_SEPARATOR_COMPONENT,
-  REJECT_EMOJI_NAME,
+  PLUS_EMOJI,
+  REJECT_EMOJI,
+  formatEmoji,
+  resolveComponentEmoji,
   type VacancyConfig
 } from './config.js';
+import type { Guild } from 'discord.js';
 
 export type ApplicationPayload = {
   vacancy: VacancyConfig;
@@ -32,6 +36,7 @@ type ReviewDisplayOptions = {
   reason?: string;
   includeActions?: boolean;
   actionCustomId?: string;
+  guild?: Guild | null;
 };
 
 function text(content: string) {
@@ -39,12 +44,23 @@ function text(content: string) {
 }
 
 export function buildReviewDisplay(options: ReviewDisplayOptions): { components: TopLevelComponentData[] } {
-  const { payload, status, reviewerMention, reviewerDisplay, reason, includeActions, actionCustomId } = options;
+  const {
+    payload,
+    status,
+    reviewerMention,
+    reviewerDisplay,
+    reason,
+    includeActions,
+    actionCustomId,
+    guild
+  } = options;
+
+  const headerEmoji = formatEmoji(PLUS_EMOJI, guild);
 
   const framed: ContainerComponentData = {
     type: ComponentType.Container,
     components: [
-      text('# Новая заявка'),
+      text(`${headerEmoji} # Новая заявка`),
       text(`**Вакансия:** \`${payload.vacancy.label}\``),
       text(`**Автор:** <@${payload.applicantId}>`),
       text(`**Статус:** \`${status}\``),
@@ -66,8 +82,8 @@ export function buildReviewDisplay(options: ReviewDisplayOptions): { components:
 
   if (includeActions && actionCustomId && framed.components) {
     const selectMenuOptions: APISelectMenuOption[] = [
-      { label: 'Одобрить', value: 'approve' },
-      { label: 'Отклонить', value: 'reject' }
+      { label: 'Одобрить', value: 'approve', emoji: resolveComponentEmoji(APPROVE_EMOJI, guild) },
+      { label: 'Отклонить', value: 'reject', emoji: resolveComponentEmoji(REJECT_EMOJI, guild) }
     ];
 
     const selectMenuRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(

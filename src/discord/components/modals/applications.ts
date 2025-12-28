@@ -2,9 +2,9 @@ import { ComponentType, MessageFlags, TextInputBuilder, TextInputStyle, type Mod
 import type { ModalHandler } from '../../../types/component.js';
 import { buildCustomId, customIdKey, parseCustomId } from '../../../shared/customId.js';
 import {
-  APPROVE_EMOJI_NAME,
+  APPROVE_EMOJI,
   MESSAGE_SEPARATOR_COMPONENT,
-  REJECT_EMOJI_NAME,
+  REJECT_EMOJI,
   buildApproveRoleKey,
   buildReviewRoleKey,
   formatEmoji,
@@ -97,7 +97,8 @@ export const applicationSubmitModal: ModalHandler = {
         reviewerMention,
         reason: undefined,
         includeActions: true,
-        actionCustomId: buildCustomId('application', 'review', vacancy.key, interaction.user.id)
+        actionCustomId: buildCustomId('application', 'review', vacancy.key, interaction.user.id),
+        guild: interaction.guild
       });
 
       const channel = await interaction.client.channels.fetch(reviewChannelId).catch((error) => {
@@ -115,7 +116,7 @@ export const applicationSubmitModal: ModalHandler = {
 
       await channel.send({ components: reviewDisplay.components, flags: MessageFlags.IsComponentsV2 });
 
-      const slideEmoji = formatEmoji(APPROVE_EMOJI_NAME, interaction.guild);
+      const slideEmoji = formatEmoji(APPROVE_EMOJI, interaction.guild);
 
       await interaction.editReply({
         components: display([`${slideEmoji} Ваша заявка успешно отправлена на рассмотрение!`]),
@@ -203,7 +204,8 @@ export const applicationDecisionModal: ModalHandler = {
         status: decisionStatus,
         reviewerMention,
         reviewerDisplay: interaction.user.id,
-        reason
+        reason,
+        guild: interaction.guild
       });
 
       await message.edit({ components: updatedDisplay.components, flags: MessageFlags.IsComponentsV2 });
@@ -242,7 +244,7 @@ export const applicationDecisionModal: ModalHandler = {
         logger.error(error);
       }
 
-      const decisionEmoji = formatEmoji(decision === 'approve' ? APPROVE_EMOJI_NAME : REJECT_EMOJI_NAME, interaction.guild);
+      const decisionEmoji = formatEmoji(decision === 'approve' ? APPROVE_EMOJI : REJECT_EMOJI, interaction.guild);
 
       await interaction.editReply({
         components: display([`${decisionEmoji} Решение по заявке зафиксировано.`]),

@@ -1,4 +1,4 @@
-import { ComponentType, type Guild, type SeparatorComponentData } from 'discord.js';
+import { ComponentType, type Guild, type SeparatorComponentData, type APIMessageComponentEmoji } from 'discord.js';
 
 export const MESSAGE_SEPARATOR_COMPONENT: SeparatorComponentData = { type: ComponentType.Separator };
 
@@ -8,12 +8,43 @@ export const NABOR_BANNER_PATH = `${process.cwd()}/src/assets/settings/${NABOR_B
 export const rulesChannelId = '1373273403775127555';
 export const reviewChannelId = '1446861281427587142';
 
-export const APPROVE_EMOJI_NAME = 'slide_d';
-export const REJECT_EMOJI_NAME = 'action_basket';
+export const APPROVE_EMOJI = { name: 'slide_d' } as const;
+export const REJECT_EMOJI = { name: 'action_basket' } as const;
+export const PLUS_EMOJI = { name: 'plus' } as const;
 
-export function formatEmoji(name: string, guild?: Guild | null): string {
-  const emoji = guild?.emojis.cache.find((item) => item.name === name);
-  return emoji?.toString() ?? `:${name}:`;
+export function formatEmoji(emoji: { name: string; id?: string }, guild?: Guild | null): string {
+  const matched = guild?.emojis.cache.find(
+    (item) => item.name === emoji.name || (!!emoji.id && item.id === emoji.id)
+  );
+
+  if (matched) {
+    return matched.toString();
+  }
+
+  if (emoji.id) {
+    return `<:${emoji.name}:${emoji.id}>`;
+  }
+
+  return `:${emoji.name}:`;
+}
+
+export function resolveComponentEmoji(
+  emoji: { name: string; id?: string },
+  guild?: Guild | null
+): APIMessageComponentEmoji {
+  const matched = guild?.emojis.cache.find(
+    (item) => item.name === emoji.name || (!!emoji.id && item.id === emoji.id)
+  );
+
+  if (matched) {
+    return { id: matched.id, name: matched.name, animated: matched.animated ?? undefined };
+  }
+
+  if (emoji.id) {
+    return { id: emoji.id, name: emoji.name };
+  }
+
+  return { name: emoji.name };
 }
 
 export const vacancyReviewRoles: Record<string, string[]> = {

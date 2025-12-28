@@ -1,8 +1,9 @@
 import {
+  ActionRowBuilder,
   ComponentType,
+  StringSelectMenuBuilder,
   type APISelectMenuOption,
   type ContainerComponentData,
-  type StringSelectMenuComponentData,
   type TopLevelComponentData
 } from 'discord.js';
 import {
@@ -65,20 +66,20 @@ export function buildReviewDisplay(options: ReviewDisplayOptions): { components:
 
   if (includeActions && actionCustomId && framed.components) {
     const selectMenuOptions: APISelectMenuOption[] = [
-      { label: 'Одобрить', value: 'approve', emoji: { name: APPROVE_EMOJI_NAME } },
-      { label: 'Отклонить', value: 'reject', emoji: { name: REJECT_EMOJI_NAME } }
+      { label: 'Одобрить', value: 'approve' },
+      { label: 'Отклонить', value: 'reject' }
     ];
 
-    const selectMenu: StringSelectMenuComponentData = {
-      type: ComponentType.StringSelect,
-      customId: actionCustomId,
-      placeholder: 'Выберите действие',
-      minValues: 1,
-      maxValues: 1,
-      options: selectMenuOptions
-    };
+    const selectMenuRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(actionCustomId)
+        .setPlaceholder('Выберите действие')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .setOptions(selectMenuOptions)
+    );
 
-    framed.components = [...framed.components, selectMenu];
+    framed.components = [...framed.components, selectMenuRow.toJSON()];
   }
 
   return { components: [framed] };

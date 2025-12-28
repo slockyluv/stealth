@@ -1,13 +1,14 @@
 import {
   AttachmentBuilder,
-  ButtonStyle,
   ComponentType,
   MessageFlags,
-  type ButtonComponentData,
   type APISelectMenuOption,
   type ContainerComponentData,
-  type StringSelectMenuComponentData,
-  type TopLevelComponentData
+  type TopLevelComponentData,
+  ActionRowBuilder,
+  ButtonBuilder,
+  StringSelectMenuBuilder,
+  ButtonStyle
 } from 'discord.js';
 import { buildCustomId } from '../../../shared/customId.js';
 import {
@@ -42,26 +43,26 @@ export function buildNaborView(guildId: string): {
     '*・- Готовность работать в команде*'
   ].join('\n');
 
-  const rulesButton: ButtonComponentData = {
-    type: ComponentType.Button,
-    style: ButtonStyle.Link,
-    label: 'Правила сервера',
-    url: buildRulesUrl(guildId)
-  };
+  const rulesButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setStyle(ButtonStyle.Link)
+      .setLabel('Правила сервера')
+      .setURL(buildRulesUrl(guildId))
+  );
 
   const selectMenuOptions: APISelectMenuOption[] = vacancies.map((vacancy) => ({
     label: vacancy.label,
     value: vacancy.key
   }));
 
-  const selectMenu: StringSelectMenuComponentData = {
-    type: ComponentType.StringSelect,
-    customId: buildCustomId('application', 'select'),
-    placeholder: 'Выберите вакансию',
-    minValues: 1,
-    maxValues: 1,
-    options: selectMenuOptions
-  };
+  const selectMenuRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(buildCustomId('application', 'select'))
+      .setPlaceholder('Выберите вакансию')
+      .setMinValues(1)
+      .setMaxValues(1)
+      .setOptions(selectMenuOptions)
+  );
 
   const framed: ContainerComponentData = {
     type: ComponentType.Container,
@@ -76,9 +77,9 @@ export function buildNaborView(guildId: string): {
       { type: ComponentType.TextDisplay, content: requirements },
       MESSAGE_SEPARATOR_COMPONENT,
       { type: ComponentType.TextDisplay, content: '```Перед подачей заявки ознакомьтесь с правилами сервера.```' },
-      rulesButton,
+      rulesButtonRow.toJSON(),
       MESSAGE_SEPARATOR_COMPONENT,
-      selectMenu
+      selectMenuRow.toJSON()
     ]
   };
 

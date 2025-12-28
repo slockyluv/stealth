@@ -79,7 +79,7 @@ export const applicationSubmitModal: ModalHandler = {
         timezone: interaction.fields.getTextInputValue('application-timezone').trim()
       };
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const reviewerKey = buildReviewRoleKey(vacancy);
       const reviewers = vacancyReviewRoles[reviewerKey] ?? [];
@@ -171,7 +171,7 @@ export const applicationDecisionModal: ModalHandler = {
         return;
       }
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const message = interaction.message;
 

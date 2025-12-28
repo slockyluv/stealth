@@ -11,7 +11,6 @@ import {
   MESSAGE_SEPARATOR_COMPONENT,
   PLUS_EMOJI,
   REJECT_EMOJI,
-  formatEmoji,
   type VacancyConfig
 } from './config.js';
 import type { Guild } from 'discord.js';
@@ -67,12 +66,14 @@ export async function buildReviewDisplay(options: ReviewDisplayOptions): Promise
     guild
   } = options;
 
-  const headerEmoji = formatEmoji(PLUS_EMOJI, guild);
+  const formatHeaderEmoji = await resolveActionEmojiFormatter(guild);
+  const headerEmoji = formatHeaderEmoji(PLUS_EMOJI.name);
 
   const framed: ContainerComponentData = {
     type: ComponentType.Container,
     components: [
-      text(`${headerEmoji} # Новая заявка`),
+      text(`${headerEmoji} **Поступила новая заявка**`),
+      MESSAGE_SEPARATOR_COMPONENT,
       text(`**Вакансия:** \`${payload.vacancy.label}\``),
       text(`**Автор:** <@${payload.applicantId}>`),
       text(`**Статус:** \`${status}\``),

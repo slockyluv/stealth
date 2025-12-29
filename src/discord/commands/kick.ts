@@ -39,11 +39,11 @@ function buildKickHintView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Использование:**'),
-    buildTextLine('> *c.kick <@пользователь> [Причина]*'),
+    buildTextLine('> *!kick <@Пользователь> [Причина]*'),
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Пример:**'),
-    buildTextLine('> *c.kick @пользователь спам*')
+    buildTextLine('> *!kick @Пользователь Реклама*')
   ];
 
   const container: ContainerComponentData = {

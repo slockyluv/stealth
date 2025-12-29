@@ -94,11 +94,11 @@ function buildAddRoleHintView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Использование:**'),
-    buildTextLine('> *c.add-role <@пользователь> [Название роли]*'),
+    buildTextLine('> *!add-role <@Пользователь> [Название роли]*'),
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Пример:**'),
-    buildTextLine('> *c.add-role <@пользователь> [Support]*')
+    buildTextLine('> *!add-role @Пользователь Support*')
   ];
 
   const container: ContainerComponentData = {
@@ -116,11 +116,11 @@ function buildTakeRoleHintView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Использование:**'),
-    buildTextLine('> *c.take-role <@пользователь> [Название роли]*'),
+    buildTextLine('> *!take-role <@Пользователь> [Название роли]*'),
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Пример:**'),
-    buildTextLine('> *c.take-role <@пользователь> [Support]*')
+    buildTextLine('> *!take-role @Пользователь Support*')
   ];
 
   const container: ContainerComponentData = {
@@ -138,11 +138,11 @@ function buildTempRoleHintView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Использование:**'),
-    buildTextLine('> *c.temp-role <@пользователь> [Название роли] [Время]*'),
+    buildTextLine('> *!temp-role <@Пользователь> [Название роли] [Время]*'),
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Пример:**'),
-    buildTextLine('> *c.temp-role <@пользователь> [Support] [1д]*')
+    buildTextLine('> *!temp-role @Пользователь Support 1д*')
   ];
 
   const container: ContainerComponentData = {

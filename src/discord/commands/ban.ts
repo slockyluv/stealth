@@ -41,11 +41,11 @@ function buildBanHintView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Использование:**'),
-    buildTextLine('> *c.ban <@пользователь> [Причина]*'),
+    buildTextLine('> *!ban <@Пользователь> [Причина]*'),
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Пример:**'),
-    buildTextLine('> *c.ban @пользователь реклама*')
+    buildTextLine('> *!ban @Пользователь Реклама*')
   ];
 
   const container: ContainerComponentData = {

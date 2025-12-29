@@ -1,1 +1,1 @@
-export const COMMAND_PREFIX = 'c.';
+export const COMMAND_PREFIX = '!';

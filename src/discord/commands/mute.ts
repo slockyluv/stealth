@@ -80,11 +80,11 @@ function buildMuteHintView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Использование:**'),
-    buildTextLine('> *c.mute <@пользователь> [Длительность] [Причина]*'),
+    buildTextLine('> *!mute <@Пользователь> [Длительность] [Причина]*'),
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Пример:**'),
-    buildTextLine('> *c.mute @пользователь 30м flud*')
+    buildTextLine('> *!mute @Пользователь 30м flud*')
   ];
 
   const container: ContainerComponentData = {

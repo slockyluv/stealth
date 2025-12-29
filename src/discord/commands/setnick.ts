@@ -48,11 +48,11 @@ function buildSetnickHintView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Использование:**'),
-    buildTextLine('> *c.setnick <@пользователь> [nickname]*'),
+    buildTextLine('> *!setnick <@Пользователь> [nickname]*'),
     buildSeparator(),
     buildTextLine('\u200B'),
     buildTextLine('**Пример:**'),
-    buildTextLine('> *c.setnick <@пользователь> Россия*')
+    buildTextLine('> *!setnick @Пользователь Россия*')
   ];
 
   const container: ContainerComponentData = {

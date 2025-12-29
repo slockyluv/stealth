@@ -423,22 +423,22 @@ export async function buildCountriesView(options: {
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'countriesFirst', continent.id))
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('angledoublesmallleft')
+      .setEmoji(formatEmoji('angledoublesmallleft'))
       .setDisabled(currentPage <= 1),
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'countriesPrev', continent.id, String(currentPage)))
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('anglesmallleft')
+      .setEmoji(formatEmoji('anglesmallleft'))
       .setDisabled(currentPage <= 1),
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'countriesNext', continent.id, String(currentPage)))
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('anglesmallright')
+      .setEmoji(formatEmoji('anglesmallright'))
       .setDisabled(currentPage >= totalPages),
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'countriesLast', continent.id))
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('angledoublesmallright')
+      .setEmoji(formatEmoji('angledoublesmallright'))
       .setDisabled(currentPage >= totalPages)
   );
 

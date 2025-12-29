@@ -8,6 +8,8 @@ import {
   settingsClearRolesButton
 } from './settingsAutoRoles.js';
 import {
+  settingsCountriesBackButton,
+  settingsCountriesEditButton,
   settingsCountriesFirstButton,
   settingsCountriesLastButton,
   settingsCountriesNextButton,
@@ -24,6 +26,8 @@ export const buttonHandlers: ButtonHandler[] = [
   settingsClearRolesButton,
   settingsAutoPrevButton,
   settingsAutoNextButton,
+  settingsCountriesBackButton,
+  settingsCountriesEditButton,
   settingsCountriesFirstButton,
   settingsCountriesPrevButton,
   settingsCountriesNextButton,

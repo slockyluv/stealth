@@ -10,6 +10,8 @@ import {
 } from 'discord.js';
 import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
+import type { CountryProfile } from '../../../services/countryProfileService.js';
+import { formatDateTime } from '../../../shared/time.js';
 
 export type ContinentId =
   | 'europe'
@@ -460,6 +462,73 @@ export async function buildCountriesView(options: {
   };
 
   return { components: [framed], currentPage, totalPages };
+}
+
+type CountryDetailsViewOptions = {
+  guild: Guild;
+  continent: Continent;
+  country: Country;
+  countryIndex: number;
+  profile: CountryProfile;
+  page: number;
+};
+
+export async function buildCountryDetailsView(options: CountryDetailsViewOptions): Promise<{ components: TopLevelComponentData[] }> {
+  const { guild, continent, country, countryIndex, profile, page } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const worldEmoji = formatEmoji('worldpulse');
+  const navEmoji = formatEmoji('nav');
+  const emojiContinent = resolveEmojiIdentifier(continent.emoji, formatEmoji);
+  const emojiCountry = resolveEmojiIdentifier(country.emoji, formatEmoji);
+  const countryDisplay = buildCountryLabel(country.name, emojiCountry);
+  const userLine = profile.registeredUserId ? `<@${profile.registeredUserId}>` : '-';
+  const registeredLine = profile.registeredAt ? `\`${formatDateTime(profile.registeredAt)}\`` : '`-`';
+
+    const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('settings', 'countriesBack', continent.id, String(page)))
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(formatEmoji('undonew')),
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('settings', 'countriesEdit', continent.id, String(page), String(countryIndex)))
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(formatEmoji('edit'))
+    );
+
+  const framed: TopLevelComponentData = {
+    type: ComponentType.Container,
+    components: [
+      { type: ComponentType.TextDisplay, content: `**${worldEmoji} Государство: ${countryDisplay}**` },
+      { type: ComponentType.Separator, divider: true },
+      {
+        type: ComponentType.TextDisplay,
+        content: ['**Континент:**', `*${emojiContinent} ${continent.label}*`, '**Пользователь**', userLine, '**Зарегистрирован:**', registeredLine].join('\n')
+      },
+      { type: ComponentType.Separator, divider: true },
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          `**${navEmoji} Характеристики**`,
+          '**Правитель:**',
+          `*${profile.ruler}*`,
+          '**Территория:**',
+          `*${profile.territory}*`,
+          '**Население:**',
+          `*${profile.population}*`
+        ].join('\n')
+      },
+      { type: ComponentType.Separator, divider: true },
+      actions.toJSON()
+    ]
+  };
+
+  return { components: [framed] };
 }
 
 export async function formatCountryDisplay(guild: Guild, country: Country): Promise<string> {

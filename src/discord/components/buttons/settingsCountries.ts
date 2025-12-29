@@ -1,8 +1,18 @@
-import { MessageFlags, PermissionsBitField, type Guild } from 'discord.js';
+import {
+  ActionRowBuilder,
+  MessageFlags,
+  ModalBuilder,
+  PermissionsBitField,
+  TextInputBuilder,
+  TextInputStyle,
+  type Guild
+} from 'discord.js';
 import type { ButtonHandler } from '../../../types/component.js';
 import { buildTextView } from '../v2Message.js';
 import { buildCountriesView, getContinent } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
+import { getCountryProfile } from '../../../services/countryProfileService.js';
+import { buildCustomId } from '../../../shared/customId.js';
 
 const PAGE_SIZE = 15;
 
@@ -80,6 +90,85 @@ export const settingsCountriesFirstButton: ButtonHandler = {
 
     await interaction.deferUpdate();
     await renderPage(interaction, guild, continentId, 1);
+  }
+};
+
+export const settingsCountriesBackButton: ButtonHandler = {
+  key: 'settings:countriesBack',
+
+  async execute(interaction, ctx) {
+    const guild = await ensureAccess(interaction);
+    if (!guild) return;
+
+    const continentId = ctx.customId.args[0] ?? '';
+    const page = parsePage(ctx.customId.args);
+
+    await interaction.deferUpdate();
+    await renderPage(interaction, guild, continentId, page);
+  }
+};
+
+export const settingsCountriesEditButton: ButtonHandler = {
+  key: 'settings:countriesEdit',
+
+  async execute(interaction, ctx) {
+    const guild = await ensureAccess(interaction);
+    if (!guild) return;
+
+    const [continentId, rawPage, countryIndexRaw] = ctx.customId.args;
+    const continent = getContinent(continentId ?? '');
+
+    if (!continent) {
+      await interaction.reply({
+        components: buildTextView('Континент не найден. Вернитесь к выбору континента.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const countryIndex = Number.parseInt(countryIndexRaw ?? '-1', 10);
+    const country = Number.isFinite(countryIndex) && countryIndex >= 0 ? continent.countries[countryIndex] : undefined;
+
+    if (!country) {
+      await interaction.reply({
+        components: buildTextView('Страна не найдена. Попробуйте выбрать снова.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const profile = getCountryProfile(guild.id, country);
+    const modal = new ModalBuilder()
+      .setCustomId(buildCustomId('settings', 'countriesEditModal', continent.id, rawPage ?? '1', String(countryIndex)))
+      .setTitle(`Редактирование: ${country.name}`)
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId('ruler')
+            .setLabel('Правитель')
+            .setStyle(TextInputStyle.Short)
+            .setValue(profile.ruler)
+            .setRequired(true)
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId('territory')
+            .setLabel('Территория')
+            .setStyle(TextInputStyle.Short)
+            .setValue(profile.territory)
+            .setRequired(true)
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId('population')
+            .setLabel('Население')
+            .setStyle(TextInputStyle.Short)
+            .setValue(profile.population)
+            .setRequired(true)
+        )
+      );
+
+    await interaction.showModal(modal);
   }
 };
 

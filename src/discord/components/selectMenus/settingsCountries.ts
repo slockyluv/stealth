@@ -1,8 +1,13 @@
 import { MessageFlags, PermissionsBitField, type Guild } from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildTextView } from '../v2Message.js';
-import { buildCountriesView, formatCountryDisplay, getContinent } from '../../features/settings/countriesView.js';
+import {
+  buildCountriesView,
+  buildCountryDetailsView,
+  getContinent
+} from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
+import { getCountryProfile } from '../../../services/countryProfileService.js';
 
 function parsePage(args: string[]): number {
   const [, rawPage] = args;
@@ -91,7 +96,8 @@ export const settingsCountriesSelect: SelectMenuHandler = {
     }
 
     const [countryName] = interaction.values;
-    const country = continent.countries.find((item) => item.name === countryName);
+    const countryIndex = continent.countries.findIndex((item) => item.name === countryName);
+    const country = countryIndex >= 0 ? continent.countries[countryIndex] : null;
 
     if (!country) {
       await interaction.reply({
@@ -102,18 +108,12 @@ export const settingsCountriesSelect: SelectMenuHandler = {
     }
 
     const page = parsePage(ctx.customId.args);
+    const profile = getCountryProfile(guild.id, country);
 
     await interaction.deferUpdate();
 
     try {
-      const display = await formatCountryDisplay(guild, country);
-
-      await interaction.followUp({
-        components: buildTextView(`Вы выбрали ${display}`),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
-
-      const view = await buildCountriesView({ guild, continent, page });
+      const view = await buildCountryDetailsView({ guild, continent, country, countryIndex, profile, page });
 
       await interaction.editReply({
         embeds: [],

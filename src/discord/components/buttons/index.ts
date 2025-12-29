@@ -7,6 +7,12 @@ import {
   settingsBackButton,
   settingsClearRolesButton
 } from './settingsAutoRoles.js';
+import {
+  settingsCountriesFirstButton,
+  settingsCountriesLastButton,
+  settingsCountriesNextButton,
+  settingsCountriesPrevButton
+} from './settingsCountries.js';
 import { serverTabsButton } from './serverTabs.js';
 import { mutesPageButton } from './mutes.js';
 
@@ -18,6 +24,10 @@ export const buttonHandlers: ButtonHandler[] = [
   settingsClearRolesButton,
   settingsAutoPrevButton,
   settingsAutoNextButton,
+  settingsCountriesFirstButton,
+  settingsCountriesPrevButton,
+  settingsCountriesNextButton,
+  settingsCountriesLastButton,
   serverTabsButton,
   mutesPageButton
 ];

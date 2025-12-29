@@ -3,10 +3,13 @@ import { settingsSectionSelect } from './settingsSection.js';
 import { settingsAutoRolesSelect } from './settingsAutoRoles.js';
 import { actionLogsChannelSelect, actionLogsSectionSelect } from './actionLogs.js';
 import { applicationReviewSelect, applicationSelectMenu } from './applications.js';
+import { settingsCountriesContinentSelect, settingsCountriesSelect } from './settingsCountries.js';
 
 export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsSectionSelect,
   settingsAutoRolesSelect,
+  settingsCountriesContinentSelect,
+  settingsCountriesSelect,
   actionLogsSectionSelect,
   actionLogsChannelSelect,
   applicationSelectMenu,

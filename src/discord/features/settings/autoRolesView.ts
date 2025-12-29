@@ -218,6 +218,13 @@ export async function buildSettingsMainView(guild: Guild): Promise<SettingsView>
         .setValue('action_logs')
         .setDescription('Настройка каналов для журналов действий')
         .setEmoji(formatEmoji('action_book'))
+    )
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('Список стран')
+        .setValue('countries')
+        .setDescription('Просмотр стран по континентам')
+        .setEmoji(formatEmoji('worldpulse'))
     );
 
   const framed: ContainerComponentData = {

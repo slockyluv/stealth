@@ -13,6 +13,7 @@ import { getAutoRoles } from '../../../services/autoRoleService.js';
 import { logger } from '../../../shared/logger.js';
 import { buildCustomId } from '../../../shared/customId.js';
 import { buildTextView } from '../v2Message.js';
+import { buildCountriesContinentView } from '../../features/settings/countriesView.js';
 
 export const settingsSectionSelect: SelectMenuHandler = {
   key: 'settings:section',
@@ -119,6 +120,30 @@ export const settingsSectionSelect: SelectMenuHandler = {
         logger.error(error);
         await interaction.followUp({
           components: buildTextView('Не удалось открыть журнал действий. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
+
+      return;
+    }
+
+    if (selection === 'countries') {
+      await interaction.deferUpdate();
+
+      try {
+        const view = await buildCountriesContinentView(interaction.guild);
+
+        await interaction.editReply({
+          embeds: [],
+          components: view.components,
+          files: [],
+          attachments: [],
+          flags: MessageFlags.IsComponentsV2
+        });
+      } catch (error) {
+        logger.error(error);
+        await interaction.followUp({
+          components: buildTextView('Не удалось загрузить список стран. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }

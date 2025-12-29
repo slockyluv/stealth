@@ -158,7 +158,12 @@ export async function buildSettingsMainView(guild) {
         .setLabel('Журнал действий')
         .setValue('action_logs')
         .setDescription('Настройка каналов для журналов действий')
-        .setEmoji(formatEmoji('action_book')));
+        .setEmoji(formatEmoji('action_book')))
+        .addOptions(new StringSelectMenuOptionBuilder()
+        .setLabel('Список стран')
+        .setValue('countries')
+        .setDescription('Просмотр стран по континентам')
+        .setEmoji(formatEmoji('worldpulse')));
     const framed = {
         type: ComponentType.Container,
         components: [

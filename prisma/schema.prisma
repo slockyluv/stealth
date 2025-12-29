@@ -56,3 +56,19 @@ model Mute {
   @@unique([guildId, userId])
   @@index([guildId, expiresAt])
 }
+
+model CountryProfile {
+  id              BigInt   @id @default(autoincrement())
+  guildId         BigInt
+  countryName     String
+  ruler           String
+  territory       String
+  population      String
+  registeredUserId BigInt?
+  registeredAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([guildId, countryName])
+  @@index([guildId])
+}

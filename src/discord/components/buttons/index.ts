@@ -13,6 +13,7 @@ import {
   settingsCountriesFirstButton,
   settingsCountriesLastButton,
   settingsCountriesNextButton,
+  settingsCountriesResetButton,
   settingsCountriesPrevButton
 } from './settingsCountries.js';
 import { serverTabsButton } from './serverTabs.js';
@@ -32,6 +33,7 @@ export const buttonHandlers: ButtonHandler[] = [
   settingsCountriesPrevButton,
   settingsCountriesNextButton,
   settingsCountriesLastButton,
+  settingsCountriesResetButton,
   serverTabsButton,
   mutesPageButton
 ];

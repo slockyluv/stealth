@@ -64,7 +64,7 @@ export const settingsCountriesEditModal: ModalHandler = {
     await interaction.deferUpdate();
 
     try {
-      const profile = updateCountryProfile(guild.id, country, { ruler, territory, population });
+      const profile = await updateCountryProfile(guild.id, country, { ruler, territory, population }, interaction.user.id);
       const view = await buildCountryDetailsView({
         guild,
         continent,

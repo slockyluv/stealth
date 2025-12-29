@@ -490,16 +490,23 @@ export async function buildCountryDetailsView(options: CountryDetailsViewOptions
   const userLine = profile.registeredUserId ? `<@${profile.registeredUserId}>` : '-';
   const registeredLine = profile.registeredAt ? `\`${formatDateTime(profile.registeredAt)}\`` : '`-`';
 
-    const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(buildCustomId('settings', 'countriesBack', continent.id, String(page)))
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji(formatEmoji('undonew')),
-      new ButtonBuilder()
-        .setCustomId(buildCustomId('settings', 'countriesEdit', continent.id, String(page), String(countryIndex)))
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji(formatEmoji('edit'))
-    );
+  const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCustomId('settings', 'countriesBack', continent.id, String(page)))
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji(formatEmoji('undonew'))
+      .setLabel('Назад'),
+    new ButtonBuilder()
+      .setCustomId(buildCustomId('settings', 'countriesEdit', continent.id, String(page), String(countryIndex)))
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji(formatEmoji('edit'))
+      .setLabel('Редактировать'),
+    new ButtonBuilder()
+      .setCustomId(buildCustomId('settings', 'countriesReset', continent.id, String(page), String(countryIndex)))
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji(formatEmoji('action_system'))
+      .setLabel('По умолчанию')
+  );
 
   const framed: TopLevelComponentData = {
     type: ComponentType.Container,
@@ -508,17 +515,29 @@ export async function buildCountryDetailsView(options: CountryDetailsViewOptions
       { type: ComponentType.Separator, divider: true },
       {
         type: ComponentType.TextDisplay,
-        content: ['**Континент:**', `*${emojiContinent} ${continent.label}*`, '**Пользователь**', userLine, '**Зарегистрирован:**', registeredLine].join('\n')
+        content: [
+          '**Континент:**',
+          `*${emojiContinent} ${continent.label}*`,
+          '',
+          '**Пользователь**',
+          userLine,
+          '',
+          '**Зарегистрирован:**',
+          registeredLine
+        ].join('\n')
       },
       { type: ComponentType.Separator, divider: true },
       {
         type: ComponentType.TextDisplay,
         content: [
           `**${navEmoji} Характеристики**`,
+          '',
           '**Правитель:**',
           `*${profile.ruler}*`,
+          '',
           '**Территория:**',
           `*${profile.territory}*`,
+          '',
           '**Население:**',
           `*${profile.population}*`
         ].join('\n')

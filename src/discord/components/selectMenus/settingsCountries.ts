@@ -108,7 +108,7 @@ export const settingsCountriesSelect: SelectMenuHandler = {
     }
 
     const page = parsePage(ctx.customId.args);
-    const profile = getCountryProfile(guild.id, country);
+    const profile = await getCountryProfile(guild.id, country);
 
     await interaction.deferUpdate();
 

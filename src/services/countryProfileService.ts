@@ -1,5 +1,6 @@
 import { formatDateTime } from '../shared/time.js';
 import type { Country } from '../discord/features/settings/countriesView.js';
+import { prisma } from '../database/prisma.js';
 
 type CountryFacts = {
   ruler: string;
@@ -183,7 +184,7 @@ const DEFAULT_FACTS: Record<string, CountryFacts> = {
     territory: '616 км²',
     population: '≈180 000 человек'
   },
-  'сша': { ruler: 'Президент Джо Байден', territory: '9 833 517 км²', population: '≈335 000 000 человек' },
+  'сша': { ruler: 'Президент Дональд Трамп', territory: '9 833 517 км²', population: '343 000 000 человек' },
   'тринидад и тобаго': { ruler: 'Президент Кристин Кармона', territory: '5 128 км²', population: '≈1 530 000 человек' },
   'ямайка': {
     ruler: 'Генерал-губернатор Патрик Аллен (король Карл III)',
@@ -294,39 +295,170 @@ const DEFAULT_FACTS: Record<string, CountryFacts> = {
 
 const profiles = new Map<string, CountryProfile>();
 
+function normalizeCountryKey(countryName: string): string {
+  return countryName.trim().toLowerCase();
+}
+
 function buildKey(guildId: string, countryName: string): string {
-  return `${guildId}:${countryName.toLowerCase()}`;
+  return `${guildId}:${normalizeCountryKey(countryName)}`;
+}
+
+function sanitizePopulation(value: string): string {
+  return value.replace(/[≈~]/g, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+function sanitizeRulerName(value: string): string {
+  const roleKeywords = [
+    'президент',
+    'премьер-министр',
+    'премьер министр',
+    'король',
+    'королева',
+    'султан',
+    'эмир',
+    'князь',
+    'капитаны-регенты',
+    'папа римский',
+    'великий герцог',
+    'председатель кнр',
+    'генеральный секретарь',
+    'президентский совет',
+    'глава государства',
+    'генерал-губернатор',
+    'ян ди-пертуан агонг',
+    'верховный лидер',
+    'представитель короны',
+    'соправители',
+    'коллективное президиум',
+    'переходный президент',
+    'переходный суверенный совет',
+    'национальный совет',
+    'главнокомандующий',
+    'исполняющий обязанности',
+    'де-факто руководство',
+    'совет',
+    'комитет',
+    'глава'
+  ];
+
+  let cleaned = value.replace(/\([^)]*\)/g, '').trim();
+
+  for (const keyword of roleKeywords) {
+    const prefix = new RegExp(`^${keyword}\s+`, 'i');
+    cleaned = cleaned.replace(prefix, '').trim();
+  }
+
+  return cleaned.replace(/^(?:[-–—]\s*)/, '').trim();
+}
+
+function sanitizeCountryFacts(facts: CountryFacts): CountryFacts {
+  return {
+    ruler: sanitizeRulerName(facts.ruler),
+    territory: facts.territory.trim(),
+    population: sanitizePopulation(facts.population)
+  };
 }
 
 function getDefaultFacts(country: Country): CountryFacts {
-  return DEFAULT_FACTS[country.name.toLowerCase()] ?? FALLBACK_FACTS;
+  const defaults = DEFAULT_FACTS[normalizeCountryKey(country.name)] ?? FALLBACK_FACTS;
+  return sanitizeCountryFacts(defaults);
 }
 
-export function getCountryProfile(guildId: string, country: Country): CountryProfile {
-  const key = buildKey(guildId, country.name);
-  const stored = profiles.get(key);
+function mapRecordToProfile(record: {
+  ruler: string;
+  territory: string;
+  population: string;
+  registeredUserId: bigint | null;
+  registeredAt: Date | null;
+}): CountryProfile {
+  return {
+    ruler: sanitizeRulerName(record.ruler),
+    territory: record.territory.trim(),
+    population: sanitizePopulation(record.population),
+    registeredUserId: record.registeredUserId ? record.registeredUserId.toString() : undefined,
+    registeredAt: record.registeredAt ?? undefined
+  };
+}
 
-  if (stored) return stored;
+export async function getCountryProfile(guildId: string, country: Country): Promise<CountryProfile> {
+  const cacheKey = buildKey(guildId, country.name);
+  const cached = profiles.get(cacheKey);
 
-  const defaults = getDefaultFacts(country);
-  const profile: CountryProfile = { ...defaults };
-  profiles.set(key, profile);
+  if (cached) return cached;
+
+  const normalizedName = normalizeCountryKey(country.name);
+
+  const stored = await prisma.countryProfile.findUnique({
+    where: {
+      guildId_countryName: {
+        guildId: BigInt(guildId),
+        countryName: normalizedName
+      }
+    }
+  });
+
+  const profile = stored ? mapRecordToProfile(stored) : getDefaultFacts(country);
+  profiles.set(cacheKey, profile);
   return profile;
 }
 
-export function updateCountryProfile(
+export async function updateCountryProfile(
   guildId: string,
   country: Country,
-  updates: Partial<Pick<CountryProfile, 'ruler' | 'territory' | 'population'>>
-): CountryProfile {
-  const existing = getCountryProfile(guildId, country);
-  const nextProfile: CountryProfile = {
-    ...existing,
-    ...updates
+  updates: Partial<Pick<CountryProfile, 'ruler' | 'territory' | 'population'>>,
+  userId?: string
+): Promise<CountryProfile> {
+  const normalizedName = normalizeCountryKey(country.name);
+  const defaults = getDefaultFacts(country);
+  const sanitizedUpdates: Partial<CountryFacts> = {
+    ruler: updates.ruler ? sanitizeRulerName(updates.ruler) : undefined,
+    territory: updates.territory?.trim(),
+    population: updates.population ? sanitizePopulation(updates.population) : undefined
   };
 
-  profiles.set(buildKey(guildId, country.name), nextProfile);
-  return nextProfile;
+  const now = new Date();
+
+  const stored = await prisma.countryProfile.upsert({
+    where: {
+      guildId_countryName: {
+        guildId: BigInt(guildId),
+        countryName: normalizedName
+      }
+    },
+    update: {
+      ...sanitizedUpdates,
+      registeredUserId: userId ? BigInt(userId) : undefined,
+      registeredAt: userId ? now : undefined
+    },
+    create: {
+      guildId: BigInt(guildId),
+      countryName: normalizedName,
+      ruler: sanitizedUpdates.ruler ?? defaults.ruler,
+      territory: sanitizedUpdates.territory ?? defaults.territory,
+      population: sanitizedUpdates.population ?? defaults.population,
+      registeredUserId: userId ? BigInt(userId) : undefined,
+      registeredAt: userId ? now : undefined
+    }
+  });
+
+  const profile = mapRecordToProfile(stored);
+  profiles.set(buildKey(guildId, country.name), profile);
+  return profile;
+}
+
+export async function resetCountryProfile(guildId: string, country: Country): Promise<CountryProfile> {
+  const normalizedName = normalizeCountryKey(country.name);
+
+  await prisma.countryProfile.deleteMany({
+    where: {
+      guildId: BigInt(guildId),
+      countryName: normalizedName
+    }
+  });
+
+  const defaults = getDefaultFacts(country);
+  profiles.set(buildKey(guildId, country.name), defaults);
+  return defaults;
 }
 
 export function formatRegistration(profile: CountryProfile): string {

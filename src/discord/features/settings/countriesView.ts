@@ -339,6 +339,10 @@ export function getContinent(continentId: string): Continent | null {
   return CONTINENTS.find((continent) => continent.id === continentId) ?? null;
 }
 
+export function getContinents(): Continent[] {
+  return [...CONTINENTS];
+}
+
 export async function buildCountriesContinentView(guild: Guild): Promise<{ components: TopLevelComponentData[] }> {
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,

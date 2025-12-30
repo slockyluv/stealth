@@ -9,6 +9,7 @@ import { kick } from './kick.js';
 import { setnick } from './setnick.js';
 import { addRole, takeRole, tempRole } from './roles.js';
 import { nabor } from './nabor.js';
+import { reg } from './reg.js';
 
 export const commands = [
   ping,
@@ -25,5 +26,6 @@ export const commands = [
   nabor,
   addRole,
   takeRole,
-  tempRole
+  tempRole,
+  reg
 ];

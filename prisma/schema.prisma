@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ContinentId {
+  europe
+  asia
+  north_america
+  south_america
+  africa
+  oceania
+}
+
 model User {
   id        BigInt   @id
   createdAt DateTime @default(now())
@@ -76,4 +85,19 @@ model CountryProfile {
 
   @@unique([guildId, countryName])
   @@index([guildId])
+}
+
+model CountryRegistration {
+  id          BigInt      @id @default(autoincrement())
+  guildId     BigInt
+  userId      BigInt
+  countryName String
+  countryKey  String
+  continent   ContinentId
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([guildId, userId])
+  @@unique([guildId, countryKey])
+  @@index([guildId, continent])
 }

@@ -1,3 +1,4 @@
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { formatDateTime } from '../shared/time.js';
 import type { Country } from '../discord/features/settings/countriesView.js';
 import { prisma } from '../database/prisma.js';
@@ -26,6 +27,8 @@ export type CountryProfile = CountryFacts &
     registeredAt?: Date;
   };
 
+type PrismaClientOrTransaction = PrismaClient | Prisma.TransactionClient;
+
 const FALLBACK_FACTS: CountryFacts = {
   ruler: 'Неизвестно',
   territory: 'Неизвестно',
@@ -40,6 +43,10 @@ const DEFAULT_POLITICS: Required<CountryPolitics> = {
 };
 
 const DEFAULT_BUDGET = 0n;
+
+function getDbClient(db?: PrismaClientOrTransaction): PrismaClientOrTransaction {
+  return db ?? prisma;
+}
 
 const RAW_DEFAULT_FACTS: Record<string, CountryFacts> = {
   'Албания': { ruler: 'Байрам Бегай', territory: '28 748 км²', population: '2 800 000 человек' },
@@ -247,7 +254,7 @@ const RAW_DEFAULT_FACTS: Record<string, CountryFacts> = {
   'Ниуэ': { ruler: 'Далтон Тагелаги', territory: '261 км²', population: '1 600 человек' },
 };
 
-function normalizeCountryKey(countryName: string): string {
+export function normalizeCountryKey(countryName: string): string {
   return countryName.trim().toLowerCase();
 }
 
@@ -372,15 +379,20 @@ function buildDefaultProfile(country: Country): CountryProfile {
   };
 }
 
-export async function getCountryProfile(guildId: string, country: Country): Promise<CountryProfile> {
+export async function getCountryProfile(
+  guildId: string,
+  country: Country,
+  db?: PrismaClientOrTransaction
+): Promise<CountryProfile> {
   const cacheKey = buildKey(guildId, country.name);
   const cached = profiles.get(cacheKey);
 
   if (cached) return cached;
 
+  const dbClient = getDbClient(db);
   const normalizedName = normalizeCountryKey(country.name);
 
-  const stored = await prisma.countryProfile.findUnique({
+  const stored = await dbClient.countryProfile.findUnique({
     where: {
       guildId_countryName: {
         guildId: BigInt(guildId),
@@ -394,7 +406,12 @@ export async function getCountryProfile(guildId: string, country: Country): Prom
   return profile;
 }
 
-async function saveCountryProfile(guildId: string, country: Country, profile: CountryProfile): Promise<CountryProfile> {
+async function saveCountryProfile(
+  guildId: string,
+  country: Country,
+  profile: CountryProfile,
+  db?: PrismaClientOrTransaction
+): Promise<CountryProfile> {
   const normalizedName = normalizeCountryKey(country.name);
   const cacheKey = buildKey(guildId, country.name);
   const sanitized: CountryProfile = {
@@ -410,7 +427,9 @@ async function saveCountryProfile(guildId: string, country: Country, profile: Co
     budget: typeof profile.budget === 'bigint' ? profile.budget : BigInt(profile.budget)
   };
 
-  const stored = await prisma.countryProfile.upsert({
+  const dbClient = getDbClient(db);
+
+  const stored = await dbClient.countryProfile.upsert({
     where: {
       guildId_countryName: {
         guildId: BigInt(guildId),
@@ -454,9 +473,10 @@ export async function updateCountryProfile(
   guildId: string,
   country: Country,
   updates: Partial<Pick<CountryProfile, 'ruler' | 'territory' | 'population'>>,
-  userId?: string
+  userId?: string,
+  db?: PrismaClientOrTransaction
 ): Promise<CountryProfile> {
-  const current = await getCountryProfile(guildId, country);
+  const current = await getCountryProfile(guildId, country, db);
   const defaults = getDefaultFacts(country);
   const sanitizedUpdates: Partial<CountryFacts> = {
     ruler: updates.ruler ? sanitizeRulerName(updates.ruler) : undefined,
@@ -475,7 +495,7 @@ export async function updateCountryProfile(
     registeredAt: userId ? now : current.registeredAt
   };
 
-  return saveCountryProfile(guildId, country, nextProfile);
+  return saveCountryProfile(guildId, country, nextProfile, db);
 }
 
 export async function updateCountryPolitics(
@@ -517,9 +537,18 @@ export type CountryProfileSection = 'characteristics' | 'politics' | 'developmen
 export async function resetCountryProfile(
   guildId: string,
   country: Country,
-  section: CountryProfileSection = 'characteristics'
+  section: CountryProfileSection = 'characteristics',
+  db?: PrismaClientOrTransaction
 ): Promise<CountryProfile> {
-  const current = await getCountryProfile(guildId, country);
+  const dbClient = getDbClient(db);
+  await dbClient.countryRegistration.deleteMany({
+    where: {
+      guildId: BigInt(guildId),
+      countryKey: normalizeCountryKey(country.name)
+    }
+  });
+
+  const current = await getCountryProfile(guildId, country, dbClient);
   const defaults = buildDefaultProfile(country);
 
   if (section === 'politics') {
@@ -528,7 +557,7 @@ export async function resetCountryProfile(
       ...DEFAULT_POLITICS
     };
 
-    return saveCountryProfile(guildId, country, updated);
+    return saveCountryProfile(guildId, country, updated, dbClient);
   }
 
   if (section === 'development') {
@@ -537,7 +566,7 @@ export async function resetCountryProfile(
       budget: DEFAULT_BUDGET
     };
 
-    return saveCountryProfile(guildId, country, updated);
+    return saveCountryProfile(guildId, country, updated, dbClient);
   }
 
   const updated: CountryProfile = {
@@ -549,7 +578,39 @@ export async function resetCountryProfile(
     registeredAt: undefined
   };
 
-  return saveCountryProfile(guildId, country, updated);
+  return saveCountryProfile(guildId, country, updated, dbClient);
+}
+
+export async function setCountryRegistration(
+  guildId: string,
+  country: Country,
+  userId: string,
+  registeredAt: Date,
+  db?: PrismaClientOrTransaction
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country, db);
+  const updated: CountryProfile = {
+    ...current,
+    registeredUserId: userId,
+    registeredAt
+  };
+
+  return saveCountryProfile(guildId, country, updated, db);
+}
+
+export async function clearCountryRegistration(
+  guildId: string,
+  country: Country,
+  db?: PrismaClientOrTransaction
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country, db);
+  const updated: CountryProfile = {
+    ...current,
+    registeredUserId: undefined,
+    registeredAt: undefined
+  };
+
+  return saveCountryProfile(guildId, country, updated, db);
 }
 
 export function formatRegistration(profile: CountryProfile): string {

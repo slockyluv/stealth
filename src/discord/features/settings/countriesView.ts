@@ -329,7 +329,7 @@ function buildCountryOptions(
   return countries.slice(start, start + pageSize).map((country) => {
     const emoji = resolveEmojiIdentifier(country.emoji, formatEmoji);
     return new StringSelectMenuOptionBuilder()
-      .setLabel(buildCountryLabel(country.name, emoji))
+      .setLabel(country.name)
       .setValue(country.name)
       .setEmoji(emoji);
   });

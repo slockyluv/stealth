@@ -26,6 +26,7 @@ export const registrationCountrySelect: SelectMenuHandler = {
     }
 
     const continentId = ctx.customId.args[0];
+    const currentPage = Number.parseInt(ctx.customId.args[1] ?? '1', 10);
     const countryName = interaction.values[0];
 
     const continent = continentId ? getContinent(continentId) : null;
@@ -72,7 +73,11 @@ export const registrationCountrySelect: SelectMenuHandler = {
         });
       }
 
-      const updatedView = await buildRegistrationView({ guild: interaction.guild, selectedContinentId: continent.id });
+      const updatedView = await buildRegistrationView({
+        guild: interaction.guild,
+        selectedContinentId: continent.id,
+        page: Number.isFinite(currentPage) ? currentPage : 1
+      });
       await interaction.editReply({ components: updatedView.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);

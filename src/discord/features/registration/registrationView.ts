@@ -1,5 +1,7 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ComponentType,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
@@ -13,16 +15,20 @@ import {
   type ContinentId,
   type Country,
   getContinent,
-  getContinents
+  getContinents,
+  resolveEmojiIdentifier
 } from '../settings/countriesView.js';
 import { getAvailableCountries } from '../../../services/countryRegistrationService.js';
 
-function buildContinentOptions(continents: ReturnType<typeof getContinents>, formatEmoji: (id: string) => string) {
+function buildContinentOptions(
+  continents: ReturnType<typeof getContinents>,
+  formatEmoji: (id: string) => string
+) {
   return continents.map((continent) =>
     new StringSelectMenuOptionBuilder()
       .setLabel(continent.label)
       .setValue(continent.id)
-      .setEmoji(formatEmoji(continent.emoji))
+      .setEmoji(resolveEmojiIdentifier(continent.emoji, formatEmoji))
   );
 }
 
@@ -31,24 +37,26 @@ function buildCountryOptions(countries: Country[], formatEmoji: (id: string) => 
     new StringSelectMenuOptionBuilder()
       .setLabel(country.name)
       .setValue(country.name)
-      .setEmoji(formatEmoji(country.emoji))
+      .setEmoji(resolveEmojiIdentifier(country.emoji, formatEmoji))
   );
 }
 
-function chunkCountries(countries: Country[], chunkSize: number) {
-  const chunks: Country[][] = [];
-  for (let i = 0; i < countries.length; i += chunkSize) {
-    chunks.push(countries.slice(i, i + chunkSize));
-  }
+function paginateCountries(countries: Country[], page: number, pageSize: number): Country[] {
+  const startIndex = (page - 1) * pageSize;
+  return countries.slice(startIndex, startIndex + pageSize);
+}
 
-  return chunks;
+function clampPage(page: number, total: number): number {
+  const safeTotal = Math.max(total, 1);
+  return Math.min(Math.max(page, 1), safeTotal);
 }
 
 export async function buildRegistrationView(options: {
   guild: Guild;
   selectedContinentId?: ContinentId;
+  page?: number;
 }): Promise<{ components: TopLevelComponentData[] }> {
-  const { guild, selectedContinentId } = options;
+  const { guild, selectedContinentId, page = 1 } = options;
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
@@ -58,6 +66,7 @@ export async function buildRegistrationView(options: {
 
   const worldEmoji = formatEmoji('worldpulse');
   const continents = getContinents();
+
   const continentRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(buildCustomId('registration', 'continent'))
@@ -72,8 +81,7 @@ export async function buildRegistrationView(options: {
         '\n'
       )
     },
-    { type: ComponentType.Separator, divider: true },
-    continentRow.toJSON()
+    { type: ComponentType.Separator, divider: true }
   ];
   let selectedContinentName = 'не выбран';
 
@@ -83,44 +91,66 @@ export async function buildRegistrationView(options: {
     if (continent) {
       selectedContinentName = continent.label;
       const availableCountries = await getAvailableCountries(guild.id, selectedContinentId);
-      const countryRows = availableCountries.length
-        ? chunkCountries(availableCountries, 25).map((chunk, index, chunks) => {
-            const countryOptions = buildCountryOptions(chunk, formatEmoji);
-            const placeholder =
-              chunks.length > 1 ? `Выберите страну (стр. ${index + 1}/${chunks.length})` : 'Выберите страну';
+      const totalPages = Math.max(Math.ceil(availableCountries.length / 25), 1);
+      const currentPage = clampPage(Number.isFinite(page) ? page : 1, totalPages);
 
-            return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              new StringSelectMenuBuilder()
-                .setCustomId(buildCustomId('registration', 'country', continent.id, `${index}`))
-                .setPlaceholder(placeholder)
-                .setMinValues(1)
-                .setMaxValues(1)
-                .addOptions(countryOptions)
-            );
-          })
-        : [
-            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              new StringSelectMenuBuilder()
-                .setCustomId(buildCustomId('registration', 'country', continent.id, '0'))
-                .setPlaceholder('Свободных стран нет')
-                .setMinValues(1)
-                .setMaxValues(1)
-                .setDisabled(true)
-                .addOptions(
-                  new StringSelectMenuOptionBuilder()
-                    .setLabel('Свободных стран нет')
-                    .setValue('unavailable')
-                    .setEmoji(formatEmoji('worldpulse'))
-                )
-            )
-          ];
+      const countryRow = availableCountries.length
+        ? new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(buildCustomId('registration', 'country', continent.id, `${currentPage}`))
+              .setPlaceholder(
+                totalPages > 1
+                  ? `Выберите страну (${currentPage}/${totalPages})`
+                  : 'Выберите страну'
+              )
+              .setMinValues(1)
+              .setMaxValues(1)
+              .addOptions(buildCountryOptions(paginateCountries(availableCountries, currentPage, 25), formatEmoji))
+          )
+        : new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(buildCustomId('registration', 'country', continent.id, '1'))
+              .setPlaceholder('Свободных стран нет')
+              .setMinValues(1)
+              .setMaxValues(1)
+              .setDisabled(true)
+              .addOptions(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('Свободных стран нет')
+                  .setValue('unavailable')
+                  .setEmoji(formatEmoji('worldpulse'))
+              )
+          );
+
+      const paginationRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(buildCustomId('registration', 'back'))
+          .setStyle(ButtonStyle.Secondary)
+          .setLabel('Назад')
+          .setEmoji(formatEmoji('undonew')),
+        new ButtonBuilder()
+          .setCustomId(buildCustomId('registration', 'page', continent.id, `${currentPage - 1}`))
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji(formatEmoji('anglesmallleft'))
+          .setDisabled(currentPage <= 1 || totalPages <= 1),
+        new ButtonBuilder()
+          .setCustomId(buildCustomId('registration', 'page', continent.id, `${currentPage + 1}`))
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji(formatEmoji('anglesmallright'))
+          .setDisabled(currentPage >= totalPages || totalPages <= 1)
+      );
 
       containerComponents = [
         ...containerComponents,
         { type: ComponentType.Separator, divider: true },
-        ...countryRows.map((row) => row.toJSON())
+        countryRow.toJSON(),
+        paginationRow.toJSON()
       ];
+    } else {
+      containerComponents = [...containerComponents, continentRow.toJSON()];
     }
+  } else {
+    containerComponents = [...containerComponents, continentRow.toJSON()];
   }
 
   return {

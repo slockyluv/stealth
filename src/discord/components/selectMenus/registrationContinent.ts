@@ -29,7 +29,11 @@ export const registrationContinentSelect: SelectMenuHandler = {
     await interaction.deferUpdate();
 
     try {
-      const view = await buildRegistrationView({ guild: interaction.guild, selectedContinentId: selectedContinent });
+      const view = await buildRegistrationView({
+        guild: interaction.guild,
+        selectedContinentId: selectedContinent,
+        page: 1
+      });
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);

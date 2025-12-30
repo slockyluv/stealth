@@ -295,7 +295,7 @@ function flagCodeToEmoji(code: string): string | null {
   return String.fromCodePoint(...codePoints);
 }
 
-function resolveEmojiIdentifier(raw: string, formatEmoji: (name: string) => string): string {
+export function resolveEmojiIdentifier(raw: string, formatEmoji: (name: string) => string): string {
   const normalized = normalizeEmojiName(raw);
   const flagCode = normalized.match(/^flag_([a-z]{2})$/i)?.[1];
 

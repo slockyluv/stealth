@@ -19,6 +19,7 @@ import {
 } from './settingsCountries.js';
 import { serverTabsButton } from './serverTabs.js';
 import { mutesPageButton } from './mutes.js';
+import { registrationBackButton, registrationPageButton } from './registrationNavigation.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
@@ -37,5 +38,7 @@ export const buttonHandlers: ButtonHandler[] = [
   settingsCountriesTabButton,
   settingsCountriesResetButton,
   serverTabsButton,
-  mutesPageButton
+  mutesPageButton,
+  registrationBackButton,
+  registrationPageButton
 ];

@@ -35,6 +35,15 @@ function buildCountryOptions(countries: Country[], formatEmoji: (id: string) => 
   );
 }
 
+function chunkCountries(countries: Country[], chunkSize: number) {
+  const chunks: Country[][] = [];
+  for (let i = 0; i < countries.length; i += chunkSize) {
+    chunks.push(countries.slice(i, i + chunkSize));
+  }
+
+  return chunks;
+}
+
 export async function buildRegistrationView(options: {
   guild: Guild;
   selectedContinentId?: ContinentId;
@@ -74,24 +83,43 @@ export async function buildRegistrationView(options: {
     if (continent) {
       selectedContinentName = continent.label;
       const availableCountries = await getAvailableCountries(guild.id, selectedContinentId);
-      const countryOptions = availableCountries.length
-        ? buildCountryOptions(availableCountries, formatEmoji)
-        : [
-            new StringSelectMenuOptionBuilder()
-              .setLabel('Свободных стран нет')
-              .setValue('unavailable')
-          ];
-      const countryRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId(buildCustomId('registration', 'country', continent.id))
-          .setPlaceholder(availableCountries.length ? 'Выберите страну' : 'Свободных стран нет')
-          .setMinValues(1)
-          .setMaxValues(1)
-          .setDisabled(availableCountries.length === 0)
-          .addOptions(countryOptions)
-      );
+      const countryRows = availableCountries.length
+        ? chunkCountries(availableCountries, 25).map((chunk, index, chunks) => {
+            const countryOptions = buildCountryOptions(chunk, formatEmoji);
+            const placeholder =
+              chunks.length > 1 ? `Выберите страну (стр. ${index + 1}/${chunks.length})` : 'Выберите страну';
 
-      containerComponents = [...containerComponents, { type: ComponentType.Separator, divider: true }, countryRow.toJSON()];
+            return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+              new StringSelectMenuBuilder()
+                .setCustomId(buildCustomId('registration', 'country', continent.id, `${index}`))
+                .setPlaceholder(placeholder)
+                .setMinValues(1)
+                .setMaxValues(1)
+                .addOptions(countryOptions)
+            );
+          })
+        : [
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+              new StringSelectMenuBuilder()
+                .setCustomId(buildCustomId('registration', 'country', continent.id, '0'))
+                .setPlaceholder('Свободных стран нет')
+                .setMinValues(1)
+                .setMaxValues(1)
+                .setDisabled(true)
+                .addOptions(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('Свободных стран нет')
+                    .setValue('unavailable')
+                    .setEmoji(formatEmoji('worldpulse'))
+                )
+            )
+          ];
+
+      containerComponents = [
+        ...containerComponents,
+        { type: ComponentType.Separator, divider: true },
+        ...countryRows.map((row) => row.toJSON())
+      ];
     }
   }
 

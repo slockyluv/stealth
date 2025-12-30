@@ -1,8 +1,24 @@
-import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction, type Message } from 'discord.js';
+import {
+  ComponentType,
+  MessageFlags,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+  type Message,
+  type TopLevelComponentData
+} from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildRegistrationView } from '../features/registration/registrationView.js';
 import { getUserRegistration } from '../../services/countryRegistrationService.js';
 import { logger } from '../../shared/logger.js';
+
+function buildTextDisplayComponents(content: string): TopLevelComponentData[] {
+  return [
+    {
+      type: ComponentType.Container,
+      components: [{ type: ComponentType.TextDisplay, content }]
+    }
+  ];
+}
 
 export const reg: Command = {
   data: new SlashCommandBuilder().setName('reg').setDescription('Автоматическая регистрация государства'),
@@ -10,8 +26,8 @@ export const reg: Command = {
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        content: 'Команда доступна только внутри сервера.',
-        flags: MessageFlags.Ephemeral
+        components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
     }
@@ -25,15 +41,17 @@ export const reg: Command = {
       const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
       if (existingRegistration) {
         await interaction.followUp({
-          content: `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`,
-          flags: MessageFlags.Ephemeral
+          components: buildTextDisplayComponents(
+            `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`
+          ),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }
     } catch (error) {
       logger.error(error);
       await interaction.editReply({
-        content: 'Не удалось открыть меню регистрации. Попробуйте позже.',
-        components: []
+        components: buildTextDisplayComponents('Не удалось открыть меню регистрации. Попробуйте позже.'),
+        flags: MessageFlags.IsComponentsV2
       });
     }
   },
@@ -47,6 +65,10 @@ export const reg: Command = {
       await message.channel.send({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);
+      await message.channel.send({
+        components: buildTextDisplayComponents('Не удалось открыть меню регистрации. Попробуйте позже.'),
+        flags: MessageFlags.IsComponentsV2
+      });
     }
   }
 };

@@ -1,17 +1,26 @@
-import { MessageFlags } from 'discord.js';
+import { ComponentType, MessageFlags, type TopLevelComponentData } from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildRegistrationView } from '../../features/registration/registrationView.js';
 import { getContinent } from '../../features/settings/countriesView.js';
 import { registerCountryForUser } from '../../../services/countryRegistrationService.js';
 import { logger } from '../../../shared/logger.js';
 
+function buildTextDisplayComponents(content: string): TopLevelComponentData[] {
+  return [
+    {
+      type: ComponentType.Container,
+      components: [{ type: ComponentType.TextDisplay, content }]
+    }
+  ];
+}
+
 export const registrationCountrySelect: SelectMenuHandler = {
   key: 'registration:country',
   async execute(interaction, ctx) {
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        content: 'Команда доступна только внутри сервера.',
-        flags: MessageFlags.Ephemeral
+        components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
     }
@@ -23,8 +32,8 @@ export const registrationCountrySelect: SelectMenuHandler = {
 
     if (!continent) {
       await interaction.reply({
-        content: 'Не удалось определить континент. Обновите меню.',
-        flags: MessageFlags.Ephemeral
+        components: buildTextDisplayComponents('Не удалось определить континент. Обновите меню.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
     }
@@ -33,8 +42,8 @@ export const registrationCountrySelect: SelectMenuHandler = {
 
     if (!country) {
       await interaction.reply({
-        content: 'Страна не найдена или уже недоступна. Обновите список.',
-        flags: MessageFlags.Ephemeral
+        components: buildTextDisplayComponents('Страна не найдена или уже недоступна. Обновите список.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
     }
@@ -46,18 +55,20 @@ export const registrationCountrySelect: SelectMenuHandler = {
 
       if (result.status === 'registered') {
         await interaction.followUp({
-          content: `Вы успешно зарегистрировались за **${country.name}**.`,
-          flags: MessageFlags.Ephemeral
+          components: buildTextDisplayComponents(`Вы успешно зарегистрировались за **${country.name}**.`),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       } else if (result.status === 'alreadyRegistered') {
         await interaction.followUp({
-          content: `Вы уже зарегистрированы за **${result.registration.countryName}**.`,
-          flags: MessageFlags.Ephemeral
+          components: buildTextDisplayComponents(
+            `Вы уже зарегистрированы за **${result.registration.countryName}**.`
+          ),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.followUp({
-          content: 'Эта страна уже занята. Список свободных стран обновлен.',
-          flags: MessageFlags.Ephemeral
+          components: buildTextDisplayComponents('Эта страна уже занята. Список свободных стран обновлен.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }
 
@@ -66,8 +77,8 @@ export const registrationCountrySelect: SelectMenuHandler = {
     } catch (error) {
       logger.error(error);
       await interaction.followUp({
-        content: 'Произошла ошибка при регистрации. Попробуйте позже.',
-        flags: MessageFlags.Ephemeral
+        components: buildTextDisplayComponents('Произошла ошибка при регистрации. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }
   }

@@ -8,16 +8,38 @@ type CountryFacts = {
   population: string;
 };
 
-export type CountryProfile = CountryFacts & {
-  registeredUserId?: string;
-  registeredAt?: Date;
+type CountryPolitics = {
+  ideology?: string;
+  governmentForm?: string;
+  stateStructure?: string;
+  religion?: string;
 };
 
-const FALLBACK_FACTS: CountryFacts = {
-  ruler: 'Уточните действующего главу государства вручную.',
-  territory: 'Уточните площадь территории в актуальных данных.',
-  population: 'Уточните численность населения по последним данным.'
+type CountryEconomy = {
+  budget: bigint;
 };
+
+export type CountryProfile = CountryFacts &
+  CountryPolitics &
+  CountryEconomy & {
+    registeredUserId?: string;
+    registeredAt?: Date;
+  };
+
+const FALLBACK_FACTS: CountryFacts = {
+  ruler: 'Неизвестно',
+  territory: 'Неизвестно',
+  population: 'Неизвестно'
+};
+
+const DEFAULT_POLITICS: Required<CountryPolitics> = {
+  ideology: 'Не выбрано',
+  governmentForm: 'Не выбрана',
+  stateStructure: 'Не выбрано',
+  religion: 'Не выбрана'
+};
+
+const DEFAULT_BUDGET = 0n;
 
 const DEFAULT_FACTS: Record<string, CountryFacts> = {
   'Албания': { ruler: 'Байрам Бегай', territory: '28 748 км²', population: '2 800 000 человек' },
@@ -232,7 +254,12 @@ function normalizeCountryKey(countryName: string): string {
 }
 
 function buildKey(guildId: string, countryName: string): string {
-  return `${guildId}:${normalizeCountryKey(countryName)}`;
+  return countryName
+    .trim()
+    .toLowerCase()
+    .replace(/[–—]/g, '-')
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ');
 }
 
 function sanitizePopulation(value: string): string {
@@ -296,10 +323,21 @@ function getDefaultFacts(country: Country): CountryFacts {
   return sanitizeCountryFacts(defaults);
 }
 
+function sanitizeOptionalText(value?: string | null): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function mapRecordToProfile(record: {
   ruler: string;
   territory: string;
   population: string;
+  ideology: string | null;
+  governmentForm: string | null;
+  stateStructure: string | null;
+  religion: string | null;
+  budget: bigint | null;
   registeredUserId: bigint | null;
   registeredAt: Date | null;
 }): CountryProfile {
@@ -307,8 +345,21 @@ function mapRecordToProfile(record: {
     ruler: sanitizeRulerName(record.ruler),
     territory: record.territory.trim(),
     population: sanitizePopulation(record.population),
+    ideology: sanitizeOptionalText(record.ideology) ?? DEFAULT_POLITICS.ideology,
+    governmentForm: sanitizeOptionalText(record.governmentForm) ?? DEFAULT_POLITICS.governmentForm,
+    stateStructure: sanitizeOptionalText(record.stateStructure) ?? DEFAULT_POLITICS.stateStructure,
+    religion: sanitizeOptionalText(record.religion) ?? DEFAULT_POLITICS.religion,
+    budget: typeof record.budget === 'bigint' ? record.budget : DEFAULT_BUDGET,
     registeredUserId: record.registeredUserId ? record.registeredUserId.toString() : undefined,
     registeredAt: record.registeredAt ?? undefined
+  };
+}
+
+function buildDefaultProfile(country: Country): CountryProfile {
+  return {
+    ...getDefaultFacts(country),
+    ...DEFAULT_POLITICS,
+    budget: DEFAULT_BUDGET
   };
 }
 
@@ -329,26 +380,26 @@ export async function getCountryProfile(guildId: string, country: Country): Prom
     }
   });
 
-  const profile = stored ? mapRecordToProfile(stored) : getDefaultFacts(country);
+  const profile = stored ? mapRecordToProfile(stored) : buildDefaultProfile(country);
   profiles.set(cacheKey, profile);
   return profile;
 }
 
-export async function updateCountryProfile(
-  guildId: string,
-  country: Country,
-  updates: Partial<Pick<CountryProfile, 'ruler' | 'territory' | 'population'>>,
-  userId?: string
-): Promise<CountryProfile> {
+async function saveCountryProfile(guildId: string, country: Country, profile: CountryProfile): Promise<CountryProfile> {
   const normalizedName = normalizeCountryKey(country.name);
-  const defaults = getDefaultFacts(country);
-  const sanitizedUpdates: Partial<CountryFacts> = {
-    ruler: updates.ruler ? sanitizeRulerName(updates.ruler) : undefined,
-    territory: updates.territory?.trim(),
-    population: updates.population ? sanitizePopulation(updates.population) : undefined
+  const cacheKey = buildKey(guildId, country.name);
+  const sanitized: CountryProfile = {
+    ...buildDefaultProfile(country),
+    ...profile,
+    ruler: sanitizeRulerName(profile.ruler),
+    territory: profile.territory.trim(),
+    population: sanitizePopulation(profile.population),
+    ideology: sanitizeOptionalText(profile.ideology) ?? DEFAULT_POLITICS.ideology,
+    governmentForm: sanitizeOptionalText(profile.governmentForm) ?? DEFAULT_POLITICS.governmentForm,
+    stateStructure: sanitizeOptionalText(profile.stateStructure) ?? DEFAULT_POLITICS.stateStructure,
+    religion: sanitizeOptionalText(profile.religion) ?? DEFAULT_POLITICS.religion,
+    budget: typeof profile.budget === 'bigint' ? profile.budget : BigInt(profile.budget)
   };
-
-  const now = new Date();
 
   const stored = await prisma.countryProfile.upsert({
     where: {
@@ -358,39 +409,138 @@ export async function updateCountryProfile(
       }
     },
     update: {
-      ...sanitizedUpdates,
-      registeredUserId: userId ? BigInt(userId) : undefined,
-      registeredAt: userId ? now : undefined
+      ruler: sanitized.ruler,
+      territory: sanitized.territory,
+      population: sanitized.population,
+      ideology: sanitized.ideology,
+      governmentForm: sanitized.governmentForm,
+      stateStructure: sanitized.stateStructure,
+      religion: sanitized.religion,
+      budget: sanitized.budget,
+      registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
+      registeredAt: sanitized.registeredAt ?? null
     },
     create: {
       guildId: BigInt(guildId),
       countryName: normalizedName,
-      ruler: sanitizedUpdates.ruler ?? defaults.ruler,
-      territory: sanitizedUpdates.territory ?? defaults.territory,
-      population: sanitizedUpdates.population ?? defaults.population,
-      registeredUserId: userId ? BigInt(userId) : undefined,
-      registeredAt: userId ? now : undefined
+      ruler: sanitized.ruler,
+      territory: sanitized.territory,
+      population: sanitized.population,
+      ideology: sanitized.ideology,
+      governmentForm: sanitized.governmentForm,
+      stateStructure: sanitized.stateStructure,
+      religion: sanitized.religion,
+      budget: sanitized.budget,
+      registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
+      registeredAt: sanitized.registeredAt ?? null
     }
   });
 
-  const profile = mapRecordToProfile(stored);
-  profiles.set(buildKey(guildId, country.name), profile);
-  return profile;
+  const mapped = mapRecordToProfile(stored);
+  profiles.set(cacheKey, mapped);
+  return mapped;
 }
 
-export async function resetCountryProfile(guildId: string, country: Country): Promise<CountryProfile> {
-  const normalizedName = normalizeCountryKey(country.name);
-
-  await prisma.countryProfile.deleteMany({
-    where: {
-      guildId: BigInt(guildId),
-      countryName: normalizedName
-    }
-  });
-
+export async function updateCountryProfile(
+  guildId: string,
+  country: Country,
+  updates: Partial<Pick<CountryProfile, 'ruler' | 'territory' | 'population'>>,
+  userId?: string
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country);
   const defaults = getDefaultFacts(country);
-  profiles.set(buildKey(guildId, country.name), defaults);
-  return defaults;
+  const sanitizedUpdates: Partial<CountryFacts> = {
+    ruler: updates.ruler ? sanitizeRulerName(updates.ruler) : undefined,
+    territory: updates.territory?.trim(),
+    population: updates.population ? sanitizePopulation(updates.population) : undefined
+  };
+
+  const now = new Date();
+
+  const nextProfile: CountryProfile = {
+    ...current,
+    ruler: sanitizedUpdates.ruler ?? defaults.ruler,
+    territory: sanitizedUpdates.territory ?? defaults.territory,
+    population: sanitizedUpdates.population ?? defaults.population,
+    registeredUserId: userId ?? current.registeredUserId,
+    registeredAt: userId ? now : current.registeredAt
+  };
+
+  return saveCountryProfile(guildId, country, nextProfile);
+}
+
+export async function updateCountryPolitics(
+  guildId: string,
+  country: Country,
+  updates: Partial<Pick<CountryProfile, 'ideology' | 'governmentForm' | 'stateStructure' | 'religion'>>
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country);
+  const nextProfile: CountryProfile = {
+    ...current,
+    ideology: sanitizeOptionalText(updates.ideology) ?? current.ideology,
+    governmentForm: sanitizeOptionalText(updates.governmentForm) ?? current.governmentForm,
+    stateStructure: sanitizeOptionalText(updates.stateStructure) ?? current.stateStructure,
+    religion: sanitizeOptionalText(updates.religion) ?? current.religion
+  };
+
+  return saveCountryProfile(guildId, country, nextProfile);
+}
+
+export async function updateCountryDevelopment(
+  guildId: string,
+  country: Country,
+  updates: Partial<Pick<CountryProfile, 'budget'>>
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country);
+  const budgetValue = updates.budget ?? current.budget ?? DEFAULT_BUDGET;
+  const normalizedBudget = typeof budgetValue === 'bigint' ? budgetValue : BigInt(budgetValue);
+
+  const nextProfile: CountryProfile = {
+    ...current,
+    budget: normalizedBudget
+  };
+
+  return saveCountryProfile(guildId, country, nextProfile);
+}
+
+export type CountryProfileSection = 'characteristics' | 'politics' | 'development';
+
+export async function resetCountryProfile(
+  guildId: string,
+  country: Country,
+  section: CountryProfileSection = 'characteristics'
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country);
+  const defaults = buildDefaultProfile(country);
+
+  if (section === 'politics') {
+    const updated: CountryProfile = {
+      ...current,
+      ...DEFAULT_POLITICS
+    };
+
+    return saveCountryProfile(guildId, country, updated);
+  }
+
+  if (section === 'development') {
+    const updated: CountryProfile = {
+      ...current,
+      budget: DEFAULT_BUDGET
+    };
+
+    return saveCountryProfile(guildId, country, updated);
+  }
+
+  const updated: CountryProfile = {
+    ...current,
+    ruler: defaults.ruler,
+    territory: defaults.territory,
+    population: defaults.population,
+    registeredUserId: undefined,
+    registeredAt: undefined
+  };
+
+  return saveCountryProfile(guildId, country, updated);
 }
 
 export function formatRegistration(profile: CountryProfile): string {

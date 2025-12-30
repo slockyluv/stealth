@@ -10,7 +10,10 @@ import {
 } from 'discord.js';
 import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
-import type { CountryProfile } from '../../../services/countryProfileService.js';
+import type {
+  CountryProfile,
+  CountryProfileSection
+} from '../../../services/countryProfileService.js';
 import { formatDateTime } from '../../../shared/time.js';
 
 export type ContinentId =
@@ -308,6 +311,10 @@ function buildCountryLabel(name: string, emoji: string): string {
   return `${emoji} | ${name}`;
 }
 
+function formatBudgetValue(budget: bigint): string {
+  return budget.toLocaleString('ru-RU');
+}
+
 function buildPageRange(total: number, pageSize: number): number {
   return Math.max(Math.ceil(total / pageSize), 1);
 }
@@ -471,10 +478,45 @@ type CountryDetailsViewOptions = {
   countryIndex: number;
   profile: CountryProfile;
   page: number;
+  tab?: CountryProfileSection;
 };
 
+function buildTabButtons(options: {
+  continent: Continent;
+  page: number;
+  countryIndex: number;
+  activeTab: CountryProfileSection;
+}): ActionRowBuilder<ButtonBuilder> {
+  const { continent, page, countryIndex, activeTab } = options;
+
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(
+        buildCustomId('settings', 'countriesTab', continent.id, String(page), String(countryIndex), 'characteristics')
+      )
+      .setStyle(ButtonStyle.Secondary)
+      .setLabel('Характеристика')
+      .setDisabled(activeTab === 'characteristics'),
+    new ButtonBuilder()
+      .setCustomId(
+        buildCustomId('settings', 'countriesTab', continent.id, String(page), String(countryIndex), 'politics')
+      )
+      .setStyle(ButtonStyle.Secondary)
+      .setLabel('Политика')
+      .setDisabled(activeTab === 'politics'),
+    new ButtonBuilder()
+      .setCustomId(
+        buildCustomId('settings', 'countriesTab', continent.id, String(page), String(countryIndex), 'development')
+      )
+      .setStyle(ButtonStyle.Secondary)
+      .setLabel('Развитие')
+      .setDisabled(activeTab === 'development')
+  );
+}
+
 export async function buildCountryDetailsView(options: CountryDetailsViewOptions): Promise<{ components: TopLevelComponentData[] }> {
-  const { guild, continent, country, countryIndex, profile, page } = options;
+  const { guild, continent, country, countryIndex, profile, page, tab } = options;
+  const activeTab: CountryProfileSection = tab ?? 'characteristics';
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
@@ -490,6 +532,70 @@ export async function buildCountryDetailsView(options: CountryDetailsViewOptions
   const userLine = profile.registeredUserId ? `<@${profile.registeredUserId}>` : '-';
   const registeredLine = profile.registeredAt ? `\`${formatDateTime(profile.registeredAt)}\`` : '`-`';
 
+  const tabButtons = buildTabButtons({
+    continent,
+    page,
+    countryIndex,
+    activeTab
+  });
+
+  const generalInfo = [
+    '**Континент:**',
+    `*${emojiContinent} ${continent.label}*`,
+    '',
+    '**Государство:**',
+    `*${countryDisplay}*`,
+    '',
+    '**Пользователь:**',
+    userLine,
+    '',
+    '**Зарегистрирован:**',
+    registeredLine
+  ].join('\n');
+
+  const characteristicsSection = [
+    `**${navEmoji} Характеристика**`,
+    '',
+    '**Правитель:**',
+    `*${profile.ruler}*`,
+    '',
+    '**Территория:**',
+    `*${profile.territory}*`,
+    '',
+    '**Население:**',
+    `*${profile.population}*`
+  ].join('\n');
+
+  const politicsSection = [
+    `**${navEmoji} Политика**`,
+    '',
+    '**Идеология:**',
+    `*${profile.ideology}*`,
+    '',
+    '**Форма правления:**',
+    `*${profile.governmentForm}*`,
+    '',
+    '**Гос. устройство:**',
+    `*${profile.stateStructure}*`,
+    '',
+    '**Религия:**',
+    `*${profile.religion}*`
+  ].join('\n');
+
+  const developmentSection = [
+    `**${navEmoji} Развитие**`,
+    '',
+    '**Бюджет государства:**',
+    formatBudgetValue(profile.budget)
+  ].join('\n');
+
+  const detailsContent =
+    activeTab === 'politics'
+      ? politicsSection
+      : activeTab === 'development'
+        ? developmentSection
+        : characteristicsSection;
+
   const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'countriesBack', continent.id, String(page)))
@@ -500,9 +606,12 @@ export async function buildCountryDetailsView(options: CountryDetailsViewOptions
       .setCustomId(buildCustomId('settings', 'countriesEdit', continent.id, String(page), String(countryIndex)))
       .setStyle(ButtonStyle.Secondary)
       .setEmoji(formatEmoji('edit'))
-      .setLabel('Редактировать'),
+      .setLabel('Редактировать')
+      .setDisabled(activeTab !== 'characteristics'),
     new ButtonBuilder()
-      .setCustomId(buildCustomId('settings', 'countriesReset', continent.id, String(page), String(countryIndex)))
+      .setCustomId(
+        buildCustomId('settings', 'countriesReset', continent.id, String(page), String(countryIndex), activeTab)
+      )
       .setStyle(ButtonStyle.Secondary)
       .setEmoji(formatEmoji('action_system'))
       .setLabel('По умолчанию')
@@ -511,38 +620,14 @@ export async function buildCountryDetailsView(options: CountryDetailsViewOptions
   const framed: TopLevelComponentData = {
     type: ComponentType.Container,
     components: [
-      { type: ComponentType.TextDisplay, content: `**${worldEmoji} Государство: ${countryDisplay}**` },
+      { type: ComponentType.TextDisplay, content: `**${worldEmoji} Информация**` },
+      tabButtons.toJSON(),
       { type: ComponentType.Separator, divider: true },
-      {
-        type: ComponentType.TextDisplay,
-        content: [
-          '**Континент:**',
-          `*${emojiContinent} ${continent.label}*`,
-          '',
-          '**Пользователь**',
-          userLine,
-          '',
-          '**Зарегистрирован:**',
-          registeredLine
-        ].join('\n')
-      },
+      { type: ComponentType.TextDisplay, content: generalInfo },
       { type: ComponentType.Separator, divider: true },
-      {
-        type: ComponentType.TextDisplay,
-        content: [
-          `**${navEmoji} Характеристики**`,
-          '',
-          '**Правитель:**',
-          `*${profile.ruler}*`,
-          '',
-          '**Территория:**',
-          `*${profile.territory}*`,
-          '',
-          '**Население:**',
-          `*${profile.population}*`
-        ].join('\n')
-      },
+      { type: ComponentType.TextDisplay, content: detailsContent },
       { type: ComponentType.Separator, divider: true },
+      tabButtons.toJSON(),
       actions.toJSON()
     ]
   };

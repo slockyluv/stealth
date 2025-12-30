@@ -64,6 +64,11 @@ model CountryProfile {
   ruler           String
   territory       String
   population      String
+  ideology        String?
+  governmentForm  String?
+  stateStructure  String?
+  religion        String?
+  budget          BigInt   @default(0)
   registeredUserId BigInt?
   registeredAt    DateTime?
   createdAt       DateTime @default(now())

@@ -11,15 +11,25 @@ import type { ButtonHandler } from '../../../types/component.js';
 import { buildTextView } from '../v2Message.js';
 import { buildCountriesView, buildCountryDetailsView, getContinent } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
-import { getCountryProfile, resetCountryProfile } from '../../../services/countryProfileService.js';
+import {
+  type CountryProfileSection,
+  getCountryProfile,
+  resetCountryProfile
+} from '../../../services/countryProfileService.js';
 import { buildCustomId } from '../../../shared/customId.js';
 
 const PAGE_SIZE = 15;
+const DEFAULT_TAB: CountryProfileSection = 'characteristics';
 
 function parsePage(args: string[]): number {
   const [, rawPage] = args;
   const parsed = Number.parseInt(rawPage ?? '1', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function parseTab(rawTab: string | undefined): CountryProfileSection {
+  if (rawTab === 'politics' || rawTab === 'development') return rawTab;
+  return DEFAULT_TAB;
 }
 
 async function ensureAccess(
@@ -115,7 +125,7 @@ export const settingsCountriesEditButton: ButtonHandler = {
     const guild = await ensureAccess(interaction);
     if (!guild) return;
 
-    const [continentId, rawPage, countryIndexRaw] = ctx.customId.args;
+    const [continentId, rawPage, countryIndexRaw, tabRaw] = ctx.customId.args;
     const continent = getContinent(continentId ?? '');
 
     if (!continent) {
@@ -127,6 +137,7 @@ export const settingsCountriesEditButton: ButtonHandler = {
     }
 
     const countryIndex = Number.parseInt(countryIndexRaw ?? '-1', 10);
+    const tab = parseTab(tabRaw);
     const country = Number.isFinite(countryIndex) && countryIndex >= 0 ? continent.countries[countryIndex] : undefined;
 
     if (!country) {
@@ -172,14 +183,14 @@ export const settingsCountriesEditButton: ButtonHandler = {
   }
 };
 
-export const settingsCountriesResetButton: ButtonHandler = {
-  key: 'settings:countriesReset',
+export const settingsCountriesTabButton: ButtonHandler = {
+  key: 'settings:countriesTab',
 
   async execute(interaction, ctx) {
     const guild = await ensureAccess(interaction);
     if (!guild) return;
 
-    const [continentId, rawPage, countryIndexRaw] = ctx.customId.args;
+    const [continentId, rawPage, countryIndexRaw, tabRaw] = ctx.customId.args;
     const continent = getContinent(continentId ?? '');
 
     if (!continent) {
@@ -201,19 +212,21 @@ export const settingsCountriesResetButton: ButtonHandler = {
       return;
     }
 
-    const page = Number.parseInt(rawPage ?? '1', 10);
+    const tab = parseTab(tabRaw);
+    const page = parsePage(ctx.customId.args);
 
     await interaction.deferUpdate();
 
     try {
-      const profile = await resetCountryProfile(guild.id, country);
+      const profile = await getCountryProfile(guild.id, country);
       const view = await buildCountryDetailsView({
         guild,
         continent,
         country,
         countryIndex,
         profile,
-        page: Number.isFinite(page) ? page : 1
+        page,
+        tab
       });
 
       await interaction.editReply({
@@ -226,7 +239,70 @@ export const settingsCountriesResetButton: ButtonHandler = {
     } catch (error) {
       logger.error(error);
       await interaction.followUp({
-        components: buildTextView('Не удалось сбросить характеристики. Попробуйте позже.'),
+        components: buildTextView('Не удалось обновить раздел. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const settingsCountriesResetButton: ButtonHandler = {
+  key: 'settings:countriesReset',
+
+  async execute(interaction, ctx) {
+    const guild = await ensureAccess(interaction);
+    if (!guild) return;
+
+    const [continentId, rawPage, countryIndexRaw, tabRaw] = ctx.customId.args;
+    const continent = getContinent(continentId ?? '');
+
+    if (!continent) {
+      await interaction.reply({
+        components: buildTextView('Континент не найден. Вернитесь к выбору континента.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const countryIndex = Number.parseInt(countryIndexRaw ?? '-1', 10);
+    const country = Number.isFinite(countryIndex) && countryIndex >= 0 ? continent.countries[countryIndex] : undefined;
+
+    if (!country) {
+      await interaction.reply({
+        components: buildTextView('Страна не найдена. Попробуйте выбрать снова.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const tab = parseTab(tabRaw);
+    const page = Number.parseInt(rawPage ?? '1', 10);
+
+    await interaction.deferUpdate();
+
+    try {
+      const profile = await resetCountryProfile(guild.id, country, tab);
+      const view = await buildCountryDetailsView({
+        guild,
+        continent,
+        country,
+        countryIndex,
+        profile,
+        page: Number.isFinite(page) ? page : 1,
+        tab
+      });
+
+      await interaction.editReply({
+        embeds: [],
+        components: view.components,
+        files: [],
+        attachments: [],
+        flags: MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildTextView('Не удалось сбросить данные. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }

@@ -41,7 +41,7 @@ const DEFAULT_POLITICS: Required<CountryPolitics> = {
 
 const DEFAULT_BUDGET = 0n;
 
-const DEFAULT_FACTS: Record<string, CountryFacts> = {
+const RAW_DEFAULT_FACTS: Record<string, CountryFacts> = {
   'Албания': { ruler: 'Байрам Бегай', territory: '28 748 км²', population: '2 800 000 человек' },
   'Андорра': { ruler: 'Эмманюэль Макрон и Жоан-Энрик Вивес-и-Сисилья', territory: '468 км²', population: '80 000 человек' },
   'Австрия': { ruler: 'Александр ван дер Беллен', territory: '83 879 км²', population: '9 100 000 человек' },
@@ -247,8 +247,6 @@ const DEFAULT_FACTS: Record<string, CountryFacts> = {
   'Ниуэ': { ruler: 'Далтон Тагелаги', territory: '261 км²', population: '1 600 человек' },
 };
 
-const profiles = new Map<string, CountryProfile>();
-
 function normalizeCountryKey(countryName: string): string {
   return countryName.trim().toLowerCase();
 }
@@ -318,9 +316,20 @@ function sanitizeCountryFacts(facts: CountryFacts): CountryFacts {
   };
 }
 
+const DEFAULT_FACTS = new Map<string, CountryFacts>(
+  Object.entries(RAW_DEFAULT_FACTS).map(([countryName, facts]) => [
+    normalizeCountryKey(countryName),
+    sanitizeCountryFacts(facts)
+  ])
+);
+
+const DEFAULT_FALLBACK_FACTS = sanitizeCountryFacts(FALLBACK_FACTS);
+
+const profiles = new Map<string, CountryProfile>();
+
 function getDefaultFacts(country: Country): CountryFacts {
-  const defaults = DEFAULT_FACTS[normalizeCountryKey(country.name)] ?? FALLBACK_FACTS;
-  return sanitizeCountryFacts(defaults);
+  const defaults = DEFAULT_FACTS.get(normalizeCountryKey(country.name)) ?? DEFAULT_FALLBACK_FACTS;
+  return defaults;
 }
 
 function sanitizeOptionalText(value?: string | null): string | undefined {

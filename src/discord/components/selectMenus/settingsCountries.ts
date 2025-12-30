@@ -108,11 +108,11 @@ export const settingsCountriesSelect: SelectMenuHandler = {
     }
 
     const page = parsePage(ctx.customId.args);
-    const profile = await getCountryProfile(guild.id, country);
 
     await interaction.deferUpdate();
 
     try {
+      const profile = await getCountryProfile(guild.id, country);
       const view = await buildCountryDetailsView({ guild, continent, country, countryIndex, profile, page });
 
       await interaction.editReply({

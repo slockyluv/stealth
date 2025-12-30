@@ -627,7 +627,6 @@ export async function buildCountryDetailsView(options: CountryDetailsViewOptions
       { type: ComponentType.Separator, divider: true },
       { type: ComponentType.TextDisplay, content: detailsContent },
       { type: ComponentType.Separator, divider: true },
-      tabButtons.toJSON(),
       actions.toJSON()
     ]
   };

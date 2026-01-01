@@ -1,11 +1,13 @@
-import type { ChatInputCommandInteraction, InteractionReplyOptions, Message } from 'discord.js';
+import type { ChatInputCommandInteraction, InteractionReplyOptions, Message, MessageCreateOptions } from 'discord.js';
 import {
   MessageFlags,
   PermissionsBitField,
   type APIInteractionGuildMember,
   type GuildMember,
-  type PermissionResolvable
+  type PermissionResolvable,
+  type TopLevelComponentData
 } from 'discord.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 
 export type AllowList = string[];
 
@@ -101,13 +103,25 @@ export function isMemberAllowed(
 
 export async function enforceInteractionAllow(
   interaction: ChatInputCommandInteraction,
-  allowList: AllowList
+  allowList: AllowList,
+  options?: { formatEmoji?: (name: string) => string }
 ): Promise<boolean> {
+  const formatEmoji = options?.formatEmoji;
+
   if (isMemberAllowed(allowList, interaction.member, interaction.memberPermissions)) {
     return true;
   }
 
-  const payload: InteractionReplyOptions = { content: NO_PERMISSIONS_MESSAGE, flags: MessageFlags.Ephemeral };
+  let payload: InteractionReplyOptions = { content: NO_PERMISSIONS_MESSAGE, flags: MessageFlags.Ephemeral };
+
+  if (formatEmoji) {
+    const components: TopLevelComponentData[] = buildWarningView(formatEmoji, NO_PERMISSIONS_MESSAGE);
+    payload = {
+      components,
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    };
+  }
+
   if (interaction.deferred || interaction.replied) {
     await interaction.followUp(payload);
   } else {
@@ -116,14 +130,23 @@ export async function enforceInteractionAllow(
   return false;
 }
 
-export async function enforceMessageAllow(message: Message, allowList: AllowList): Promise<boolean> {
+export async function enforceMessageAllow(
+  message: Message,
+  allowList: AllowList,
+  options?: { formatEmoji?: (name: string) => string }
+): Promise<boolean> {
   if (isMemberAllowed(allowList, message.member)) {
     return true;
   }
 
   try {
     if (message.channel?.isSendable()) {
-      await message.channel.send({ content: NO_PERMISSIONS_MESSAGE });
+      const formatEmoji = options?.formatEmoji;
+      const payload: MessageCreateOptions = formatEmoji
+        ? { components: buildWarningView(formatEmoji, NO_PERMISSIONS_MESSAGE), flags: MessageFlags.IsComponentsV2 }
+        : { content: NO_PERMISSIONS_MESSAGE };
+
+      await message.channel.send(payload);
     }
   } catch {
     // ignore

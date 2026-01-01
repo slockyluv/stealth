@@ -1,11 +1,8 @@
-import {
-  SlashCommandBuilder,
-  type ChatInputCommandInteraction,
-  MessageFlags,
-  type Message
-} from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction, MessageFlags, type Message } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { ALLOW_PING, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { createEmojiFormatter } from '../emoji.js';
+import { buildSuccessView } from '../responses/messageBuilders.js';
 
 export const ping: Command = {
   data: new SlashCommandBuilder()
@@ -13,18 +10,30 @@ export const ping: Command = {
     .setDescription('Ping command'),
 
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!(await enforceInteractionAllow(interaction, ALLOW_PING))) return;
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!(await enforceInteractionAllow(interaction, ALLOW_PING, { formatEmoji }))) return;
 
     await interaction.reply({
-      content: '🏓 Pong!',
-      flags: MessageFlags.Ephemeral
+      components: buildSuccessView(formatEmoji, '🏓 Pong!'),
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
     });
   },
 
   async executeMessage(message: Message) {
-    if (!(await enforceMessageAllow(message, ALLOW_PING))) return;
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
+    if (!(await enforceMessageAllow(message, ALLOW_PING, { formatEmoji }))) return;
     
     if (!message.channel?.isSendable()) return;
-    await message.channel.send({ content: '🏓 Pong!' });
+    await message.channel.send({ components: buildSuccessView(formatEmoji, '🏓 Pong!'), flags: MessageFlags.IsComponentsV2 });
   }
 };

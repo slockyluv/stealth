@@ -10,6 +10,7 @@ import { setnick } from './setnick.js';
 import { addRole, takeRole, tempRole } from './roles.js';
 import { nabor } from './nabor.js';
 import { reg } from './reg.js';
+import { regCountry, unreg } from './regCountry.js';
 
 export const commands = [
   ping,
@@ -27,5 +28,7 @@ export const commands = [
   addRole,
   takeRole,
   tempRole,
-  reg
+  reg,
+  regCountry,
+  unreg
 ];

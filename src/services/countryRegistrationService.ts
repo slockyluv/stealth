@@ -1,10 +1,82 @@
 import { Prisma } from '@prisma/client';
 import type { ContinentId, Country } from '../discord/features/settings/countriesView.js';
-import { getContinent } from '../discord/features/settings/countriesView.js';
+import { getContinent, getContinents } from '../discord/features/settings/countriesView.js';
 import { prisma } from '../database/prisma.js';
 import { clearCountryRegistration, normalizeCountryKey, setCountryRegistration } from './countryProfileService.js';
 
 export type CountryRegistrationRecord = Prisma.CountryRegistrationGetPayload<{ }>;
+
+type CountryLookupResult = {
+  continentId: ContinentId;
+  country: Country;
+};
+
+function normalizeSearchValue(value: string): string {
+  return normalizeCountryKey(value).replace(/:/g, '');
+}
+
+function extractEmojiName(value: string): string | null {
+  const trimmed = value.trim();
+  const mentionMatch = trimmed.match(/^<a?:([\w-]+):\d+>$/);
+  if (mentionMatch?.[1]) return mentionMatch[1];
+
+  const colonMatch = trimmed.match(/^:([\w-]+):$/);
+  if (colonMatch?.[1]) return colonMatch[1];
+
+  return null;
+}
+
+function extractFlagKey(value: string): string | null {
+  const codePoints = [...value.trim()];
+  if (codePoints.length !== 2) return null;
+
+  const base = 0x1f1e6;
+  const offsets = codePoints.map((char) => {
+    const point = char.codePointAt(0);
+    if (!point) return null;
+    const offset = point - base;
+    return offset >= 0 && offset < 26 ? offset : null;
+  });
+
+  if (offsets.includes(null)) return null;
+
+  const letters = offsets.map((offset) => String.fromCharCode((offset ?? 0) + 97)).join('');
+  return `flag_${letters}`;
+}
+
+function findCountryByPredicate(predicate: (params: { country: Country; continentId: ContinentId }) => boolean):
+  | CountryLookupResult
+  | null {
+  for (const continent of getContinents()) {
+    for (const country of continent.countries) {
+      if (predicate({ country, continentId: continent.id })) {
+        return { continentId: continent.id, country };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function findCountryByQuery(query: string): CountryLookupResult | null {
+  const normalizedQuery = normalizeSearchValue(query);
+  const emojiName = extractEmojiName(query);
+  const emojiQuery = emojiName ? normalizeSearchValue(emojiName) : normalizedQuery;
+  const flagQuery = extractFlagKey(query);
+
+  return (
+    findCountryByPredicate(({ country }) => normalizeSearchValue(country.name) === normalizedQuery) ??
+    findCountryByPredicate(({ country }) => normalizeSearchValue(country.emoji) === emojiQuery) ??
+    (flagQuery
+      ? findCountryByPredicate(({ country }) => normalizeSearchValue(country.emoji) === normalizeSearchValue(flagQuery))
+      : null)
+  );
+}
+
+export function findCountryByKey(countryKey: string): CountryLookupResult | null {
+  const normalizedKey = normalizeSearchValue(countryKey);
+  return findCountryByPredicate(({ country }) => normalizeSearchValue(country.name) === normalizedKey);
+}
 
 export async function getUserRegistration(guildId: string, userId: string): Promise<CountryRegistrationRecord | null> {
   return prisma.countryRegistration.findUnique({
@@ -79,6 +151,10 @@ export type RegisterCountryResult =
   | { status: 'alreadyRegistered'; registration: CountryRegistrationRecord }
   | { status: 'countryTaken'; registration: CountryRegistrationRecord | null };
 
+export type UnregisterCountryResult =
+  | { status: 'notRegistered' }
+  | { status: 'unregistered'; registration: CountryRegistrationRecord; country: Country; continentId: ContinentId };
+
 export async function registerCountryForUser(
   guildId: string,
   userId: string,
@@ -132,4 +208,37 @@ export async function clearCountryRegistrationForCountry(guildId: string, countr
 
     await clearCountryRegistration(guildId, country, tx);
   });
+}
+
+export async function unregisterCountryForUser(
+  guildId: string,
+  userId: string
+): Promise<UnregisterCountryResult> {
+  const registration = await prisma.countryRegistration.findUnique({
+    where: {
+      guildId_userId: {
+        guildId: BigInt(guildId),
+        userId: BigInt(userId)
+      }
+    }
+  });
+
+  if (!registration) {
+    return { status: 'notRegistered' };
+  }
+
+  const lookup = findCountryByKey(registration.countryKey);
+  const country = lookup?.country ?? { name: registration.countryName, emoji: '' };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.countryRegistration.delete({ where: { id: registration.id } });
+    await clearCountryRegistration(guildId, country, tx);
+  });
+
+  return {
+    status: 'unregistered',
+    registration,
+    country,
+    continentId: lookup?.continentId ?? registration.continent
+  };
 }

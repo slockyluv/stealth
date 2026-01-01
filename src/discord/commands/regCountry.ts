@@ -1,12 +1,4 @@
-import {
-  ComponentType,
-  MessageFlags,
-  PermissionsBitField,
-  SlashCommandBuilder,
-  type ChatInputCommandInteraction,
-  type Message,
-  type TopLevelComponentData
-} from 'discord.js';
+import { MessageFlags, PermissionsBitField, SlashCommandBuilder, type ChatInputCommandInteraction, type Message, type TopLevelComponentData } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import {
   findCountryByQuery,
@@ -14,15 +6,8 @@ import {
   unregisterCountryForUser
 } from '../../services/countryRegistrationService.js';
 import { logger } from '../../shared/logger.js';
-
-function buildTextDisplayComponents(content: string): TopLevelComponentData[] {
-  return [
-    {
-      type: ComponentType.Container,
-      components: [{ type: ComponentType.TextDisplay, content }]
-    }
-  ];
-}
+import { createEmojiFormatter } from '../emoji.js';
+import { buildSuccessView, buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
 
 function extractUserId(raw: string): string | null {
   const mentionMatch = raw.match(/^<@!?([0-9]+)>$/);
@@ -31,32 +16,39 @@ function extractUserId(raw: string): string | null {
   return /^[0-9]+$/.test(raw) ? raw : null;
 }
 
-async function replyNoGuild(interaction: ChatInputCommandInteraction) {
-  await interaction.reply({
-    components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
-    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-  });
-}
-
 function hasManageGuildPermission(interaction: ChatInputCommandInteraction): boolean {
   return interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) ?? false;
 }
 
-async function ensureManageGuild(interaction: ChatInputCommandInteraction) {
+async function replyNoGuild(interaction: ChatInputCommandInteraction, formatEmoji: (name: string) => string) {
+  await interaction.reply({
+    components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+  });
+}
+
+async function ensureManageGuild(
+  interaction: ChatInputCommandInteraction,
+  formatEmoji: (name: string) => string
+) {
   if (hasManageGuildPermission(interaction)) return true;
 
   await interaction.reply({
-    components: buildTextDisplayComponents('Недостаточно прав для выполнения команды.'),
+    components: buildWarningView(formatEmoji, 'Недостаточно прав для выполнения команды.'),
     flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
   });
 
   return false;
 }
 
-async function sendMessageResponse(target: Message, content: string) {
+async function sendMessageResponse(
+  target: Message,
+  view: TopLevelComponentData[],
+  flags: MessageFlags[] | MessageFlags = MessageFlags.IsComponentsV2
+) {
   if (!target.channel.isSendable()) return;
 
-  await target.channel.send({ components: buildTextDisplayComponents(content), flags: MessageFlags.IsComponentsV2 });
+  await target.channel.send({ components: view, flags });
 }
 
 const regCountryBuilder = new SlashCommandBuilder()
@@ -72,12 +64,18 @@ export const regCountry: Command = {
   data: regCountryBuilder as SlashCommandBuilder,
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.inCachedGuild()) {
-      await replyNoGuild(interaction);
+      await replyNoGuild(interaction, formatEmoji);
       return;
     }
 
-    const allowed = await ensureManageGuild(interaction);
+    const allowed = await ensureManageGuild(interaction, formatEmoji);
     if (!allowed) return;
 
     const targetUser = interaction.options.getUser('user', true);
@@ -86,7 +84,7 @@ export const regCountry: Command = {
     const countryLookup = findCountryByQuery(countryInput);
     if (!countryLookup) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Страна не найдена. Уточните название или эмодзи.'),
+        components: buildWarningView(formatEmoji, 'Страна не найдена. Уточните название или эмодзи.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -104,14 +102,16 @@ export const regCountry: Command = {
 
       if (result.status === 'registered') {
         await interaction.editReply({
-          components: buildTextDisplayComponents(
+          components: buildSuccessView(
+            formatEmoji,
             `Пользователь <@${targetUser.id}> зарегистрирован за **${countryLookup.country.name}**.`
           ),
           flags: MessageFlags.IsComponentsV2
         });
       } else if (result.status === 'alreadyRegistered') {
         await interaction.editReply({
-          components: buildTextDisplayComponents(
+          components: buildWarningView(
+            formatEmoji,
             `Пользователь уже зарегистрирован за **${result.registration.countryName}**.`
           ),
           flags: MessageFlags.IsComponentsV2
@@ -119,7 +119,8 @@ export const regCountry: Command = {
       } else {
         const takenBy = result.registration?.userId ? `<@${result.registration.userId.toString()}>` : 'другим пользователем';
         await interaction.editReply({
-          components: buildTextDisplayComponents(
+          components: buildWarningView(
+            formatEmoji,
             `Эта страна уже занята ${takenBy}. Выберите другую страну.`
           ),
           flags: MessageFlags.IsComponentsV2
@@ -128,7 +129,10 @@ export const regCountry: Command = {
     } catch (error) {
       logger.error(error);
       await interaction.editReply({
-        components: buildTextDisplayComponents('Не удалось зарегистрировать пользователя. Попробуйте позже.'),
+        components: buildWarningView(
+          formatEmoji,
+          'Не удалось зарегистрировать пользователя. Попробуйте позже.'
+        ),
         flags: MessageFlags.IsComponentsV2
       });
     }
@@ -136,27 +140,37 @@ export const regCountry: Command = {
 
   async executeMessage(message: Message, args: string[]) {
     if (!message.inGuild() || !message.guild) return;
+
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-      await sendMessageResponse(message, 'Недостаточно прав для выполнения команды.');
+      await sendMessageResponse(message, buildWarningView(formatEmoji, 'Недостаточно прав для выполнения команды.'));
       return;
     }
 
     const [rawUser, ...countryParts] = args;
     if (!rawUser || countryParts.length === 0) {
-      await sendMessageResponse(message, 'Использование: !reg-country <@Пользователь> <Страна/флаг>');
+      await sendMessageResponse(
+        message,
+        buildUsageView(formatEmoji, '!reg-country <@Пользователь> <Страна/флаг>')
+      );
       return;
     }
 
     const userId = extractUserId(rawUser);
     if (!userId) {
-      await sendMessageResponse(message, 'Укажите пользователя через упоминание.');
+      await sendMessageResponse(message, buildWarningView(formatEmoji, 'Укажите пользователя через упоминание.'));
       return;
     }
 
     const countryInput = countryParts.join(' ');
     const countryLookup = findCountryByQuery(countryInput);
     if (!countryLookup) {
-      await sendMessageResponse(message, 'Страна не найдена. Уточните название или эмодзи.');
+      await sendMessageResponse(message, buildWarningView(formatEmoji, 'Страна не найдена. Уточните название или эмодзи.'));
       return;
     }
 
@@ -171,20 +185,26 @@ export const regCountry: Command = {
       if (result.status === 'registered') {
         await sendMessageResponse(
           message,
-          `Пользователь <@${userId}> зарегистрирован за **${countryLookup.country.name}**.`
+          buildSuccessView(
+            formatEmoji,
+            `Пользователь <@${userId}> зарегистрирован за **${countryLookup.country.name}**.`
+          )
         );
       } else if (result.status === 'alreadyRegistered') {
         await sendMessageResponse(
           message,
-          `Пользователь уже зарегистрирован за **${result.registration.countryName}**.`
+          buildWarningView(formatEmoji, `Пользователь уже зарегистрирован за **${result.registration.countryName}**.`)
         );
       } else {
         const takenBy = result.registration?.userId ? `<@${result.registration.userId.toString()}>` : 'другим пользователем';
-        await sendMessageResponse(message, `Эта страна уже занята ${takenBy}. Выберите другую страну.`);
+        await sendMessageResponse(
+          message,
+          buildWarningView(formatEmoji, `Эта страна уже занята ${takenBy}. Выберите другую страну.`)
+        );
       }
     } catch (error) {
       logger.error(error);
-      await sendMessageResponse(message, 'Не удалось зарегистрировать пользователя. Попробуйте позже.');
+      await sendMessageResponse(message, buildWarningView(formatEmoji, 'Не удалось зарегистрировать пользователя. Попробуйте позже.'));
     }
   }
 };
@@ -199,12 +219,18 @@ export const unreg: Command = {
   data: unregBuilder as SlashCommandBuilder,
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.inCachedGuild()) {
-      await replyNoGuild(interaction);
+      await replyNoGuild(interaction, formatEmoji);
       return;
     }
 
-    const allowed = await ensureManageGuild(interaction);
+    const allowed = await ensureManageGuild(interaction, formatEmoji);
     if (!allowed) return;
 
     const targetUser = interaction.options.getUser('user', true);
@@ -216,14 +242,15 @@ export const unreg: Command = {
 
       if (result.status === 'notRegistered') {
         await interaction.editReply({
-          components: buildTextDisplayComponents('Пользователь не зарегистрирован ни за одной страной.'),
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован ни за одной страной.'),
           flags: MessageFlags.IsComponentsV2
         });
         return;
       }
 
       await interaction.editReply({
-        components: buildTextDisplayComponents(
+        components: buildSuccessView(
+          formatEmoji,
           `Пользователь <@${targetUser.id}> снят с регистрации страны **${result.registration.countryName}**.`
         ),
         flags: MessageFlags.IsComponentsV2
@@ -231,7 +258,10 @@ export const unreg: Command = {
     } catch (error) {
       logger.error(error);
       await interaction.editReply({
-        components: buildTextDisplayComponents('Не удалось снять пользователя с регистрации. Попробуйте позже.'),
+        components: buildWarningView(
+          formatEmoji,
+          'Не удалось снять пользователя с регистрации. Попробуйте позже.'
+        ),
         flags: MessageFlags.IsComponentsV2
       });
     }
@@ -239,20 +269,27 @@ export const unreg: Command = {
 
   async executeMessage(message: Message, args: string[]) {
     if (!message.inGuild() || !message.guild) return;
+
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-      await sendMessageResponse(message, 'Недостаточно прав для выполнения команды.');
+      await sendMessageResponse(message, buildWarningView(formatEmoji, 'Недостаточно прав для выполнения команды.'));
       return;
     }
 
     const [rawUser] = args;
     if (!rawUser) {
-      await sendMessageResponse(message, 'Использование: !unreg <@Пользователь>');
+      await sendMessageResponse(message, buildUsageView(formatEmoji, '!unreg <@Пользователь>'));
       return;
     }
 
     const userId = extractUserId(rawUser);
     if (!userId) {
-      await sendMessageResponse(message, 'Укажите пользователя через упоминание.');
+      await sendMessageResponse(message, buildWarningView(formatEmoji, 'Укажите пользователя через упоминание.'));
       return;
     }
 
@@ -260,17 +297,23 @@ export const unreg: Command = {
       const result = await unregisterCountryForUser(message.guild.id, userId);
 
       if (result.status === 'notRegistered') {
-        await sendMessageResponse(message, 'Пользователь не зарегистрирован ни за одной страной.');
+        await sendMessageResponse(message, buildWarningView(formatEmoji, 'Пользователь не зарегистрирован ни за одной страной.'));
         return;
       }
 
       await sendMessageResponse(
         message,
-        `Пользователь <@${userId}> снят с регистрации страны **${result.registration.countryName}**.`
+        buildSuccessView(
+          formatEmoji,
+          `Пользователь <@${userId}> снят со страны **${result.registration.countryName}**.`
+        )
       );
     } catch (error) {
       logger.error(error);
-      await sendMessageResponse(message, 'Не удалось снять пользователя с регистрации. Попробуйте позже.');
+      await sendMessageResponse(
+        message,
+        buildWarningView(formatEmoji, 'Не удалось снять пользователя со страны. Попробуйте позже.')
+      );
     }
   }
 };

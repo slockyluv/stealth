@@ -44,7 +44,10 @@ async function ensureManageGuild(
 async function sendMessageResponse(
   target: Message,
   view: TopLevelComponentData[],
-  flags: MessageFlags[] | MessageFlags = MessageFlags.IsComponentsV2
+  flags:
+    | MessageFlags.SuppressEmbeds
+    | MessageFlags.SuppressNotifications
+    | MessageFlags.IsComponentsV2 = MessageFlags.IsComponentsV2
 ) {
   if (!target.channel.isSendable()) return;
 
@@ -83,12 +86,12 @@ export const regCountry: Command = {
 
     const countryLookup = findCountryByQuery(countryInput);
     if (!countryLookup) {
-      await interaction.reply({
-        components: buildWarningView(formatEmoji, 'Страна не найдена. Уточните название или эмодзи.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
-      return;
-    }
+    await interaction.reply({
+      components: buildWarningView(formatEmoji, 'Страна не найдена. Уточните название или эмодзи.'),
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+    return;
+  }
 
     await interaction.deferReply({ ephemeral: true });
 

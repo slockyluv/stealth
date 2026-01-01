@@ -1,4 +1,11 @@
-import { MessageFlags, type Interaction, type InteractionReplyOptions } from 'discord.js';
+import {
+  MessageFlags,
+  MessageFlagsBitField,
+  type InteractionResponse,
+  type Message,
+  type Interaction,
+  type InteractionReplyOptions,
+} from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import { upsertUser } from '../../services/userService.js';
 import { parseCustomId, customIdKey } from '../../shared/customId.js';
@@ -17,26 +24,46 @@ async function safeReply(interaction: Interaction, message: string) {
   }
 }
 
-function hasEphemeralFlag(flags: InteractionReplyOptions['flags']) {
+function hasEphemeralFlag(options: InteractionReplyOptions) {
+  if (options.ephemeral === true) return true;
+
+  const { flags } = options;
   if (!flags) return false;
+  if (typeof flags === 'number') {
+    return (flags & MessageFlags.Ephemeral) === MessageFlags.Ephemeral;
+  }
+  if (typeof flags === 'bigint') {
+    return (flags & BigInt(MessageFlags.Ephemeral)) === BigInt(MessageFlags.Ephemeral);
+  }
+  if (typeof flags === 'string') {
+    return flags === 'Ephemeral';
+  }
   if (Array.isArray(flags)) {
     return flags.includes(MessageFlags.Ephemeral);
   }
-  return (flags & MessageFlags.Ephemeral) === MessageFlags.Ephemeral;
+  if (flags instanceof MessageFlagsBitField) {
+    return flags.has(MessageFlags.Ephemeral);
+  }
+  if ('bitfield' in flags && typeof flags.bitfield === 'number') {
+    return (flags.bitfield & MessageFlags.Ephemeral) === MessageFlags.Ephemeral;
+  }
+
+  return false;
 }
 
 async function replyWithDeferredSupport(
   interaction: Interaction,
   options: InteractionReplyOptions
-) {
-  if (!interaction.isRepliable()) return;
-
-  if (!interaction.deferred && !interaction.replied) {
-    await interaction.reply(options);
+): Promise<InteractionResponse<boolean> | Message<boolean> | void> {
+  if (!interaction.isRepliable()) {
     return;
   }
 
-  const wantsEphemeral = hasEphemeralFlag(options.flags);
+  if (!interaction.deferred && !interaction.replied) {
+    return interaction.reply(options);
+  }
+
+  const wantsEphemeral = hasEphemeralFlag(options);
   if (wantsEphemeral) {
     try {
       if (!interaction.replied) {
@@ -45,12 +72,11 @@ async function replyWithDeferredSupport(
     } catch {
       // ignore
     }
-    await interaction.followUp(options);
-    return;
+    return interaction.followUp(options);
   }
 
   const { flags: _flags, ...editOptions } = options;
-  await interaction.editReply(editOptions);
+  return interaction.editReply(editOptions);
 }
 
 export async function interactionCreate(interaction: Interaction) {
@@ -74,7 +100,10 @@ export async function interactionCreate(interaction: Interaction) {
       const replyHandler = replyWithDeferredSupport.bind(null, interaction);
       const originalReply = interaction.reply.bind(interaction);
       const patchedReply = ((options: InteractionReplyOptions) =>
-        replyHandler(options).catch((err) => logger.error(err))) as typeof originalReply;
+        replyHandler(options).catch((err) => {
+          logger.error(err);
+          throw err;
+        })) as typeof originalReply;
       (interaction as { reply: typeof originalReply }).reply = patchedReply;
 
       await command.execute(interaction);

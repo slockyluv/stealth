@@ -36,9 +36,7 @@ type RecolorWorker = {
 };
 
 function createRecolorWorker(): RecolorWorker {
-  const worker = new Worker(new URL('./workers/emojiRecolorWorker.js', import.meta.url), {
-    type: 'module'
-  });
+  const worker = new Worker(new URL('./workers/emojiRecolorWorker.js', import.meta.url));
   const pending = new Map<number, { resolve: (buffer: Buffer) => void; reject: (error: Error) => void }>();
   let nextId = 1;
 
@@ -65,7 +63,8 @@ function createRecolorWorker(): RecolorWorker {
   });
 
   worker.on('error', (error) => {
-    rejectAll(error);
+    const err = error instanceof Error ? error : new Error('Emoji recolor worker error.');
+    rejectAll(err);
   });
 
   worker.on('exit', (code) => {
@@ -80,9 +79,9 @@ function createRecolorWorker(): RecolorWorker {
         const id = nextId;
         nextId += 1;
         pending.set(id, { resolve, reject });
-        const view = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-        const payload: WorkerRequest = { id, buffer: view, color };
-        worker.postMessage(payload, [view]);
+        const view = new Uint8Array(buffer);
+        const payload: WorkerRequest = { id, buffer: view.buffer, color };
+        worker.postMessage(payload, [payload.buffer]);
       }),
     close: async () => {
       if (pending.size > 0) {

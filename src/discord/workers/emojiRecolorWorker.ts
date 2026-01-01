@@ -230,7 +230,8 @@ function paethPredictor(a: number, b: number, c: number) {
 function handleRequest(message: WorkerRequest): WorkerResponse {
   const buffer = Buffer.from(message.buffer);
   const recolored = recolorPng(buffer, message.color);
-  return { id: message.id, buffer: recolored.buffer.slice(recolored.byteOffset, recolored.byteOffset + recolored.byteLength) };
+  const output = Uint8Array.from(recolored);
+  return { id: message.id, buffer: output.buffer };
 }
 
 parentPort?.on('message', (message: WorkerRequest) => {

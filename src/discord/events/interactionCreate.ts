@@ -53,14 +53,17 @@ function hasEphemeralFlag(options: InteractionReplyOptions) {
 
 async function replyWithDeferredSupport(
   interaction: Interaction,
-  options: InteractionReplyOptions
+  options: InteractionReplyOptions,
+  baseReply: (
+    options: InteractionReplyOptions
+  ) => Promise<InteractionResponse<boolean> | Message<boolean>>
 ): Promise<InteractionResponse<boolean> | Message<boolean> | void> {
   if (!interaction.isRepliable()) {
     return;
   }
 
   if (!interaction.deferred && !interaction.replied) {
-    return interaction.reply(options);
+    return baseReply(options);
   }
 
   const wantsEphemeral = hasEphemeralFlag(options);
@@ -100,7 +103,7 @@ export async function interactionCreate(interaction: Interaction) {
       const replyHandler = replyWithDeferredSupport.bind(null, interaction);
       const originalReply = interaction.reply.bind(interaction);
       const patchedReply = ((options: InteractionReplyOptions) =>
-        replyHandler(options).catch((err) => {
+        replyHandler(options, originalReply).catch((err) => {
           logger.error(err);
           throw err;
         })) as typeof originalReply;

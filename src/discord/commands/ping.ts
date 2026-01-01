@@ -10,6 +10,7 @@ export const ping: Command = {
     .setDescription('Ping command'),
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const ping = Math.max(0, Math.round(Date.now() - interaction.createdTimestamp));
     const formatEmoji = await createEmojiFormatter({
       client: interaction.client,
       guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
@@ -17,8 +18,6 @@ export const ping: Command = {
     });
 
     if (!(await enforceInteractionAllow(interaction, ALLOW_PING, { formatEmoji }))) return;
-
-    const ping = Math.max(0, Math.round(Date.now() - interaction.createdTimestamp));
     await interaction.reply({
       components: buildTextContainer(`**Задержка: ${ping} ms**`),
       flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
@@ -26,6 +25,7 @@ export const ping: Command = {
   },
 
   async executeMessage(message: Message) {
+    const ping = Math.max(0, Math.round(Date.now() - message.createdTimestamp));
     const formatEmoji = await createEmojiFormatter({
       client: message.client,
       guildId: message.guildId ?? message.client.application?.id ?? 'global',
@@ -35,7 +35,6 @@ export const ping: Command = {
     if (!(await enforceMessageAllow(message, ALLOW_PING, { formatEmoji }))) return;
     
     if (!message.channel?.isSendable()) return;
-    const ping = Math.max(0, Math.round(Date.now() - message.createdTimestamp));
     await message.channel.send({
       components: buildTextContainer(`**Задержка: ${ping} ms**`),
       flags: MessageFlags.IsComponentsV2

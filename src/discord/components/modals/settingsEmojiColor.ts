@@ -1,6 +1,6 @@
 import { MessageFlags, type Guild } from 'discord.js';
 import type { ModalHandler } from '../../../types/component.js';
-import { normalizeEmojiColor, setEmojiColor } from '../../../services/guildSettingsService.js';
+import { normalizeEmojiColor } from '../../../shared/emojiColor.js';
 import { recolorApplicationEmojis } from '../../emojiRecolor.js';
 import { logger } from '../../../shared/logger.js';
 import { buildTextView } from '../v2Message.js';
@@ -60,7 +60,6 @@ export const settingsEmojiColorModal: ModalHandler = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 
     try {
-      await setEmojiColor(guild.id, normalized);
       let lastProgress = -1;
       const result = await recolorApplicationEmojis({
         client: interaction.client,
@@ -85,18 +84,10 @@ export const settingsEmojiColorModal: ModalHandler = {
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'GUILD_SETTINGS_TABLE_MISSING') {
-        await interaction.editReply({
-          components: buildTextView('База данных не обновлена. Выполните Prisma миграции и попробуйте снова.'),
-          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
-        await resetSettingsMenu(interaction, guild);
-        return;
-      }
 
       logger.error(error);
       await interaction.editReply({
-        components: buildTextView('Не удалось сохранить цвет эмодзи. Попробуйте позже.'),
+        components: buildTextView('Не удалось перекрасить эмодзи. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }

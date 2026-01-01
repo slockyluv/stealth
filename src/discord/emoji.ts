@@ -1,5 +1,4 @@
 import type { ApplicationEmoji, Client } from 'discord.js';
-import { getEmojiColor } from '../services/guildSettingsService.js';
 import { logger } from '../shared/logger.js';
 
 type EmojiLike = Pick<ApplicationEmoji, 'name' | 'toString'>;
@@ -15,27 +14,40 @@ function buildEmojiMap(emojis: Iterable<EmojiLike>) {
   return map;
 }
 
-function buildEmojiVariants(emojis: Iterable<EmojiLike>) {
-  const variants = new Map<string, Map<string, EmojiLike>>();
-  const pattern = /^(.+?)[_-]([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+const APPLICATION_EMOJI_TTL = 10 * 60 * 1000;
+let cachedApplicationEmojis: EmojiLike[] = [];
+let cachedAt = 0;
+let inFlightFetch: Promise<void> | null = null;
 
-  for (const emoji of emojis) {
-    if (!emoji.name) continue;
-    const match = emoji.name.match(pattern);
-    if (!match) continue;
+async function loadApplicationEmojis(client: Client): Promise<EmojiLike[]> {
+  const application = client.application;
+  if (!application) return [];
 
-    const baseMatch = match[1];
-    const hexMatch = match[2];
-    if (!baseMatch || !hexMatch) continue;
-
-    const base = baseMatch.toLowerCase();
-    const hex = hexMatch.toLowerCase();
-    const byHex = variants.get(base) ?? new Map<string, ApplicationEmoji>();
-    byHex.set(hex, emoji);
-    variants.set(base, byHex);
+  const now = Date.now();
+  if (cachedApplicationEmojis.length > 0 && now - cachedAt < APPLICATION_EMOJI_TTL) {
+    return cachedApplicationEmojis;
   }
 
-  return variants;
+  if (inFlightFetch) {
+    await inFlightFetch;
+    return cachedApplicationEmojis;
+  }
+
+  inFlightFetch = (async () => {
+    try {
+      await application.fetch();
+      const emojis = await application.emojis.fetch();
+      cachedApplicationEmojis = Array.from(emojis.values());
+      cachedAt = Date.now();
+    } catch (error) {
+      logger.error(error);
+    } finally {
+      inFlightFetch = null;
+    }
+  })();
+
+  await inFlightFetch;
+  return cachedApplicationEmojis;
 }
 
 export async function createEmojiFormatter(options: {
@@ -43,55 +55,27 @@ export async function createEmojiFormatter(options: {
   guildId: string;
   guildEmojis?: Iterable<EmojiLike>;
 }): Promise<(name: string) => string> {
-  const { client, guildId, guildEmojis } = options;
-  const color = await getEmojiColor(guildId);
-  const colorKey = color?.toLowerCase() ?? null;
-  const colorCandidates: string[] = [];
-
-  if (colorKey) {
-    colorCandidates.push(colorKey);
-    if (colorKey.length === 8) colorCandidates.push(colorKey.slice(2));
-    if (colorKey.length === 6) colorCandidates.push(`ff${colorKey}`);
-  }
+  const { client, guildEmojis } = options;
 
   let emojiMap = new Map<string, EmojiLike>();
-  let emojiVariants = new Map<string, Map<string, EmojiLike>>();
 
   try {
     const emojiValues: EmojiLike[] = [];
 
-    if (client.application) {
-      await client.application.fetch();
-      const emojis = await client.application.emojis.fetch();
-      emojiValues.push(...emojis.values());
-    }
+    const applicationEmojis = await loadApplicationEmojis(client);
+    emojiValues.push(...applicationEmojis);
 
     if (guildEmojis) {
       emojiValues.push(...guildEmojis);
     }
 
     emojiMap = buildEmojiMap(emojiValues);
-    emojiVariants = buildEmojiVariants(emojiValues);
   } catch (error) {
     logger.error(error);
   }
 
   return (name: string) => {
     const baseKey = name.toLowerCase();
-
-    if (colorCandidates.length > 0) {
-      const variantsForBase = emojiVariants.get(baseKey);
-      for (const candidate of colorCandidates) {
-        const variant = variantsForBase?.get(candidate);
-        if (variant) return variant.toString();
-
-        const direct =
-          emojiMap.get(`${baseKey}_${candidate}`) ??
-          emojiMap.get(`${baseKey}-${candidate}`) ??
-          emojiMap.get(`${baseKey}${candidate}`);
-        if (direct) return direct.toString();
-      }
-    }
 
     const base = emojiMap.get(baseKey) ?? emojiMap.get(name);
     if (base) return base.toString();

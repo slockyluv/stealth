@@ -2,7 +2,7 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction, MessageFlags, ty
 import type { Command } from '../../types/command.js';
 import { ALLOW_PING, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { createEmojiFormatter } from '../emoji.js';
-import { buildSuccessView } from '../responses/messageBuilders.js';
+import { buildTextContainer } from '../responses/messageBuilders.js';
 
 export const ping: Command = {
   data: new SlashCommandBuilder()
@@ -18,8 +18,9 @@ export const ping: Command = {
 
     if (!(await enforceInteractionAllow(interaction, ALLOW_PING, { formatEmoji }))) return;
 
+    const ping = Math.max(0, Math.round(Date.now() - interaction.createdTimestamp));
     await interaction.reply({
-      components: buildSuccessView(formatEmoji, '🏓 Pong!'),
+      components: buildTextContainer(`**Задержка: ${ping} ms**`),
       flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
     });
   },
@@ -34,6 +35,10 @@ export const ping: Command = {
     if (!(await enforceMessageAllow(message, ALLOW_PING, { formatEmoji }))) return;
     
     if (!message.channel?.isSendable()) return;
-    await message.channel.send({ components: buildSuccessView(formatEmoji, '🏓 Pong!'), flags: MessageFlags.IsComponentsV2 });
+    const ping = Math.max(0, Math.round(Date.now() - message.createdTimestamp));
+    await message.channel.send({
+      components: buildTextContainer(`**Задержка: ${ping} ms**`),
+      flags: MessageFlags.IsComponentsV2
+    });
   }
 };

@@ -12,6 +12,7 @@ import { buildWarningView } from '../responses/messageBuilders.js';
 export type AllowList = string[];
 
 export const ALLOW_PING: AllowList = [];
+export const ALLOW_CLEAR: AllowList = [];
 export const ALLOW_UI: AllowList = [];
 export const ALLOW_SERVER: AllowList = [];
 export const ALLOW_SETTINGS: AllowList = [];

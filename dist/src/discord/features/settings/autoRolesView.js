@@ -135,8 +135,7 @@ export async function buildSettingsMainView(guild) {
         '',
         '*・Журнал действий*',
         '',
-        '*・Список стран*',
-        ''
+        '*・Список стран*'
     ].join('\n');
     const selectMenu = new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('settings', 'section'))

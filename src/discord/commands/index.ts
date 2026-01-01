@@ -1,4 +1,5 @@
 import { ping } from './ping.js';
+import { clear } from './clear.js';
 import { ui } from './ui.js';
 import { server } from './server.js';
 import { settings } from './settings.js';
@@ -14,6 +15,7 @@ import { regCountry, unreg } from './regCountry.js';
 
 export const commands = [
   ping,
+  clear,
   ui,
   server,
   settings,

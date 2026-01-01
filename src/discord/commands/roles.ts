@@ -21,6 +21,7 @@ import { logger } from '../../shared/logger.js';
 import { ALLOW_ADD_ROLE, ALLOW_TAKE_ROLE, ALLOW_TEMP_ROLE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { addTempRole, setPendingActionModerator } from '../../services/actionLogState.js';
 import { pluralize } from '../../shared/time.js';
+import { buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
 
 const ROLE_PROMPT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 90 * 24 * 60 * 60 * 1000;
@@ -87,70 +88,16 @@ function buildTextView(text: string): TopLevelComponentData[] {
   return [container];
 }
 
-function buildAddRoleHintView(): TopLevelComponentData[] {
-  const components: ComponentInContainerData[] = [
-    buildTextLine('# Команда add-role'),
-    buildTextLine('*Выдача роли указанному пользователю.*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Использование:**'),
-    buildTextLine('> *!add-role <@Пользователь> [Название роли]*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Пример:**'),
-    buildTextLine('> *!add-role @Пользователь Support*')
-  ];
-
-  const container: ContainerComponentData = {
-    type: ComponentType.Container,
-    components
-  };
-
-  return [container];
+function buildAddRoleHintView(formatEmoji: (name: string) => string): TopLevelComponentData[] {
+  return buildUsageView(formatEmoji, '!add-role <@Пользователь> [Название роли]');
 }
 
-function buildTakeRoleHintView(): TopLevelComponentData[] {
-  const components: ComponentInContainerData[] = [
-    buildTextLine('# Команда take-role'),
-    buildTextLine('*Снятие роли с указанного пользователя.*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Использование:**'),
-    buildTextLine('> *!take-role <@Пользователь> [Название роли]*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Пример:**'),
-    buildTextLine('> *!take-role @Пользователь Support*')
-  ];
-
-  const container: ContainerComponentData = {
-    type: ComponentType.Container,
-    components
-  };
-
-  return [container];
+function buildTakeRoleHintView(formatEmoji: (name: string) => string): TopLevelComponentData[] {
+  return buildUsageView(formatEmoji, '!take-role <@Пользователь> [Название роли]');
 }
 
-function buildTempRoleHintView(): TopLevelComponentData[] {
-  const components: ComponentInContainerData[] = [
-    buildTextLine('# Команда temp-role'),
-    buildTextLine('*Временная выдача роли указанному пользователю.*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Использование:**'),
-    buildTextLine('> *!temp-role <@Пользователь> [Название роли] [Время]*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Пример:**'),
-    buildTextLine('> *!temp-role @Пользователь Support 1д*')
-  ];
-
-  const container: ContainerComponentData = {
-    type: ComponentType.Container,
-    components
-  };
-
-  return [container];
+function buildTempRoleHintView(formatEmoji: (name: string) => string): TopLevelComponentData[] {
+  return buildUsageView(formatEmoji, '!temp-role <@Пользователь> [Название роли] [Время]');
 }
 
 function parseDuration(input: string): { ms: number; label: string } | null {
@@ -279,8 +226,8 @@ function buildRoleActionSuccessView(options: {
 }): TopLevelComponentData[] {
   const { formatEmoji, emojiName, roleId, userMention, moderatorMention, durationLabel, temporary } = options;
   const header = temporary
-    ? `${formatEmoji(emojiName)} Временная роль <@&${roleId}> успешно выдана!`
-    : `${formatEmoji(emojiName)} Роль <@&${roleId}> успешно ${emojiName === 'minus' ? 'снята' : 'выдана'}!`;
+    ? `${formatEmoji('slide_d')} Временная роль <@&${roleId}> успешно выдана!`
+    : `${formatEmoji('slide_d')} Роль <@&${roleId}> успешно ${emojiName === 'minus' ? 'снята' : 'выдана'}!`;;
 
   const components: ComponentInContainerData[] = [];
   components.push(buildTextLine(`**${header}**`));
@@ -309,7 +256,7 @@ async function promptForRoleSelection(options: {
 }): Promise<Role | null> {
   const { channel, authorId, roles, formatEmoji, reply } = options;
   if (!channel || !('createMessageCollector' in channel) || typeof channel.createMessageCollector !== 'function') {
-    await reply(buildTextView('Канал не позволяет принимать ввод.'));
+    await reply(buildWarningView(formatEmoji, 'Канал не позволяет принимать ввод.'));
     return null;
   }
 
@@ -503,8 +450,13 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
   const { interaction, action } = options;
 
   if (!interaction.inCachedGuild()) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
     await interaction.reply({
-      components: buildTextView('Команда доступна только на сервере.'),
+      components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
       flags: MessageFlags.IsComponentsV2
     });
     return;
@@ -521,7 +473,7 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
 
   if (!hasManageRoles(interaction)) {
     await interaction.reply({
-      components: buildTextView('Требуется право **Управление ролями**.'),
+      components: buildWarningView(formatEmoji, 'Требуется право **Управление ролями**.'),
       flags: MessageFlags.IsComponentsV2
     });
     return;
@@ -532,7 +484,11 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
   const durationRaw = interaction.options.getString('duration') ?? undefined;
 
   if (!targetUser || !roleQuery || (action === 'temp' && !durationRaw)) {
-    const hint = action === 'add' ? buildAddRoleHintView() : action === 'remove' ? buildTakeRoleHintView() : buildTempRoleHintView();
+    const hint = action === 'add'
+      ? buildAddRoleHintView(formatEmoji)
+      : action === 'remove'
+        ? buildTakeRoleHintView(formatEmoji)
+        : buildTempRoleHintView(formatEmoji);
     await interaction.reply({ components: hint, flags: MessageFlags.IsComponentsV2 });
     return;
   }
@@ -584,8 +540,8 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
 
   if (action === 'temp') {
     const parsed = durationRaw ? parseDuration(durationRaw) : null;
-    if (!parsed) {
-      const components = buildTempRoleHintView();
+  if (!parsed) {
+      const components = buildTempRoleHintView(formatEmoji);
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({ components, flags: MessageFlags.IsComponentsV2 });
       } else {
@@ -601,7 +557,7 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
       moderatorId: interaction.user.id
     });
     if (!success) {
-      const components = buildTextView('Не удалось выдать роль. Проверьте права бота.');
+      const components = buildWarningView(formatEmoji, 'Не удалось выдать роль. Проверьте права бота.');
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({ components, flags: MessageFlags.IsComponentsV2 });
       } else {
@@ -647,7 +603,7 @@ async function executeRoleInteraction(options: { interaction: ChatInputCommandIn
     moderatorId: interaction.user.id
   });
   if (!success) {
-    const components = buildTextView('Не удалось изменить роль. Проверьте права бота.');
+    const components = buildWarningView(formatEmoji, 'Не удалось изменить роль. Проверьте права бота.');
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp({ components, flags: MessageFlags.IsComponentsV2 });
     } else {
@@ -675,8 +631,13 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
   const { message, action, args } = options;
 
   if (!message.guild) {
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
     if (!message.channel?.isSendable()) return;
-    await message.channel.send({ components: buildTextView('Команда доступна только на сервере.'), flags: MessageFlags.IsComponentsV2 });
+    await message.channel.send({ components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'), flags: MessageFlags.IsComponentsV2 });
     return;
   }
 
@@ -686,7 +647,7 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
   if (!hasManageRolesMessage(message)) {
     if (!message.channel?.isSendable()) return;
     await message.channel.send({
-      components: buildTextView('Требуется право **Управление ролями**.'),
+      components: buildWarningView(formatEmoji, 'Требуется право **Управление ролями**.'),
       flags: MessageFlags.IsComponentsV2
     });
     return;
@@ -701,7 +662,11 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
   const [targetIdRaw, roleQueryRaw, duration] = args;
 
   if (!targetIdRaw || !roleQueryRaw || (action === 'temp' && !duration)) {
-    const hint = action === 'add' ? buildAddRoleHintView() : action === 'remove' ? buildTakeRoleHintView() : buildTempRoleHintView();
+    const hint = action === 'add'
+      ? buildAddRoleHintView(formatEmoji)
+      : action === 'remove'
+        ? buildTakeRoleHintView(formatEmoji)
+        : buildTempRoleHintView(formatEmoji);
     if (!message.channel?.isSendable()) return;
     await message.channel.send({ components: hint, flags: MessageFlags.IsComponentsV2 });
     return;
@@ -756,7 +721,7 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
   if (action === 'temp') {
     const parsed = duration ? parseDuration(duration) : null;
     if (!parsed) {
-      const hint = buildTempRoleHintView();
+      const hint = buildTempRoleHintView(formatEmoji);
       if (!message.channel?.isSendable()) return;
       await message.channel.send({ components: hint, flags: MessageFlags.IsComponentsV2 });
       return;
@@ -771,7 +736,7 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
     if (!success) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Не удалось выдать роль. Проверьте права бота.'),
+        components: buildWarningView(formatEmoji, 'Не удалось выдать роль. Проверьте права бота.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -812,7 +777,7 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
   if (!success) {
     if (!message.channel?.isSendable()) return;
     await message.channel.send({
-      components: buildTextView('Не удалось изменить роль. Проверьте права бота.'),
+      components: buildWarningView(formatEmoji, 'Не удалось изменить роль. Проверьте права бота.'),
       flags: MessageFlags.IsComponentsV2
     });
     return;

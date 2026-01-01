@@ -25,6 +25,7 @@ import { createEmojiFormatter } from '../emoji.js';
 import { buildTextView } from '../components/v2Message.js';
 import { buildCustomId } from '../../shared/customId.js';
 import { ALLOW_SERVER, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 
 const numberFormatter = new Intl.NumberFormat('ru-RU');
 
@@ -313,9 +314,15 @@ export const server: Command = {
   data: new SlashCommandBuilder().setName('server').setDescription('Показывает информацию о сервере'),
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.guild) {
       await interaction.reply({
-        components: buildTextView('Эта команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Эта команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -339,12 +346,12 @@ export const server: Command = {
 
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({
-          components: buildTextView('Не удалось получить информацию о сервере. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось получить информацию о сервере. Попробуйте позже.'),
           flags: MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({
-          components: buildTextView('Не удалось получить информацию о сервере. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось получить информацию о сервере. Попробуйте позже.'),
           flags: MessageFlags.IsComponentsV2
         });
       }
@@ -352,10 +359,16 @@ export const server: Command = {
   },
 
   async executeMessage(message: Message) {
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     if (!message.guild) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Эта команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Эта команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -382,7 +395,7 @@ export const server: Command = {
       logger.error(error);
 
       await pendingReply.edit({
-        components: buildTextView('Не удалось получить информацию о сервере. Попробуйте позже.'),
+        components: buildWarningView(formatEmoji, 'Не удалось получить информацию о сервере. Попробуйте позже.'),
         flags: MessageFlags.IsComponentsV2
       });
     }

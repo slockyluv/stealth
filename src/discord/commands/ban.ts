@@ -33,7 +33,7 @@ function buildTextLine(content: string): TextDisplayComponentData {
 }
 
 function buildUsageView(formatEmoji: (name: string) => string, usage: string): TopLevelComponentData[] {
-  return buildTextView(`**${formatEmoji('staff_warn')} Использование:** ${usage}`);
+  return buildTextView(`**${formatEmoji('staff_warn')} Использование:** ${usage}**`);
 }
 
 async function buildBanSuccessView(options: {

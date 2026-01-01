@@ -17,6 +17,7 @@ import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_SETNICK, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { setPendingActionModerator } from '../../services/actionLogState.js';
+import { buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -41,26 +42,8 @@ function buildTextView(text: string): TopLevelComponentData[] {
   return [container];
 }
 
-function buildSetnickHintView(): TopLevelComponentData[] {
-  const components: ComponentInContainerData[] = [
-    buildTextLine('# Команда setnick'),
-    buildTextLine('*Изменение отображаемого никнейма пользователя на сервере.*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Использование:**'),
-    buildTextLine('> *!setnick <@Пользователь> [nickname]*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Пример:**'),
-    buildTextLine('> *!setnick @Пользователь Россия*')
-  ];
-
-  const container: ContainerComponentData = {
-    type: ComponentType.Container,
-    components
-  };
-
-  return [container];
+function buildSetnickHintView(formatEmoji: (name: string) => string): TopLevelComponentData[] {
+  return buildUsageView(formatEmoji, '!setnick <@Пользователь> [nickname]');
 }
 
 async function buildSuccessView(options: {
@@ -71,7 +54,7 @@ async function buildSuccessView(options: {
 }): Promise<TopLevelComponentData[]> {
   const { moderatorMention, targetMention, nickname, formatEmoji } = options;
 
-  const headerContent = `${formatEmoji('verify')} Отображаемый никнейм пользователя ${targetMention} успешно изменен!`;
+  const headerContent = `${formatEmoji('slide_d')} Отображаемый никнейм пользователя ${targetMention} успешно изменен!`;
   const components: ComponentInContainerData[] = [];
 
   components.push(buildTextLine(`**${headerContent}**`));
@@ -129,9 +112,15 @@ export const setnick: Command = {
   data: setnickCommand,
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -141,7 +130,7 @@ export const setnick: Command = {
 
     if (!hasManageNicknames(interaction)) {
       await interaction.reply({
-        components: buildTextView('Требуется право **Управление никнеймами**.'),
+        components: buildWarningView(formatEmoji, 'Требуется право **Управление никнеймами**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -150,7 +139,7 @@ export const setnick: Command = {
     const botMember = interaction.guild.members.me;
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ManageNicknames)) {
       await interaction.reply({
-        components: buildTextView('У бота нет права **Управление никнеймами**.'),
+        components: buildWarningView(formatEmoji, 'У бота нет права **Управление никнеймами**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -164,8 +153,8 @@ export const setnick: Command = {
     if (nicknameValidation !== 'ok') {
       const components =
         nicknameValidation === 'empty'
-          ? buildSetnickHintView()
-          : buildTextView('Укажите никнейм длиной до 32 символов.');
+          ? buildSetnickHintView(formatEmoji)
+          : buildWarningView(formatEmoji, 'Укажите никнейм длиной до 32 символов.');
 
       await interaction.reply({
         components,
@@ -178,7 +167,7 @@ export const setnick: Command = {
 
     if (!targetMember) {
       await interaction.reply({
-        components: buildTextView('Пользователь не найден на сервере.'),
+        components: buildWarningView(formatEmoji, 'Пользователь не найден на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -186,7 +175,7 @@ export const setnick: Command = {
 
     if (!targetMember.manageable) {
       await interaction.reply({
-        components: buildTextView('Нельзя изменить отображаемое имя этого пользователя.'),
+        components: buildWarningView(formatEmoji, 'Нельзя изменить отображаемое имя этого пользователя.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -203,17 +192,11 @@ export const setnick: Command = {
     } catch (error) {
       logger.error(error);
       await interaction.reply({
-        components: buildTextView('Не удалось изменить никнейм пользователя.'),
+        components: buildWarningView(formatEmoji, 'Не удалось изменить никнейм пользователя.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
     }
-
-    const formatEmoji = await createEmojiFormatter({
-      client: interaction.client,
-      guildId: interaction.guildId,
-      guildEmojis: interaction.guild.emojis.cache.values()
-    });
 
     await interaction.reply({
       components: await buildSuccessView({
@@ -227,10 +210,16 @@ export const setnick: Command = {
   },
 
   async executeMessage(message: Message, args: string[]) {
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     if (!message.inGuild()) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -241,7 +230,7 @@ export const setnick: Command = {
     if (!hasManageNicknamesMessage(message)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Требуется право **Управление никнеймами**.'),
+        components: buildWarningView(formatEmoji, 'Требуется право **Управление никнеймами**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -251,7 +240,7 @@ export const setnick: Command = {
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ManageNicknames)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('У бота нет права **Управление никнеймами**.'),
+        components: buildWarningView(formatEmoji, 'У бота нет права **Управление никнеймами**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -262,7 +251,7 @@ export const setnick: Command = {
     if (!targetRaw) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildSetnickHintView(),
+        components: buildSetnickHintView(formatEmoji),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -273,7 +262,9 @@ export const setnick: Command = {
     if (nicknameValidation !== 'ok') {
       if (!message.channel?.isSendable()) return;
       const components =
-        nicknameValidation === 'empty' ? buildSetnickHintView() : buildTextView('Укажите никнейм длиной до 32 символов.');
+        nicknameValidation === 'empty'
+          ? buildSetnickHintView(formatEmoji)
+          : buildWarningView(formatEmoji, 'Укажите никнейм длиной до 32 символов.');
 
       await message.channel.send({
         components,
@@ -293,7 +284,7 @@ export const setnick: Command = {
     if (!targetMember) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Пользователь не найден на сервере.'),
+        components: buildWarningView(formatEmoji, 'Пользователь не найден на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -302,7 +293,7 @@ export const setnick: Command = {
     if (!targetMember.manageable) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Нельзя изменить отображаемое имя этого пользователя.'),
+        components: buildWarningView(formatEmoji, 'Нельзя изменить отображаемое имя этого пользователя.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -320,17 +311,11 @@ export const setnick: Command = {
       logger.error(error);
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Не удалось изменить никнейм пользователя.'),
+        components: buildWarningView(formatEmoji, 'Не удалось изменить никнейм пользователя.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
     }
-
-    const formatEmoji = await createEmojiFormatter({
-      client: message.client,
-      guildId: message.guildId,
-      guildEmojis: message.guild.emojis.cache.values()
-    });
 
     if (!message.channel?.isSendable()) return;
 

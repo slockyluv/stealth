@@ -25,5 +25,5 @@ export function buildSuccessView(formatEmoji: (name: string) => string, message:
 }
 
 export function buildUsageView(formatEmoji: (name: string) => string, usage: string): TopLevelComponentData[] {
-  return buildTextContainer(`**${formatEmoji('staff_warn')} Использование:** ${usage}`);
+  return buildTextContainer(`**${formatEmoji('staff_warn')} Использование:** ${usage}**`);
 }

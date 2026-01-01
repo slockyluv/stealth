@@ -1,32 +1,29 @@
 import {
-  ComponentType,
   MessageFlags,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
-  type Message,
-  type TopLevelComponentData
+  type Message
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildRegistrationView } from '../features/registration/registrationView.js';
 import { getUserRegistration } from '../../services/countryRegistrationService.js';
 import { logger } from '../../shared/logger.js';
-
-function buildTextDisplayComponents(content: string): TopLevelComponentData[] {
-  return [
-    {
-      type: ComponentType.Container,
-      components: [{ type: ComponentType.TextDisplay, content }]
-    }
-  ];
-}
+import { createEmojiFormatter } from '../emoji.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 
 export const reg: Command = {
   data: new SlashCommandBuilder().setName('reg').setDescription('Автоматическая регистрация государства'),
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -41,16 +38,14 @@ export const reg: Command = {
       const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
       if (existingRegistration) {
         await interaction.followUp({
-          components: buildTextDisplayComponents(
-            `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`
-          ),
+          components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }
     } catch (error) {
       logger.error(error);
       await interaction.editReply({
-        components: buildTextDisplayComponents('Не удалось открыть меню регистрации. Попробуйте позже.'),
+        components: buildWarningView(formatEmoji, 'Не удалось открыть меню регистрации. Попробуйте позже.'),
         flags: MessageFlags.IsComponentsV2
       });
     }
@@ -59,6 +54,11 @@ export const reg: Command = {
   async executeMessage(message: Message) {
     if (!message.inGuild() || !message.guild) return;
     if (!message.channel.isSendable()) return;
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
 
     try {
       const view = await buildRegistrationView({ guild: message.guild });
@@ -66,7 +66,7 @@ export const reg: Command = {
     } catch (error) {
       logger.error(error);
       await message.channel.send({
-        components: buildTextDisplayComponents('Не удалось открыть меню регистрации. Попробуйте позже.'),
+        components: buildWarningView(formatEmoji, 'Не удалось открыть меню регистрации. Попробуйте позже.'),
         flags: MessageFlags.IsComponentsV2
       });
     }

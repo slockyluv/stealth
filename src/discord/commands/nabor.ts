@@ -1,28 +1,29 @@
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
-  ComponentType,
   MessageFlags,
   type Message
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildNaborView } from '../features/applications/view.js';
 import { logger } from '../../shared/logger.js';
-
-function display(lines: string[]) {
-  return [
-    { type: ComponentType.Container, components: lines.map((content) => ({ type: ComponentType.TextDisplay, content })) }
-  ];
-}
+import { createEmojiFormatter } from '../emoji.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 
 export const nabor: Command = {
   data: new SlashCommandBuilder().setName('nabor').setDescription('Показать открытые вакансии'),
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     try {
       if (!interaction.inCachedGuild()) {
         await interaction.reply({
-          components: display(['Команда доступна только на сервере.']),
+          components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
           flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
         });
         return;
@@ -39,7 +40,7 @@ export const nabor: Command = {
       logger.error(error);
 
       const payload = {
-        components: display(['Произошла ошибка при выполнении команды.']),
+        components: buildWarningView(formatEmoji, 'Произошла ошибка при выполнении команды.'),
         flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
       };
 
@@ -52,11 +53,17 @@ export const nabor: Command = {
   },
 
   async executeMessage(message: Message) {
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     try {
       if (!message.inGuild()) {
         if (!message.channel?.isSendable()) return;
         await message.channel.send({
-          components: display(['Команда доступна только на сервере.']),
+          components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
           flags: MessageFlags.IsComponentsV2
         });
         return;
@@ -75,7 +82,7 @@ export const nabor: Command = {
 
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: display(['Произошла ошибка при выполнении команды.']),
+        components: buildWarningView(formatEmoji, 'Произошла ошибка при выполнении команды.'),
         flags: MessageFlags.IsComponentsV2
       });
     }

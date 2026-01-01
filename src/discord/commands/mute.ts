@@ -19,6 +19,7 @@ import { clearMute, upsertMute } from '../../services/muteService.js';
 import { ALLOW_MUTE, ALLOW_UNMUTE, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { setPendingActionModerator } from '../../services/actionLogState.js';
 import { pluralize } from '../../shared/time.js';
+import { buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
 
 const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
 
@@ -71,28 +72,8 @@ function buildTextLine(content: string): TextDisplayComponentData {
   };
 }
 
-function buildMuteHintView(): TopLevelComponentData[] {
-  const components: ComponentInContainerData[] = [
-    buildTextLine('# Команда mute'),
-    buildTextLine(
-      '*Блокировка отправления сообщений в чат у указанного пользователя. Выдается на определенное время за нарушение правил сервера.*'
-    ),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Использование:**'),
-    buildTextLine('> *!mute <@Пользователь> [Длительность] [Причина]*'),
-    buildSeparator(),
-    buildTextLine('\u200B'),
-    buildTextLine('**Пример:**'),
-    buildTextLine('> *!mute @Пользователь 30м flud*')
-  ];
-
-  const container: ContainerComponentData = {
-    type: ComponentType.Container,
-    components
-  };
-
-  return [container];
+function buildMuteHintView(formatEmoji: (name: string) => string): TopLevelComponentData[] {
+  return buildUsageView(formatEmoji, '!mute <@Пользователь> [Длительность] [Причина]');
 }
 
 function parseDuration(input: string): { ms: number; label: string } | null {
@@ -149,7 +130,7 @@ function buildUnmuteView(options: { targetMention: string; formatEmoji: (name: s
   const container: ContainerComponentData = {
     type: ComponentType.Container,
     components: [
-      buildTextLine(`${formatEmoji('verify')} С пользователя "${targetMention}" снята блокировка чата.`)
+      buildTextLine(`**${formatEmoji('slide_d')} С пользователя "${targetMention}" снята блокировка чата.**`)
     ]
   };
 
@@ -206,9 +187,15 @@ export const mute: Command = {
   data: muteCommand,
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -218,21 +205,16 @@ export const mute: Command = {
 
     if (!hasModerateMembers(interaction)) {
       await interaction.reply({
-        components: buildTextView('Требуется право **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'Требуется право **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
     }
 
     const botMember = interaction.guild.members.me;
-    const formatEmoji = await createEmojiFormatter({
-      client: interaction.client,
-      guildId: interaction.guild.id,
-      guildEmojis: interaction.guild.emojis.cache.values()
-    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
       await interaction.reply({
-        components: buildTextView('У бота нет права **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'У бота нет права **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -245,7 +227,7 @@ export const mute: Command = {
     const duration = parseDuration(durationInput);
     if (!duration) {
       await interaction.reply({
-        components: buildMuteHintView(),
+        components: buildMuteHintView(formatEmoji),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -258,7 +240,7 @@ export const mute: Command = {
 
     if (!targetMember) {
       await interaction.reply({
-        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден!**`),
+        components: buildWarningView(formatEmoji, 'Пользователь не найден!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -266,9 +248,7 @@ export const mute: Command = {
 
     if (!targetMember.moderatable) {
       await interaction.reply({
-        components: buildTextView(
-          `**${formatEmoji('staff_warn')} Блокировку чата невозможно выдать указанному пользователю!**`
-        ),
+        components: buildWarningView(formatEmoji, 'Блокировку чата невозможно выдать указанному пользователю!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -289,7 +269,7 @@ export const mute: Command = {
     } catch (error) {
       logger.error(error);
       await interaction.reply({
-        components: buildTextView('Не удалось выдать блокировку. Проверьте права бота.'),
+        components: buildWarningView(formatEmoji, 'Не удалось выдать блокировку. Проверьте права бота.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -322,10 +302,16 @@ export const mute: Command = {
   },
 
   async executeMessage(message: Message, args: string[]) {
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     if (!message.guild) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -336,22 +322,17 @@ export const mute: Command = {
     if (!hasModerateMembersMessage(message)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Требуется право **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'Требуется право **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
     }
 
     const botMember = message.guild.members.me;
-    const formatEmoji = await createEmojiFormatter({
-      client: message.client,
-      guildId: message.guild.id,
-      guildEmojis: message.guild.emojis.cache.values()
-    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('У бота нет права **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'У бота нет права **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -362,7 +343,7 @@ export const mute: Command = {
     if (!targetRaw || !durationRaw) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildMuteHintView(),
+        components: buildMuteHintView(formatEmoji),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -372,7 +353,7 @@ export const mute: Command = {
     if (!duration) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildMuteHintView(),
+        components: buildMuteHintView(formatEmoji),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -389,7 +370,7 @@ export const mute: Command = {
     if (!targetMember) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден!**`),
+        components: buildWarningView(formatEmoji, 'Пользователь не найден!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -398,9 +379,7 @@ export const mute: Command = {
     if (!targetMember.moderatable) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView(
-          `**${formatEmoji('staff_warn')} Блокировку чата невозможно выдать указанному пользователю!**`
-        ),
+        components: buildWarningView(formatEmoji, 'Блокировку чата невозможно выдать указанному пользователю!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -424,7 +403,7 @@ export const mute: Command = {
       logger.error(error);
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Не удалось выдать блокировку. Проверьте права бота.'),
+        components: buildWarningView(formatEmoji, 'Не удалось выдать блокировку. Проверьте права бота.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -478,9 +457,15 @@ export const unmute: Command = {
   data: unmuteCommand,
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -490,21 +475,16 @@ export const unmute: Command = {
 
     if (!hasModerateMembers(interaction)) {
       await interaction.reply({
-        components: buildTextView('Требуется право **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'Требуется право **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
     }
 
     const botMember = interaction.guild.members.me;
-    const formatEmoji = await createEmojiFormatter({
-      client: interaction.client,
-      guildId: interaction.guild.id,
-      guildEmojis: interaction.guild.emojis.cache.values()
-    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
       await interaction.reply({
-        components: buildTextView('У бота нет права **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'У бота нет права **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -518,7 +498,7 @@ export const unmute: Command = {
 
     if (!targetMember) {
       await interaction.reply({
-        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден!**`),
+        components: buildWarningView(formatEmoji, 'Пользователь не найден!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -526,9 +506,7 @@ export const unmute: Command = {
 
     if (!targetMember.moderatable) {
       await interaction.reply({
-        components: buildTextView(
-          `**${formatEmoji('staff_warn')} Блокировку чата невозможно снять указанному пользователю!**`
-        ),
+        components: buildWarningView(formatEmoji, 'Блокировку чата невозможно снять указанному пользователю!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -545,7 +523,7 @@ export const unmute: Command = {
     } catch (error) {
       logger.error(error);
       await interaction.reply({
-        components: buildTextView('Не удалось снять блокировку. Проверьте права бота.'),
+        components: buildWarningView(formatEmoji, 'Не удалось снять блокировку. Проверьте права бота.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -569,10 +547,16 @@ export const unmute: Command = {
   },
 
   async executeMessage(message: Message, args: string[]) {
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     if (!message.guild) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -583,22 +567,17 @@ export const unmute: Command = {
     if (!hasModerateMembersMessage(message)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Требуется право **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'Требуется право **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
     }
 
     const botMember = message.guild.members.me;
-    const formatEmoji = await createEmojiFormatter({
-      client: message.client,
-      guildId: message.guild.id,
-      guildEmojis: message.guild.emojis.cache.values()
-    });
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('У бота нет права **Модерация участников**.'),
+        components: buildWarningView(formatEmoji, 'У бота нет права **Модерация участников**.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -608,9 +587,7 @@ export const unmute: Command = {
     if (!targetRaw) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView(
-          `**${formatEmoji('staff_warn')} Укажите пользователя для снятия блокировки чата!**`
-        ),
+        components: buildWarningView(formatEmoji, 'Укажите пользователя для снятия блокировки чата!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -627,7 +604,7 @@ export const unmute: Command = {
     if (!targetMember) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView(`**${formatEmoji('staff_warn')} Пользователь не найден!**`),
+        components: buildWarningView(formatEmoji, 'Пользователь не найден!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -636,9 +613,7 @@ export const unmute: Command = {
     if (!targetMember.moderatable) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView(
-          `**${formatEmoji('staff_warn')} Блокировку чата невозможно снять указанному пользователю!**`
-        ),
+        components: buildWarningView(formatEmoji, 'Блокировку чата невозможно снять указанному пользователю!'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -656,7 +631,7 @@ export const unmute: Command = {
       logger.error(error);
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Не удалось снять блокировку. Проверьте права бота.'),
+        components: buildWarningView(formatEmoji, 'Не удалось снять блокировку. Проверьте права бота.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;

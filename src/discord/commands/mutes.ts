@@ -6,9 +6,10 @@ import {
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { buildMutesView } from '../features/mutesView.js';
-import { buildTextView } from '../components/v2Message.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_MUTES, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { createEmojiFormatter } from '../emoji.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 
 const mutesCommand = new SlashCommandBuilder()
   .setName('mutes')
@@ -25,9 +26,15 @@ export const mutes: Command = {
   data: mutesCommand,
 
   async execute(interaction: ChatInputCommandInteraction) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -43,17 +50,23 @@ export const mutes: Command = {
     } catch (error) {
       logger.error(error);
       await interaction.editReply({
-        components: buildTextView('Не удалось получить список мьютов.'),
+        components: buildWarningView(formatEmoji, 'Не удалось получить список мьютов.'),
         flags: MessageFlags.IsComponentsV2
       });
     }
   },
 
   async executeMessage(message: Message, args: string[]) {
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
     if (!message.guild) {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Команда доступна только на сервере.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'),
         flags: MessageFlags.IsComponentsV2
       });
       return;
@@ -74,7 +87,7 @@ export const mutes: Command = {
       logger.error(error);
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextView('Не удалось получить список мьютов.'),
+        components: buildWarningView(formatEmoji, 'Не удалось получить список мьютов.'),
         flags: MessageFlags.IsComponentsV2
       });
     }

@@ -10,7 +10,8 @@ export const ping: Command = {
     .setDescription('Ping command'),
 
   async execute(interaction: ChatInputCommandInteraction) {
-    const ping = Math.max(0, Math.round(Date.now() - interaction.createdTimestamp));
+    const deliveryMs = Math.max(0, Math.round(Date.now() - interaction.createdTimestamp));
+    const wsMs = Math.max(0, Math.round(interaction.client.ws.ping));
     const formatEmoji = await createEmojiFormatter({
       client: interaction.client,
       guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
@@ -18,14 +19,24 @@ export const ping: Command = {
     });
 
     if (!(await enforceInteractionAllow(interaction, ALLOW_PING, { formatEmoji }))) return;
+    const replyStartedAt = Date.now();
     await interaction.reply({
-      components: buildTextContainer(`**Задержка: ${ping} ms**`),
+      components: buildTextContainer(
+        `**WS:** ${wsMs} ms\n**Delivery:** ${deliveryMs} ms\n**API:** …`
+      ),
       flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+    const apiMs = Math.max(0, Math.round(Date.now() - replyStartedAt));
+    await interaction.editReply({
+      components: buildTextContainer(
+        `**WS:** ${wsMs} ms\n**Delivery:** ${deliveryMs} ms\n**API:** ${apiMs} ms`
+      )
     });
   },
 
   async executeMessage(message: Message) {
-    const ping = Math.max(0, Math.round(Date.now() - message.createdTimestamp));
+    const deliveryMs = Math.max(0, Math.round(Date.now() - message.createdTimestamp));
+    const wsMs = Math.max(0, Math.round(message.client.ws.ping));
     const formatEmoji = await createEmojiFormatter({
       client: message.client,
       guildId: message.guildId ?? message.client.application?.id ?? 'global',
@@ -35,9 +46,18 @@ export const ping: Command = {
     if (!(await enforceMessageAllow(message, ALLOW_PING, { formatEmoji }))) return;
     
     if (!message.channel?.isSendable()) return;
-    await message.channel.send({
-      components: buildTextContainer(`**Задержка: ${ping} ms**`),
+    const replyStartedAt = Date.now();
+    const sentMessage = await message.channel.send({
+      components: buildTextContainer(
+        `**WS:** ${wsMs} ms\n**Delivery:** ${deliveryMs} ms\n**API:** …`
+      ),
       flags: MessageFlags.IsComponentsV2
+    });
+    const apiMs = Math.max(0, Math.round(Date.now() - replyStartedAt));
+    await sentMessage.edit({
+      components: buildTextContainer(
+        `**WS:** ${wsMs} ms\n**Delivery:** ${deliveryMs} ms\n**API:** ${apiMs} ms`
+      )
     });
   }
 };

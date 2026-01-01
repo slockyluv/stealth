@@ -15,8 +15,6 @@ async function safeReply(message: Message, content: string) {
 export async function messageCreate(message: Message) {
   if (message.author.bot) return;
 
-  void upsertUser(message.author.id).catch((err) => logger.error(err));
-
   const content = message.content.trim();
   if (!content.startsWith(COMMAND_PREFIX)) return;
 
@@ -28,9 +26,10 @@ export async function messageCreate(message: Message) {
 
   const command = message.client.commands.get(commandName.toLowerCase());
   if (!command?.executeMessage) {
-    await safeReply(message, 'Команда не найдена.');
     return;
   }
+
+  void upsertUser(message.author.id).catch((err) => logger.error(err));
 
   try {
     await command.executeMessage(message, args);

@@ -6,10 +6,7 @@ export async function ready(client: Client) {
   if (!client.user) return;
   logger.info(`Logged in as ${client.user.tag}`);
 
-  const tasks: Promise<void>[] = [];
   for (const guild of client.guilds.cache.values()) {
-    tasks.push(snapshotGuildInvites(guild));
+    await snapshotGuildInvites(guild);
   }
-
-  await Promise.all(tasks);
 }

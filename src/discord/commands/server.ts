@@ -330,7 +330,9 @@ export const server: Command = {
 
     if (!(await enforceInteractionAllow(interaction, ALLOW_SERVER))) return;
 
-    await interaction.deferReply();
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
 
     try {
       const components = await buildServerView({

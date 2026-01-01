@@ -1,4 +1,4 @@
-import type { Interaction } from 'discord.js';
+import { MessageFlags, type Interaction, type InteractionReplyOptions } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import { upsertUser } from '../../services/userService.js';
 import { parseCustomId, customIdKey } from '../../shared/customId.js';
@@ -17,6 +17,42 @@ async function safeReply(interaction: Interaction, message: string) {
   }
 }
 
+function hasEphemeralFlag(flags: InteractionReplyOptions['flags']) {
+  if (!flags) return false;
+  if (Array.isArray(flags)) {
+    return flags.includes(MessageFlags.Ephemeral);
+  }
+  return (flags & MessageFlags.Ephemeral) === MessageFlags.Ephemeral;
+}
+
+async function replyWithDeferredSupport(
+  interaction: Interaction,
+  options: InteractionReplyOptions
+) {
+  if (!interaction.isRepliable()) return;
+
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.reply(options);
+    return;
+  }
+
+  const wantsEphemeral = hasEphemeralFlag(options.flags);
+  if (wantsEphemeral) {
+    try {
+      if (!interaction.replied) {
+        await interaction.deleteReply();
+      }
+    } catch {
+      // ignore
+    }
+    await interaction.followUp(options);
+    return;
+  }
+
+  const { flags: _flags, ...editOptions } = options;
+  await interaction.editReply(editOptions);
+}
+
 export async function interactionCreate(interaction: Interaction) {
   // Пользовательский фундамент (не блокируем команды при сбоях БД)
   if ('user' in interaction && interaction.user) {
@@ -31,6 +67,16 @@ export async function interactionCreate(interaction: Interaction) {
     if (!command) return;
 
     try {
+      if (interaction.commandName !== 'ping' && !interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ ephemeral: false });
+      }
+
+      const replyHandler = replyWithDeferredSupport.bind(null, interaction);
+      const originalReply = interaction.reply.bind(interaction);
+      const patchedReply = ((options: InteractionReplyOptions) =>
+        replyHandler(options).catch((err) => logger.error(err))) as typeof originalReply;
+      (interaction as { reply: typeof originalReply }).reply = patchedReply;
+
       await command.execute(interaction);
     } catch (err) {
       logger.error(err);

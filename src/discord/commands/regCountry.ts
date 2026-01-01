@@ -86,14 +86,16 @@ export const regCountry: Command = {
 
     const countryLookup = findCountryByQuery(countryInput);
     if (!countryLookup) {
-    await interaction.reply({
-      components: buildWarningView(formatEmoji, 'Страна не найдена. Уточните название или эмодзи.'),
-      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-    });
-    return;
-  }
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Страна не найдена. Уточните название или эмодзи.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
 
-    await interaction.deferReply({ ephemeral: true });
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
 
     try {
       const result = await registerCountryForUser(
@@ -238,7 +240,9 @@ export const unreg: Command = {
 
     const targetUser = interaction.options.getUser('user', true);
 
-    await interaction.deferReply({ ephemeral: true });
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
 
     try {
       const result = await unregisterCountryForUser(interaction.guildId, targetUser.id);

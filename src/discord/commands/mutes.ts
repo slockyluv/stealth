@@ -42,7 +42,9 @@ export const mutes: Command = {
 
     if (!(await enforceInteractionAllow(interaction, ALLOW_MUTES))) return;
 
-    await interaction.deferReply();
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
 
     try {
       const view = await buildMutesView({ guild: interaction.guild, page: 1 });

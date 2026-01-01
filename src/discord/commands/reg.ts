@@ -29,7 +29,9 @@ export const reg: Command = {
       return;
     }
 
-    await interaction.deferReply();
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
 
     try {
       const view = await buildRegistrationView({ guild: interaction.guild });

@@ -101,7 +101,9 @@ export const clear: Command = {
 
     const count = interaction.options.getInteger('count', true);
 
-    await interaction.deferReply({ ephemeral: false });
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: false });
+    }
 
     try {
       const deletedCount = await bulkDeleteMessages(channel as GuildTextBasedChannel, count);

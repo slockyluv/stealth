@@ -633,8 +633,7 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
   if (!message.guild) {
     const formatEmoji = await createEmojiFormatter({
       client: message.client,
-      guildId: message.guildId ?? message.client.application?.id ?? 'global',
-      guildEmojis: message.guild?.emojis.cache.values()
+      guildId: message.guildId ?? message.client.application?.id ?? 'global'
     });
     if (!message.channel?.isSendable()) return;
     await message.channel.send({ components: buildWarningView(formatEmoji, 'Команда доступна только на сервере.'), flags: MessageFlags.IsComponentsV2 });
@@ -644,6 +643,12 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
   const allowList = action === 'add' ? ALLOW_ADD_ROLE : action === 'remove' ? ALLOW_TAKE_ROLE : ALLOW_TEMP_ROLE;
   if (!(await enforceMessageAllow(message, allowList))) return;
 
+  const formatEmoji = await createEmojiFormatter({
+    client: message.client,
+    guildId: message.guild.id,
+    guildEmojis: message.guild.emojis.cache.values()
+  });
+
   if (!hasManageRolesMessage(message)) {
     if (!message.channel?.isSendable()) return;
     await message.channel.send({
@@ -652,12 +657,6 @@ async function executeRoleMessage(options: { message: Message; action: 'add' | '
     });
     return;
   }
-
-  const formatEmoji = await createEmojiFormatter({
-    client: message.client,
-    guildId: message.guild.id,
-    guildEmojis: message.guild.emojis.cache.values()
-  });
 
   const [targetIdRaw, roleQueryRaw, duration] = args;
 

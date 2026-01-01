@@ -12,14 +12,10 @@ import {
   type Role,
   type TopLevelComponentData
 } from 'discord.js';
-import { join } from 'node:path';
 import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
 
 const PAGE_SIZE = 15;
-const SETTINGS_BANNER_NAME = 'banner.png';
-const SETTINGS_BANNER_PATH = join(process.cwd(), 'src/assets/settings/banner.png');
-
 export type SettingsView = {
   components: TopLevelComponentData[];
   files?: AttachmentPayload[];
@@ -172,28 +168,27 @@ export async function buildAutoRolesView(options: {
 }
 
 export async function buildSettingsMainView(guild: Guild): Promise<SettingsView> {
-  const bannerAttachment: AttachmentPayload = {
-    attachment: SETTINGS_BANNER_PATH,
-    name: SETTINGS_BANNER_NAME,
-    description: 'Баннер настроек'
-  };
-
-  const description = [
-    '**Настройки сервера**',
-    'Перед началом изучите основные требования, затем выберите нужный раздел ниже.',
-    '',
-    '**Требования:**',
-    '• Иметь 15+ лет',
-    '• Сохранять стрессоустойчивость и адекватность',
-    '• Знать правила сервера',
-    '• Уметь работать в коллективе и помогать другим'
-  ].join('\n');
-
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
     guildId: guild.id,
     guildEmojis: guild.emojis.cache.values()
   });
+
+  const description = [
+    `**${formatEmoji('settings')} Настройки сервера**`,
+    '*Взаимодействуйте с выпадающим меню выбора для управления настройками сервера*'
+  ].join('\n');
+
+  const modules = [
+    '',
+    '*・Автоматические роли*',
+    '',
+    '*・Цвет эмодзи*',
+    '',
+    '*・Журнал действий*',
+    '',
+    '*・Список стран*'
+  ].join('\n');
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(buildCustomId('settings', 'section'))
@@ -231,25 +226,21 @@ export async function buildSettingsMainView(guild: Guild): Promise<SettingsView>
     type: ComponentType.Container,
     components: [
       {
-        type: ComponentType.MediaGallery,
-        items: [
-          {
-            media: {
-              url: `attachment://${SETTINGS_BANNER_NAME}`
-            }
-          }
-        ]
-      },
-      {
         type: ComponentType.TextDisplay,
         content: description
       },
+      { type: ComponentType.Separator, divider: true },
+      {
+        type: ComponentType.TextDisplay,
+        content: modules
+      },
+      { type: ComponentType.Separator, divider: true },
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
     ]
   };
 
   return {
     components: [framed],
-    files: [bannerAttachment]
+    removeAttachments: true
   };
 }

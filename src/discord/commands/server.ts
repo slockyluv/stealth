@@ -45,10 +45,6 @@ type ServerStats = {
   totalMembers: number;
   botCount: number;
   humanCount: number;
-  online: number;
-  idle: number;
-  dnd: number;
-  offline: number;
   totalChannels: number;
   textChannels: number;
   forumChannels: number;
@@ -104,19 +100,6 @@ async function fetchServerStats(guild: Guild): Promise<ServerStats> {
   const botCount = cachedMembers.filter((member) => member.user.bot).size;
   const humanCount = Math.max(totalMembers - botCount, 0);
 
-  let online = 0;
-  let idle = 0;
-  let dnd = 0;
-
-  for (const presence of guild.presences.cache.values()) {
-    const status = presence.status ?? 'offline';
-    if (status === 'online') online += 1;
-    else if (status === 'idle') idle += 1;
-    else if (status === 'dnd') dnd += 1;
-  }
-
-  const offline = Math.max(totalMembers - online - idle - dnd, 0);
-
   const textChannels = validChannels.filter(
     (channel) => channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement
   ).size;
@@ -133,10 +116,6 @@ async function fetchServerStats(guild: Guild): Promise<ServerStats> {
     totalMembers,
     botCount,
     humanCount,
-    online,
-    idle,
-    dnd,
-    offline,
     totalChannels,
     textChannels,
     forumChannels,
@@ -258,21 +237,6 @@ export async function buildServerView(options: {
         `${emoji('private2')} Всего: \`${numberFormatter.format(stats.totalMembers)}\``,
         `${emoji('user')} Люди: \`${numberFormatter.format(stats.humanCount)}\``,
         `${emoji('bots')} Боты: \`${numberFormatter.format(stats.botCount)}\``
-      ])
-    );
-
-    containerComponents.push({ type: ComponentType.TextDisplay, content: '\u200B' });
-    containerComponents.push({
-      type: ComponentType.TextDisplay,
-      content: `**${emoji('star')} Статусы пользователей:**`
-    });
-
-    containerComponents.push(
-      ...buildLineComponents([
-        `${emoji('online')} В сети: \`${numberFormatter.format(stats.online)}\``,
-        `${emoji('noactive')} Неактивны: \`${numberFormatter.format(stats.idle)}\``,
-        `${emoji('disturb')} Не беспокоить: \`${numberFormatter.format(stats.dnd)}\``,
-        `${emoji('offline')} Не в сети: \`${numberFormatter.format(stats.offline)}\``
       ])
     );
   }

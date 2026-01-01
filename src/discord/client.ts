@@ -17,7 +17,6 @@ export function createClient() {
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMembers,
-      GatewayIntentBits.GuildPresences,
       GatewayIntentBits.GuildModeration,
       GatewayIntentBits.GuildInvites,
       GatewayIntentBits.GuildMessages,

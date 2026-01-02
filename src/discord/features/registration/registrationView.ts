@@ -89,7 +89,7 @@ export async function buildRegistrationView(options: {
       content: [
         '*Чтобы зарегистрироваться выберите в выпадающем меню выбора сначала континент, а затем желаемую страну.*',
         '',
-        `**Текущий континент:** *${selectedContinentName}*`
+        `**Текущий континент:** ${selectedContinentName}`
       ].join('\n')
     }
   ];

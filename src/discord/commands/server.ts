@@ -130,7 +130,8 @@ function buildHeaderSection(
   formatEmoji: (name: string) => string
 ): SectionComponentData | TextDisplayComponentData {
   const headerLines = [
-    `**${formatEmoji('information')} Информация о сервере < ${guild.name} >**`,
+    `# ${formatEmoji('information')} Информация о сервере ${guild.name}`,
+    '',
     `**ID сервера:** \`${guild.id}\``
   ];
 
@@ -210,13 +211,16 @@ export async function buildServerView(options: {
   if (tab === 'server') {
     const serverLines = [
       `**${emoji('owner')} Владелец:**`,
+      '',
       ownerUsername,
       `ID \`${guild.ownerId}\``,
       '',
       `**${emoji('otpechatok')} Уровень проверки**`,
+      '',
       formatVerificationLevel(guild.verificationLevel),
       '',
       `**${emoji('date')} Дата создания**`,
+      '',
       `\`${formatFullDateTime(guild.createdAt)}\``
     ];
 

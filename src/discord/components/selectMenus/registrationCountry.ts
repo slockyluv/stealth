@@ -50,27 +50,15 @@ export const registrationCountrySelect: SelectMenuHandler = {
     }
 
     try {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+      await interaction.deferUpdate();
       const result = await registerCountryForUser(interaction.guildId, interaction.user.id, continent.id, country);
 
-      if (result.status === 'registered') {
-        await interaction.followUp({
-          components: buildTextDisplayComponents(`Вы успешно зарегистрировались за **${country.name}**.`),
-          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
-      } else if (result.status === 'alreadyRegistered') {
-        await interaction.followUp({
-          components: buildTextDisplayComponents(
-            `Вы уже зарегистрированы за **${result.registration.countryName}**.`
-          ),
-          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
-      } else {
-        await interaction.followUp({
-          components: buildTextDisplayComponents('Эта страна уже занята. Список свободных стран обновлен.'),
-          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
-      }
+      const responseMessage =
+        result.status === 'registered'
+          ? `Вы успешно зарегистрировались за **${country.name}**.`
+          : result.status === 'alreadyRegistered'
+            ? `Вы уже зарегистрированы за **${result.registration.countryName}**.`
+            : 'Эта страна уже занята. Список свободных стран обновлен.';
 
       const updatedView = await buildRegistrationView({
         guild: interaction.guild,
@@ -78,12 +66,16 @@ export const registrationCountrySelect: SelectMenuHandler = {
         page: Number.isFinite(currentPage) ? currentPage : 1
       });
       await interaction.editReply({ components: updatedView.components, flags: MessageFlags.IsComponentsV2 });
+      await interaction.followUp({
+        components: buildTextDisplayComponents(responseMessage),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
     } catch (error) {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({
+        await interaction.followUp({
           components: buildTextDisplayComponents('Произошла ошибка при регистрации. Попробуйте позже.'),
-          flags: MessageFlags.IsComponentsV2
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({

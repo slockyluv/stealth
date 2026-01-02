@@ -27,7 +27,7 @@ export const registrationContinentSelect: SelectMenuHandler = {
     const selectedContinent = interaction.values[0] as ContinentId | undefined;
 
     try {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+      await interaction.deferUpdate();
       const view = await buildRegistrationView({
         guild: interaction.guild,
         selectedContinentId: selectedContinent,
@@ -37,9 +37,9 @@ export const registrationContinentSelect: SelectMenuHandler = {
     } catch (error) {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({
+        await interaction.followUp({
           components: buildTextDisplayComponents('Не удалось обновить список континентов. Попробуйте позже.'),
-          flags: MessageFlags.IsComponentsV2
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({

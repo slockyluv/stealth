@@ -101,9 +101,7 @@ export async function buildRegistrationView(options: {
       ? new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId(buildCustomId('registration', 'country', selectedContinent.id, `${currentPage}`))
-            .setPlaceholder(
-              totalPages > 1 ? `Выберите страну (${currentPage}/${totalPages})` : 'Выберите страну'
-            )
+            .setPlaceholder('Выберите страну')
             .setMinValues(1)
             .setMaxValues(1)
             .addOptions(

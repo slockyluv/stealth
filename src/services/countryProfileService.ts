@@ -518,9 +518,10 @@ export async function updateCountryPolitics(
 export async function updateCountryDevelopment(
   guildId: string,
   country: Country,
-  updates: Partial<Pick<CountryProfile, 'budget'>>
+  updates: Partial<Pick<CountryProfile, 'budget'>>,
+  db?: PrismaClientOrTransaction
 ): Promise<CountryProfile> {
-  const current = await getCountryProfile(guildId, country);
+  const current = await getCountryProfile(guildId, country, db);
   const budgetValue = updates.budget ?? current.budget ?? DEFAULT_BUDGET;
   const normalizedBudget = typeof budgetValue === 'bigint' ? budgetValue : BigInt(budgetValue);
 
@@ -529,7 +530,40 @@ export async function updateCountryDevelopment(
     budget: normalizedBudget
   };
 
-  return saveCountryProfile(guildId, country, nextProfile);
+  return saveCountryProfile(guildId, country, nextProfile, db);
+}
+
+export type CountryBudgetChangeType = 'increase' | 'decrease' | 'reset';
+
+export type CountryBudgetUpdateResult = {
+  profile: CountryProfile;
+  previousBudget: bigint;
+};
+
+export async function updateCountryBudget(
+  guildId: string,
+  country: Country,
+  options: {
+    type: CountryBudgetChangeType;
+    amount: bigint;
+  }
+): Promise<CountryBudgetUpdateResult> {
+  return prisma.$transaction(async (tx) => {
+    const current = await getCountryProfile(guildId, country, tx);
+    const currentBudget = current.budget ?? DEFAULT_BUDGET;
+    let nextBudget = currentBudget;
+
+    if (options.type === 'increase') {
+      nextBudget = currentBudget + options.amount;
+    } else if (options.type === 'decrease') {
+      nextBudget = currentBudget - options.amount;
+    } else if (options.type === 'reset') {
+      nextBudget = DEFAULT_BUDGET;
+    }
+
+    const profile = await updateCountryDevelopment(guildId, country, { budget: nextBudget }, tx);
+    return { profile, previousBudget: currentBudget };
+  });
 }
 
 export type CountryProfileSection = 'characteristics' | 'politics' | 'development';

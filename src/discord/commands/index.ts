@@ -14,6 +14,7 @@ import { reg } from './reg.js';
 import { regCountry, unreg } from './regCountry.js';
 import { profile } from './profile.js';
 import { finance } from './finance.js';
+import { giveMoney, takeMoney, resetMoney } from './money.js';
 
 export const commands = [
   ping,
@@ -36,5 +37,8 @@ export const commands = [
   regCountry,
   unreg,
   profile,
-  finance
+  finance,
+  giveMoney,
+  takeMoney,
+  resetMoney
 ];

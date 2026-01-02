@@ -1,25 +1,28 @@
-import { ComponentType, MessageFlags, type TopLevelComponentData } from 'discord.js';
+import { MessageFlags } from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildRegistrationView } from '../../features/registration/registrationView.js';
 import { getContinent } from '../../features/settings/countriesView.js';
 import { registerCountryForUser } from '../../../services/countryRegistrationService.js';
 import { logger } from '../../../shared/logger.js';
+import { createEmojiFormatter } from '../../emoji.js';
+import { buildSuccessView, buildWarningView } from '../../responses/messageBuilders.js';
 
-function buildTextDisplayComponents(content: string): TopLevelComponentData[] {
-  return [
-    {
-      type: ComponentType.Container,
-      components: [{ type: ComponentType.TextDisplay, content }]
-    }
-  ];
+async function getFormatEmoji(interaction: Parameters<SelectMenuHandler['execute']>[0]) {
+  return createEmojiFormatter({
+    client: interaction.client,
+    guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+    guildEmojis: interaction.guild?.emojis.cache.values()
+  });
 }
 
 export const registrationCountrySelect: SelectMenuHandler = {
   key: 'registration:country',
   async execute(interaction, ctx) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -33,7 +36,7 @@ export const registrationCountrySelect: SelectMenuHandler = {
 
     if (!continent) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Не удалось определить континент. Обновите меню.'),
+        components: buildWarningView(formatEmoji, 'Не удалось определить континент. Обновите меню.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -43,7 +46,7 @@ export const registrationCountrySelect: SelectMenuHandler = {
 
     if (!country) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Страна не найдена или уже недоступна. Обновите список.'),
+        components: buildWarningView(formatEmoji, 'Страна не найдена или уже недоступна. Обновите список.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -53,12 +56,12 @@ export const registrationCountrySelect: SelectMenuHandler = {
       await interaction.deferUpdate();
       const result = await registerCountryForUser(interaction.guildId, interaction.user.id, continent.id, country);
 
-      const responseMessage =
+      const responseComponents =
         result.status === 'registered'
-          ? `Вы успешно зарегистрировались за **${country.name}**.`
+          ? buildSuccessView(formatEmoji, `Вы успешно зарегистрировались за **${country.name}**.`)
           : result.status === 'alreadyRegistered'
-            ? `Вы уже зарегистрированы за **${result.registration.countryName}**.`
-            : 'Эта страна уже занята. Список свободных стран обновлен.';
+            ? buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${result.registration.countryName}**.`)
+            : buildWarningView(formatEmoji, 'Эта страна уже занята. Список свободных стран обновлен.');
 
       const updatedView = await buildRegistrationView({
         guild: interaction.guild,
@@ -67,19 +70,19 @@ export const registrationCountrySelect: SelectMenuHandler = {
       });
       await interaction.editReply({ components: updatedView.components, flags: MessageFlags.IsComponentsV2 });
       await interaction.followUp({
-        components: buildTextDisplayComponents(responseMessage),
+        components: responseComponents,
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({
-          components: buildTextDisplayComponents('Произошла ошибка при регистрации. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Произошла ошибка при регистрации. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({
-          components: buildTextDisplayComponents('Произошла ошибка при регистрации. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Произошла ошибка при регистрации. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }

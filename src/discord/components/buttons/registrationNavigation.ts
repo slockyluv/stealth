@@ -1,24 +1,27 @@
-import { ComponentType, MessageFlags, type TopLevelComponentData } from 'discord.js';
+import { MessageFlags } from 'discord.js';
 import type { ButtonHandler } from '../../../types/component.js';
 import { buildRegistrationView } from '../../features/registration/registrationView.js';
 import { getContinent } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
+import { createEmojiFormatter } from '../../emoji.js';
+import { buildWarningView } from '../../responses/messageBuilders.js';
 
-function buildTextDisplayComponents(content: string): TopLevelComponentData[] {
-  return [
-    {
-      type: ComponentType.Container,
-      components: [{ type: ComponentType.TextDisplay, content }]
-    }
-  ];
+async function getFormatEmoji(interaction: Parameters<ButtonHandler['execute']>[0]) {
+  return createEmojiFormatter({
+    client: interaction.client,
+    guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+    guildEmojis: interaction.guild?.emojis.cache.values()
+  });
 }
 
 export const registrationBackButton: ButtonHandler = {
   key: 'registration:back',
   async execute(interaction) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -32,12 +35,12 @@ export const registrationBackButton: ButtonHandler = {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({
-          components: buildTextDisplayComponents('Не удалось открыть список континентов. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список континентов. Попробуйте позже.'),
           flags: MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({
-          components: buildTextDisplayComponents('Не удалось открыть список континентов. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список континентов. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }
@@ -48,9 +51,11 @@ export const registrationBackButton: ButtonHandler = {
 export const registrationPageButton: ButtonHandler = {
   key: 'registration:page',
   async execute(interaction, ctx) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -62,7 +67,7 @@ export const registrationPageButton: ButtonHandler = {
 
     if (!continent) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Не удалось определить континент. Обновите меню.'),
+        components: buildWarningView(formatEmoji, 'Не удалось определить континент. Обновите меню.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -80,12 +85,12 @@ export const registrationPageButton: ButtonHandler = {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({
-          components: buildTextDisplayComponents('Не удалось обновить список стран. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось обновить список стран. Попробуйте позже.'),
           flags: MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({
-          components: buildTextDisplayComponents('Не удалось обновить список стран. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось обновить список стран. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }

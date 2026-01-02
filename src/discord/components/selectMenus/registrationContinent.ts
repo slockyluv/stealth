@@ -1,24 +1,27 @@
-import { ComponentType, MessageFlags, type TopLevelComponentData } from 'discord.js';
+import { MessageFlags } from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildRegistrationView } from '../../features/registration/registrationView.js';
 import type { ContinentId } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
+import { createEmojiFormatter } from '../../emoji.js';
+import { buildWarningView } from '../../responses/messageBuilders.js';
 
-function buildTextDisplayComponents(content: string): TopLevelComponentData[] {
-  return [
-    {
-      type: ComponentType.Container,
-      components: [{ type: ComponentType.TextDisplay, content }]
-    }
-  ];
+async function getFormatEmoji(interaction: Parameters<SelectMenuHandler['execute']>[0]) {
+  return createEmojiFormatter({
+    client: interaction.client,
+    guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+    guildEmojis: interaction.guild?.emojis.cache.values()
+  });
 }
 
 export const registrationContinentSelect: SelectMenuHandler = {
   key: 'registration:continent',
   async execute(interaction) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
-        components: buildTextDisplayComponents('Команда доступна только внутри сервера.'),
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -27,7 +30,7 @@ export const registrationContinentSelect: SelectMenuHandler = {
     const selectedContinent = interaction.values[0] as ContinentId | undefined;
 
     try {
-      await interaction.deferUpdate();
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
       const view = await buildRegistrationView({
         guild: interaction.guild,
         selectedContinentId: selectedContinent,
@@ -38,12 +41,12 @@ export const registrationContinentSelect: SelectMenuHandler = {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({
-          components: buildTextDisplayComponents('Не удалось обновить список континентов. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось обновить список континентов. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       } else {
         await interaction.reply({
-          components: buildTextDisplayComponents('Не удалось обновить список континентов. Попробуйте позже.'),
+          components: buildWarningView(formatEmoji, 'Не удалось обновить список континентов. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }

@@ -51,6 +51,31 @@ function hasEphemeralFlag(options: InteractionReplyOptions) {
   return false;
 }
 
+function hasComponentsV2Flag(options: InteractionReplyOptions) {
+  const { flags } = options;
+  if (!flags) return false;
+  if (typeof flags === 'number') {
+    return (flags & MessageFlags.IsComponentsV2) === MessageFlags.IsComponentsV2;
+  }
+  if (typeof flags === 'bigint') {
+    return (flags & BigInt(MessageFlags.IsComponentsV2)) === BigInt(MessageFlags.IsComponentsV2);
+  }
+  if (typeof flags === 'string') {
+    return flags === 'IsComponentsV2';
+  }
+  if (Array.isArray(flags)) {
+    return flags.includes(MessageFlags.IsComponentsV2);
+  }
+  if (flags instanceof MessageFlagsBitField) {
+    return flags.has(MessageFlags.IsComponentsV2);
+  }
+  if ('bitfield' in flags && typeof flags.bitfield === 'number') {
+    return (flags.bitfield & MessageFlags.IsComponentsV2) === MessageFlags.IsComponentsV2;
+  }
+
+  return false;
+}
+
 async function replyWithDeferredSupport(
   interaction: Interaction,
   options: InteractionReplyOptions,
@@ -67,7 +92,19 @@ async function replyWithDeferredSupport(
   }
 
   const wantsEphemeral = hasEphemeralFlag(options);
+  const wantsComponentsV2 = hasComponentsV2Flag(options);
   if (wantsEphemeral) {
+    try {
+      if (!interaction.replied) {
+        await interaction.deleteReply();
+      }
+    } catch {
+      // ignore
+    }
+    return interaction.followUp(options);
+  }
+
+  if (wantsComponentsV2) {
     try {
       if (!interaction.replied) {
         await interaction.deleteReply();

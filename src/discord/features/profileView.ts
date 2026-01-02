@@ -86,7 +86,7 @@ export async function buildProfileView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: ['**Игровой профиль:**', '', `**Пользователь:** <@${user.id}>`].join('\n')
+        content: ['# Игровой профиль', '', `**Пользователь:** <@${user.id}>`].join('\n')
       }
     ],
     accessory: {
@@ -98,19 +98,21 @@ export async function buildProfileView(options: {
 
   const generalInfo = [
     `**${formatEmoji('information')} Общая информация**`,
+     '',
     `**Государство:** ${countryLabel}`,
     `**Континент:** ${continentLabel}`,
     `**Зарегистрирован:** ${formatRegistration(profile)}`
   ].join('\n');
 
   const characteristics = [
-    '**Характеристика**',
+    `**${formatEmoji('nav')} Характеристика**`,
+     '',
     `**Правитель:** ${profile.ruler}`,
     `**Территория:** ${profile.territory}`,
     `**Население:** ${profile.population}`
   ].join('\n');
 
-  const politicsHeader = '**Политическое устройство**';
+  const politicsHeader = `**${formatEmoji('point')} Политическое устройство**`;
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(buildCustomId('profile', 'tab', user.id))

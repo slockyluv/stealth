@@ -69,8 +69,6 @@ export async function buildRegistrationView(options: {
   const worldEmoji = formatEmoji('worldpulse');
   const continents = getContinents();
   const selectedContinent = selectedContinentId ? getContinent(selectedContinentId) : null;
-  const selectedContinentName = selectedContinent?.label ?? '';
-
   const continentRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(buildCustomId('registration', 'continent'))
@@ -87,9 +85,7 @@ export async function buildRegistrationView(options: {
     {
       type: ComponentType.TextDisplay,
       content: [
-        '*Чтобы зарегистрироваться выберите в выпадающем меню выбора сначала континент, а затем желаемую страну.*',
-        '',
-        `**Текущий континент:** ${selectedContinentName}`
+        '*Чтобы зарегистрироваться выберите в выпадающем меню выбора сначала континент, а затем желаемую страну.*'
       ].join('\n')
     }
   ];

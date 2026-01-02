@@ -49,9 +49,8 @@ export const registrationCountrySelect: SelectMenuHandler = {
       return;
     }
 
-    await interaction.deferUpdate();
-
     try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
       const result = await registerCountryForUser(interaction.guildId, interaction.user.id, continent.id, country);
 
       if (result.status === 'registered') {
@@ -81,10 +80,17 @@ export const registrationCountrySelect: SelectMenuHandler = {
       await interaction.editReply({ components: updatedView.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);
-      await interaction.followUp({
-        components: buildTextDisplayComponents('Произошла ошибка при регистрации. Попробуйте позже.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          components: buildTextDisplayComponents('Произошла ошибка при регистрации. Попробуйте позже.'),
+          flags: MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildTextDisplayComponents('Произошла ошибка при регистрации. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
     }
   }
 };

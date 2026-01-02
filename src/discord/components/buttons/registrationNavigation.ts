@@ -24,17 +24,23 @@ export const registrationBackButton: ButtonHandler = {
       return;
     }
 
-    await interaction.deferUpdate();
-
     try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
       const view = await buildRegistrationView({ guild: interaction.guild });
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);
-      await interaction.followUp({
-        components: buildTextDisplayComponents('Не удалось открыть список континентов. Попробуйте позже.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          components: buildTextDisplayComponents('Не удалось открыть список континентов. Попробуйте позже.'),
+          flags: MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildTextDisplayComponents('Не удалось открыть список континентов. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
     }
   }
 };
@@ -62,9 +68,8 @@ export const registrationPageButton: ButtonHandler = {
       return;
     }
 
-    await interaction.deferUpdate();
-
     try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
       const view = await buildRegistrationView({
         guild: interaction.guild,
         selectedContinentId: continent.id,
@@ -73,10 +78,17 @@ export const registrationPageButton: ButtonHandler = {
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);
-      await interaction.followUp({
-        components: buildTextDisplayComponents('Не удалось обновить список стран. Попробуйте позже.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          components: buildTextDisplayComponents('Не удалось обновить список стран. Попробуйте позже.'),
+          flags: MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildTextDisplayComponents('Не удалось обновить список стран. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
     }
   }
 };

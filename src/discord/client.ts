@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits, type ClientOptions } from 'discord.js';
 import { commands } from './commands/index.js';
 import type { Command } from '../types/command.js';
 
@@ -14,6 +14,7 @@ import type {
 
 export function createClient() {
   const client = new Client({
+    ws: { compress: false } as ClientOptions['ws'],
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMembers,

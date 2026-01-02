@@ -8,7 +8,7 @@ import {
 import { logger } from '../../shared/logger.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildSuccessView, buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
-import { formatNicknameUpdateNotice, updateCountryNickname } from '../nickname.js';
+import { formatNicknameResetNotice, formatNicknameUpdateNotice, resetCountryNickname, updateCountryNickname } from '../nickname.js';
 
 function extractUserId(raw: string): string | null {
   const mentionMatch = raw.match(/^<@!?([0-9]+)>$/);
@@ -274,10 +274,14 @@ export const unreg: Command = {
         return;
       }
 
+      const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+      const nicknameResult = await resetCountryNickname({ member });
+      const nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
+
       await interaction.editReply({
         components: buildSuccessView(
           formatEmoji,
-          `Пользователь <@${targetUser.id}> снят с регистрации страны **${result.registration.countryName}**.`
+          `Пользователь <@${targetUser.id}> снят с регистрации страны **${result.registration.countryName}**.${nicknameNotice}`
         ),
         flags: MessageFlags.IsComponentsV2
       });
@@ -327,11 +331,15 @@ export const unreg: Command = {
         return;
       }
 
+      const member = await message.guild.members.fetch(userId).catch(() => null);
+      const nicknameResult = await resetCountryNickname({ member });
+      const nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
+
       await sendMessageResponse(
         message,
         buildSuccessView(
           formatEmoji,
-          `Пользователь <@${userId}> снят со страны **${result.registration.countryName}**.`
+          `Пользователь <@${userId}> снят со страны **${result.registration.countryName}**.${nicknameNotice}`
         )
       );
     } catch (error) {

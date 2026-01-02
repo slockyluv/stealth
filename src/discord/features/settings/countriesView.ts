@@ -86,10 +86,10 @@ const CONTINENTS: Continent[] = [
       { name: 'Швейцария', emoji: 'flag_ch' },
       { name: 'Швеция', emoji: 'flag_se' },
       { name: 'Эстония', emoji: 'flag_ee' },
-      { name: 'Косово (частично признано)', emoji: 'flag_xk' },
-      { name: 'Северный Кипр (частично признан)', emoji: 'northcypr' },
-      { name: 'Абхазия (частично признана)', emoji: 'abkhazia' },
-      { name: 'Южная Осетия (частично признана)', emoji: 'ossetia' }
+      { name: 'Косово', emoji: 'flag_xk' },
+      { name: 'Северный Кипр', emoji: 'northcypr' },
+      { name: 'Абхазия', emoji: 'abkhazia' },
+      { name: 'Южная Осетия', emoji: 'ossetia' }
     ]
   },
   {
@@ -144,7 +144,7 @@ const CONTINENTS: Continent[] = [
       { name: 'Узбекистан', emoji: 'flag_uz' },
       { name: 'Шри-Ланка', emoji: 'flag_lk' },
       { name: 'Япония', emoji: 'flag_jp' },
-      { name: 'Тайвань (частично признан)', emoji: 'flag_tw' }
+      { name: 'Тайвань', emoji: 'flag_tw' }
     ]
   },
   {
@@ -241,7 +241,7 @@ const CONTINENTS: Continent[] = [
       { name: 'Сейшелы', emoji: 'flag_sc' },
       { name: 'Сенегал', emoji: 'flag_sn' },
       { name: 'Сомали', emoji: 'flag_so' },
-      { name: 'Сомалиленд (частично признан)', emoji: 'somaliland' },
+      { name: 'Сомалиленд', emoji: 'somaliland' },
       { name: 'Судан', emoji: 'flag_sd' },
       { name: 'Сьерра-Леоне', emoji: 'flag_sl' },
       { name: 'Танзания', emoji: 'flag_tz' },
@@ -256,7 +256,7 @@ const CONTINENTS: Continent[] = [
       { name: 'Эфиопия', emoji: 'flag_et' },
       { name: 'ЮАР', emoji: 'flag_za' },
       { name: 'Южный Судан', emoji: 'flag_ss' },
-      { name: 'САДР / Западная Сахара (частично признана)', emoji: 'flag_eh' }
+      { name: 'САДР', emoji: 'flag_eh' }
     ]
   },
   {
@@ -314,8 +314,12 @@ const NICKNAME_EMOJI_OVERRIDES = new Map<string, string>([
   ['Южная Осетия', '⚪ 🔴 🟡']
 ]);
 
+function normalizeNicknameCountryName(name: string): string {
+  return name.split(' (')[0]?.trim() ?? name.trim();
+}
+
 function resolveNicknameEmoji(country: Country): string {
-  const override = NICKNAME_EMOJI_OVERRIDES.get(country.name);
+  const override = NICKNAME_EMOJI_OVERRIDES.get(normalizeNicknameCountryName(country.name));
   if (override) return override;
 
   const normalizedEmoji = normalizeEmojiName(country.emoji);

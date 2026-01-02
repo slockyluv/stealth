@@ -307,6 +307,43 @@ export function resolveEmojiIdentifier(raw: string, formatEmoji: (name: string) 
   return formatEmoji(normalized);
 }
 
+const NICKNAME_EMOJI_OVERRIDES = new Map<string, string>([
+  ['Сомалиленд', '🟢 ⚪ 🔴'],
+  ['Северный Кипр', '⚪ 🔴 ⚪'],
+  ['Абхазия', '🔴 🟢 ⚪'],
+  ['Южная Осетия', '⚪ 🔴 🟡']
+]);
+
+function resolveNicknameEmoji(country: Country): string {
+  const override = NICKNAME_EMOJI_OVERRIDES.get(country.name);
+  if (override) return override;
+
+  const normalizedEmoji = normalizeEmojiName(country.emoji);
+  const flagCode = normalizedEmoji.match(/^flag_([a-z]{2})$/i)?.[1];
+  if (flagCode) {
+    const unicode = flagCodeToEmoji(flagCode);
+    if (unicode) return unicode;
+  }
+
+  if (!normalizedEmoji) return '🏴';
+  return /[a-z0-9_]/i.test(normalizedEmoji) ? '🏴' : normalizedEmoji;
+}
+
+export function buildCountryNickname(country: Country): string {
+  const emoji = resolveNicknameEmoji(country);
+  const prefix = `${emoji} | `;
+  const maxNameLength = 32 - prefix.length;
+  if (maxNameLength <= 0) {
+    return prefix.trim();
+  }
+  const trimmedName = country.name.trim();
+  const name =
+    trimmedName.length > maxNameLength
+      ? `${trimmedName.slice(0, Math.max(0, maxNameLength - 1)).trimEnd()}…`
+      : trimmedName;
+  return `${emoji} | ${name}`;
+}
+
 function buildCountryLabel(name: string, emoji: string): string {
   return `${emoji} | ${name}`;
 }

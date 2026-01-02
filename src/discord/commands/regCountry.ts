@@ -8,6 +8,7 @@ import {
 import { logger } from '../../shared/logger.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildSuccessView, buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
+import { formatNicknameUpdateNotice, updateCountryNickname } from '../nickname.js';
 
 function extractUserId(raw: string): string | null {
   const mentionMatch = raw.match(/^<@!?([0-9]+)>$/);
@@ -106,10 +107,19 @@ export const regCountry: Command = {
       );
 
       if (result.status === 'registered') {
+        const targetMember = await interaction.guild.members.fetch(targetUser.id).catch((error) => {
+          logger.error(error);
+          return null;
+        });
+        const nicknameResult = await updateCountryNickname({
+          member: targetMember,
+          country: countryLookup.country
+        });
+        const nicknameNotice = formatNicknameUpdateNotice(formatEmoji, nicknameResult);
         await interaction.editReply({
           components: buildSuccessView(
             formatEmoji,
-            `Пользователь <@${targetUser.id}> зарегистрирован за **${countryLookup.country.name}**.`
+            `Пользователь <@${targetUser.id}> зарегистрирован за **${countryLookup.country.name}**.${nicknameNotice}`
           ),
           flags: MessageFlags.IsComponentsV2
         });
@@ -188,11 +198,20 @@ export const regCountry: Command = {
       );
 
       if (result.status === 'registered') {
+        const targetMember = await message.guild.members.fetch(userId).catch((error) => {
+          logger.error(error);
+          return null;
+        });
+        const nicknameResult = await updateCountryNickname({
+          member: targetMember,
+          country: countryLookup.country
+        });
+        const nicknameNotice = formatNicknameUpdateNotice(formatEmoji, nicknameResult);
         await sendMessageResponse(
           message,
           buildSuccessView(
             formatEmoji,
-            `Пользователь <@${userId}> зарегистрирован за **${countryLookup.country.name}**.`
+            `Пользователь <@${userId}> зарегистрирован за **${countryLookup.country.name}**.${nicknameNotice}`
           )
         );
       } else if (result.status === 'alreadyRegistered') {

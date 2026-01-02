@@ -6,6 +6,7 @@ import { registerCountryForUser } from '../../../services/countryRegistrationSer
 import { logger } from '../../../shared/logger.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { buildSuccessView, buildWarningView } from '../../responses/messageBuilders.js';
+import { formatNicknameUpdateNotice, updateCountryNickname } from '../../nickname.js';
 
 async function getFormatEmoji(interaction: Parameters<SelectMenuHandler['execute']>[0]) {
   return createEmojiFormatter({
@@ -56,9 +57,18 @@ export const registrationCountrySelect: SelectMenuHandler = {
       await interaction.deferUpdate();
       const result = await registerCountryForUser(interaction.guildId, interaction.user.id, continent.id, country);
 
+      const nicknameResult =
+        result.status === 'registered'
+          ? await updateCountryNickname({ member: interaction.member, country })
+          : null;
+      const nicknameNotice = formatNicknameUpdateNotice(formatEmoji, nicknameResult);
+
       const responseComponents =
         result.status === 'registered'
-          ? buildSuccessView(formatEmoji, `Вы успешно зарегистрировались за **${country.name}**.`)
+          ? buildSuccessView(
+              formatEmoji,
+              `Вы успешно зарегистрировались за **${country.name}**.${nicknameNotice}`
+            )
           : result.status === 'alreadyRegistered'
             ? buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${result.registration.countryName}**.`)
             : buildWarningView(formatEmoji, 'Эта страна уже занята. Список свободных стран обновлен.');

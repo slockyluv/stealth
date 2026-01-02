@@ -20,7 +20,7 @@ import { ALLOW_MONEY, enforceInteractionAllow, enforceMessageAllow } from './all
 
 const GIVE_MONEY_USAGE = '!give-money @Пользователь <Кол-во>';
 const TAKE_MONEY_USAGE = '!take-money @Пользователь <Кол-во>';
-const RESET_MONEY_USAGE = '!reset-money @Пользователь <Кол-во>';
+const RESET_MONEY_USAGE = '!reset-money @Пользователь';
 
 type MoneyCommandResult = { view: TopLevelComponentData[] } | { error: string };
 
@@ -119,6 +119,13 @@ function buildMoneyCommand(commandName: string, description: string): SlashComma
     ) as SlashCommandBuilder;
 }
 
+function buildResetMoneyCommand(commandName: string, description: string): SlashCommandBuilder {
+  return new SlashCommandBuilder()
+    .setName(commandName)
+    .setDescription(description)
+    .addUserOption((option) => option.setName('user').setDescription('Пользователь').setRequired(true)) as SlashCommandBuilder;
+}
+
 async function handleInteraction(
   interaction: ChatInputCommandInteraction,
   type: CountryBudgetChangeType
@@ -140,8 +147,7 @@ async function handleInteraction(
   }
 
   const targetUser = interaction.options.getUser('user', true);
-  const amountValue = interaction.options.getInteger('amount', true);
-  const amount = BigInt(amountValue);
+  const amount = type === 'reset' ? 0n : BigInt(interaction.options.getInteger('amount', true));
 
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply();
@@ -201,9 +207,9 @@ async function handleMessage(message: Message, args: string[], type: CountryBudg
   const [targetRaw, amountRaw] = args;
   const mentionMatch = targetRaw?.match(/^<@!?(\d+)>$/);
   const targetId = mentionMatch?.[1] ?? targetRaw;
-  const amount = parseAmount(amountRaw);
+  const parsedAmount = type === 'reset' ? 0n : parseAmount(amountRaw);
 
-  if (!targetId || !amount) {
+  if (!targetId || (type !== 'reset' && !parsedAmount)) {
     if (message.channel?.isSendable()) {
       await message.channel.send({
         components: buildUsageView(formatEmoji, usage),
@@ -212,6 +218,8 @@ async function handleMessage(message: Message, args: string[], type: CountryBudg
     }
     return;
   }
+
+  const amount = parsedAmount ?? 0n;
 
   try {
     const result = await resolveMoneyCommand({
@@ -276,7 +284,7 @@ export const takeMoney: Command = {
 };
 
 export const resetMoney: Command = {
-  data: buildMoneyCommand('reset-money', 'Обнулить бюджет страны пользователя'),
+  data: buildResetMoneyCommand('reset-money', 'Обнулить бюджет страны пользователя'),
 
   async execute(interaction: ChatInputCommandInteraction) {
     await handleInteraction(interaction, 'reset');

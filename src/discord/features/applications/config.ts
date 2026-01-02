@@ -82,7 +82,7 @@ export type VacancyConfig = {
 export const vacancies: VacancyConfig[] = [
   { key: 'moderator', label: '・Moderator', mentionLine: '・<@&1453660268956614777>' },
   { key: 'curatorofwar', label: '・Curator of War', mentionLine: '・<@&1453663593378615371>' },
-  { key: 'curatorofrp', label: '・Curator of RP', mentionLine: '・@・<@&1453680874267611136>' },
+  { key: 'curatorofrp', label: '・Curator of RP', mentionLine: '・<@&1453680874267611136>' },
   { key: 'anketolog', label: '・Анкетолог', mentionLine: '・<@&1453661194115223625>' },
   { key: 'eventer', label: '・Eventer', mentionLine: ' ・<@&1454781576985706588>' },
   { key: 'kartograph', label: '・Картограф', mentionLine: '・<@&1453666531849277572>' }

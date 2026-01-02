@@ -45,7 +45,7 @@ async function resolveFinanceView(options: {
 
 export const finance: Command = {
   data: new SlashCommandBuilder()
-    .setName('финансы')
+    .setName('finance')
     .setDescription('Финансы игрока')
     .addUserOption((option) => option.setName('user').setDescription('Пользователь')) as SlashCommandBuilder,
 

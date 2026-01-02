@@ -57,16 +57,16 @@ export async function buildFinanceView(options: {
     `# ${formatEmoji('governmentbudget')} Казна`,
     '',
     `**${formatEmoji('sackdollar')} Государственный бюджет:**`,
-    `*${formatBudgetValue(profile.budget)}*`,
+    `> *${formatBudgetValue(profile.budget)}*`,
     '',
     `**${formatEmoji('goldres')} Золотовалютные резервы:**`,
-    'В будущем',
-        '',
+    '> В будущем',
+    '',
     `**${formatEmoji('bitcoin')} Криптовалютные резервы:**`,
-    'В будущем',
-        '',
+    '> В будущем',
+    '',
     `**${formatEmoji('investment')} Ценные бумаги:**`,
-    'В будущем'
+    '> В будущем'
   ].join('\n');
 
   const selectMenu = new StringSelectMenuBuilder()

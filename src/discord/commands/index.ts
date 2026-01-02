@@ -13,6 +13,7 @@ import { nabor } from './nabor.js';
 import { reg } from './reg.js';
 import { regCountry, unreg } from './regCountry.js';
 import { profile } from './profile.js';
+import { finance } from './finance.js';
 
 export const commands = [
   ping,
@@ -34,5 +35,6 @@ export const commands = [
   reg,
   regCountry,
   unreg,
-  profile
+  profile,
+  finance
 ];

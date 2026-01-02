@@ -6,6 +6,7 @@ import { applicationReviewSelect, applicationSelectMenu } from './applications.j
 import { settingsCountriesContinentSelect, settingsCountriesSelect } from './settingsCountries.js';
 import { registrationContinentSelect } from './registrationContinent.js';
 import { registrationCountrySelect } from './registrationCountry.js';
+import { profileTabSelect } from './profile.js';
 
 export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsSectionSelect,
@@ -17,5 +18,6 @@ export const selectMenuHandlers: SelectMenuHandler[] = [
   actionLogsSectionSelect,
   actionLogsChannelSelect,
   applicationSelectMenu,
-  applicationReviewSelect
+  applicationReviewSelect,
+  profileTabSelect
 ];

@@ -1,4 +1,5 @@
 import { prisma } from '../database/prisma.js';
+import { resolveCountryPopulation } from './countryProfileService.js';
 import { logger } from '../shared/logger.js';
 
 const POPULATION_TAX_INTERVAL_MS = 8 * 60 * 60;
@@ -78,6 +79,7 @@ async function collectPopulationTaxes(): Promise<void> {
     const profiles = await tx.countryProfile.findMany({
       select: {
         id: true,
+        countryName: true,
         population: true,
         populationTaxRate: true,
         budget: true
@@ -88,8 +90,9 @@ async function collectPopulationTaxes(): Promise<void> {
 
     await Promise.all(
       profiles.map((profile) => {
+        const resolvedPopulation = resolveCountryPopulation(profile.countryName, profile.population);
         const taxAmount = calculatePopulationTax({
-          population: profile.population,
+          population: resolvedPopulation,
           taxRate: profile.populationTaxRate ?? 10
         });
         const currentBudget = typeof profile.budget === 'bigint' ? profile.budget : 0n;

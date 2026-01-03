@@ -273,6 +273,10 @@ function sanitizePopulation(value: string): string {
   return value.replace(/[≈~]/g, '').replace(/\s{2,}/g, ' ').trim();
 }
 
+function hasPopulationDigits(value: string): boolean {
+  return /\d/.test(value);
+}
+
 function sanitizeRulerName(value: string): string {
   const roleKeywords = [
     'президент',
@@ -341,6 +345,22 @@ function getDefaultFacts(country: Country): CountryFacts {
   return defaults;
 }
 
+function getDefaultFactsByName(countryName: string): CountryFacts {
+  const defaults = DEFAULT_FACTS.get(normalizeCountryKey(countryName)) ?? DEFAULT_FALLBACK_FACTS;
+  return defaults;
+}
+
+function resolvePopulationValue(population: string, defaults: CountryFacts): string {
+  const sanitized = sanitizePopulation(population);
+  if (hasPopulationDigits(sanitized)) return sanitized;
+  return defaults.population;
+}
+
+export function resolveCountryPopulation(countryName: string, population: string): string {
+  const defaults = getDefaultFactsByName(countryName);
+  return resolvePopulationValue(population, defaults);
+}
+
 function sanitizeOptionalText(value?: string | null): string | undefined {
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
@@ -348,6 +368,7 @@ function sanitizeOptionalText(value?: string | null): string | undefined {
 }
 
 function mapRecordToProfile(record: {
+  countryName: string;
   ruler: string;
   territory: string;
   population: string;
@@ -360,10 +381,12 @@ function mapRecordToProfile(record: {
   registeredUserId: bigint | null;
   registeredAt: Date | null;
 }): CountryProfile {
+  const defaults = getDefaultFactsByName(record.countryName);
+  const population = resolvePopulationValue(record.population, defaults);
   return {
     ruler: sanitizeRulerName(record.ruler),
     territory: record.territory.trim(),
-    population: sanitizePopulation(record.population),
+    population,
     ideology: sanitizeOptionalText(record.ideology) ?? DEFAULT_POLITICS.ideology,
     governmentForm: sanitizeOptionalText(record.governmentForm) ?? DEFAULT_POLITICS.governmentForm,
     stateStructure: sanitizeOptionalText(record.stateStructure) ?? DEFAULT_POLITICS.stateStructure,
@@ -420,12 +443,13 @@ async function saveCountryProfile(
 ): Promise<CountryProfile> {
   const normalizedName = normalizeCountryKey(country.name);
   const cacheKey = buildKey(guildId, country.name);
+  const defaults = getDefaultFacts(country);
   const sanitized: CountryProfile = {
     ...buildDefaultProfile(country),
     ...profile,
     ruler: sanitizeRulerName(profile.ruler),
     territory: profile.territory.trim(),
-    population: sanitizePopulation(profile.population),
+    population: resolvePopulationValue(profile.population, defaults),
     ideology: sanitizeOptionalText(profile.ideology) ?? DEFAULT_POLITICS.ideology,
     governmentForm: sanitizeOptionalText(profile.governmentForm) ?? DEFAULT_POLITICS.governmentForm,
     stateStructure: sanitizeOptionalText(profile.stateStructure) ?? DEFAULT_POLITICS.stateStructure,

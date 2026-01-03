@@ -73,6 +73,7 @@ model CountryProfile {
   stateStructure  String?
   religion        String?
   budget          BigInt   @default(0)
+  populationTaxRate Int    @default(10)
   registeredUserId BigInt?
   registeredAt    DateTime?
   createdAt       DateTime @default(now())

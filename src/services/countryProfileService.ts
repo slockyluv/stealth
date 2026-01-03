@@ -18,6 +18,7 @@ type CountryPolitics = {
 
 type CountryEconomy = {
   budget: bigint;
+  populationTaxRate: number;
 };
 
 export type CountryProfile = CountryFacts &
@@ -43,6 +44,7 @@ const DEFAULT_POLITICS: Required<CountryPolitics> = {
 };
 
 const DEFAULT_BUDGET = 0n;
+const DEFAULT_POPULATION_TAX_RATE = 10;
 
 function getDbClient(db?: PrismaClientOrTransaction): PrismaClientOrTransaction {
   return db ?? prisma;
@@ -354,6 +356,7 @@ function mapRecordToProfile(record: {
   stateStructure: string | null;
   religion: string | null;
   budget: bigint | null;
+  populationTaxRate: number | null;
   registeredUserId: bigint | null;
   registeredAt: Date | null;
 }): CountryProfile {
@@ -366,6 +369,8 @@ function mapRecordToProfile(record: {
     stateStructure: sanitizeOptionalText(record.stateStructure) ?? DEFAULT_POLITICS.stateStructure,
     religion: sanitizeOptionalText(record.religion) ?? DEFAULT_POLITICS.religion,
     budget: typeof record.budget === 'bigint' ? record.budget : DEFAULT_BUDGET,
+    populationTaxRate:
+      typeof record.populationTaxRate === 'number' ? record.populationTaxRate : DEFAULT_POPULATION_TAX_RATE,
     registeredUserId: record.registeredUserId ? record.registeredUserId.toString() : undefined,
     registeredAt: record.registeredAt ?? undefined
   };
@@ -375,7 +380,8 @@ function buildDefaultProfile(country: Country): CountryProfile {
   return {
     ...getDefaultFacts(country),
     ...DEFAULT_POLITICS,
-    budget: DEFAULT_BUDGET
+    budget: DEFAULT_BUDGET,
+    populationTaxRate: DEFAULT_POPULATION_TAX_RATE
   };
 }
 
@@ -424,7 +430,10 @@ async function saveCountryProfile(
     governmentForm: sanitizeOptionalText(profile.governmentForm) ?? DEFAULT_POLITICS.governmentForm,
     stateStructure: sanitizeOptionalText(profile.stateStructure) ?? DEFAULT_POLITICS.stateStructure,
     religion: sanitizeOptionalText(profile.religion) ?? DEFAULT_POLITICS.religion,
-    budget: typeof profile.budget === 'bigint' ? profile.budget : BigInt(profile.budget)
+    budget: typeof profile.budget === 'bigint' ? profile.budget : BigInt(profile.budget),
+    populationTaxRate: Number.isFinite(profile.populationTaxRate)
+      ? Math.trunc(profile.populationTaxRate)
+      : DEFAULT_POPULATION_TAX_RATE
   };
 
   const dbClient = getDbClient(db);
@@ -445,6 +454,7 @@ async function saveCountryProfile(
       stateStructure: sanitized.stateStructure,
       religion: sanitized.religion,
       budget: sanitized.budget,
+      populationTaxRate: sanitized.populationTaxRate,
       registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
       registeredAt: sanitized.registeredAt ?? null
     },
@@ -459,6 +469,7 @@ async function saveCountryProfile(
       stateStructure: sanitized.stateStructure,
       religion: sanitized.religion,
       budget: sanitized.budget,
+      populationTaxRate: sanitized.populationTaxRate,
       registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
       registeredAt: sanitized.registeredAt ?? null
     }
@@ -531,6 +542,24 @@ export async function updateCountryDevelopment(
   };
 
   return saveCountryProfile(guildId, country, nextProfile, db);
+}
+
+export async function updateCountryPopulationTaxRate(
+  guildId: string,
+  country: Country,
+  populationTaxRate: number
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country);
+  const normalizedRate = Number.isFinite(populationTaxRate)
+    ? Math.min(100, Math.max(1, Math.trunc(populationTaxRate)))
+    : DEFAULT_POPULATION_TAX_RATE;
+
+  const nextProfile: CountryProfile = {
+    ...current,
+    populationTaxRate: normalizedRate
+  };
+
+  return saveCountryProfile(guildId, country, nextProfile);
 }
 
 export type CountryBudgetChangeType = 'increase' | 'decrease' | 'reset';

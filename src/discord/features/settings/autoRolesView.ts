@@ -71,6 +71,11 @@ export async function buildAutoRolesView(options: {
 }): Promise<SettingsView & { currentPage: number; totalPages: number; pageRoles: Role[] }> {
   const { guild, selectedRoleIds } = options;
   const requestedPage = options.page ?? 1;
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
 
   const roles = await guild.roles.fetch();
   const botMember = guild.members.me;
@@ -123,24 +128,22 @@ export async function buildAutoRolesView(options: {
       .setCustomId(buildCustomId('settings', 'back'))
       .setStyle(ButtonStyle.Secondary)
       .setLabel('Назад')
-      .setEmoji('↩️'),
+      .setEmoji(formatEmoji('undonew')),
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'clearRoles', String(currentPage)))
       .setStyle(ButtonStyle.Secondary)
-      .setLabel('Очистить список ролей')
-      .setEmoji('🧹')
+      .setLabel('Очистить список')
+      .setEmoji(formatEmoji('broom'))
       .setDisabled(selectedRoleIds.length === 0),
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'autoPrev', String(currentPage)))
       .setStyle(ButtonStyle.Secondary)
-      .setLabel('Предыдущая')
-      .setEmoji('◀️')
+      .setEmoji(formatEmoji('anglesmallleft'))
       .setDisabled(currentPage <= 1),
     new ButtonBuilder()
       .setCustomId(buildCustomId('settings', 'autoNext', String(currentPage)))
       .setStyle(ButtonStyle.Secondary)
-      .setLabel('Следующая')
-      .setEmoji('▶️')
+      .setEmoji(formatEmoji('anglesmallright'))
       .setDisabled(currentPage >= totalPages)
   );
 

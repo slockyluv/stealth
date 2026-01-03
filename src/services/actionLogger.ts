@@ -234,6 +234,7 @@ export async function logMessageEdit(options: {
   editedAt: Date;
 }) {
   const { guild, authorId, channelId, before, editedAt } = options;
+  if (!before?.trim()) return;
   const header = await buildHeader(guild, 'edit', 'Изменение сообщения');
 
   const lines = [
@@ -257,6 +258,7 @@ export async function logMessageDelete(options: {
   deletedAt: Date;
 }) {
   const { guild, authorId, channelId, content, deletedById, deletedAt } = options;
+  if (!content?.trim()) return;
   const header = await buildHeader(guild, 'basket', 'Удаление сообщения');
 
   const lines = [

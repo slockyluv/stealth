@@ -29,7 +29,11 @@ export async function sendActionLog(options: {
   if (!channel) return;
 
   try {
-    await channel.send({ components, flags: MessageFlags.IsComponentsV2 });
+    await channel.send({
+      components,
+      flags: MessageFlags.IsComponentsV2,
+      allowedMentions: { parse: [] }
+    });
   } catch (error) {
     logger.error(error);
   }

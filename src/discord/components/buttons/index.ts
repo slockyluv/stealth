@@ -21,7 +21,12 @@ import { serverTabsButton } from './serverTabs.js';
 import { mutesPageButton } from './mutes.js';
 import { registrationBackButton, registrationPageButton } from './registrationNavigation.js';
 import { profileEditButton } from './profile.js';
-import { financeBudgetBackButton, financeBudgetButton, financeTaxationEditButton } from './finance.js';
+import {
+  financeBudgetBackButton,
+  financeBudgetButton,
+  financeTaxationCollectButton,
+  financeTaxationEditButton
+} from './finance.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
@@ -46,5 +51,6 @@ export const buttonHandlers: ButtonHandler[] = [
   profileEditButton,
   financeBudgetButton,
   financeBudgetBackButton,
-  financeTaxationEditButton
+  financeTaxationEditButton,
+  financeTaxationCollectButton
 ];

@@ -19,6 +19,7 @@ type CountryPolitics = {
 type CountryEconomy = {
   budget: bigint;
   populationTaxRate: number;
+  lastPopulationTaxAt?: Date;
 };
 
 export type CountryProfile = CountryFacts &
@@ -378,6 +379,7 @@ function mapRecordToProfile(record: {
   religion: string | null;
   budget: bigint | null;
   populationTaxRate: number | null;
+  lastPopulationTaxAt: Date | null;
   registeredUserId: bigint | null;
   registeredAt: Date | null;
 }): CountryProfile {
@@ -394,6 +396,7 @@ function mapRecordToProfile(record: {
     budget: typeof record.budget === 'bigint' ? record.budget : DEFAULT_BUDGET,
     populationTaxRate:
       typeof record.populationTaxRate === 'number' ? record.populationTaxRate : DEFAULT_POPULATION_TAX_RATE,
+    lastPopulationTaxAt: record.lastPopulationTaxAt ?? undefined,
     registeredUserId: record.registeredUserId ? record.registeredUserId.toString() : undefined,
     registeredAt: record.registeredAt ?? undefined
   };
@@ -404,7 +407,8 @@ function buildDefaultProfile(country: Country): CountryProfile {
     ...getDefaultFacts(country),
     ...DEFAULT_POLITICS,
     budget: DEFAULT_BUDGET,
-    populationTaxRate: DEFAULT_POPULATION_TAX_RATE
+    populationTaxRate: DEFAULT_POPULATION_TAX_RATE,
+    lastPopulationTaxAt: undefined
   };
 }
 
@@ -457,7 +461,8 @@ async function saveCountryProfile(
     budget: typeof profile.budget === 'bigint' ? profile.budget : BigInt(profile.budget),
     populationTaxRate: Number.isFinite(profile.populationTaxRate)
       ? Math.trunc(profile.populationTaxRate)
-      : DEFAULT_POPULATION_TAX_RATE
+      : DEFAULT_POPULATION_TAX_RATE,
+    lastPopulationTaxAt: profile.lastPopulationTaxAt ?? undefined
   };
 
   const dbClient = getDbClient(db);
@@ -479,6 +484,7 @@ async function saveCountryProfile(
       religion: sanitized.religion,
       budget: sanitized.budget,
       populationTaxRate: sanitized.populationTaxRate,
+      lastPopulationTaxAt: sanitized.lastPopulationTaxAt ?? null,
       registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
       registeredAt: sanitized.registeredAt ?? null
     },
@@ -494,6 +500,7 @@ async function saveCountryProfile(
       religion: sanitized.religion,
       budget: sanitized.budget,
       populationTaxRate: sanitized.populationTaxRate,
+      lastPopulationTaxAt: sanitized.lastPopulationTaxAt ?? null,
       registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
       registeredAt: sanitized.registeredAt ?? null
     }
@@ -592,6 +599,26 @@ export type CountryBudgetUpdateResult = {
   profile: CountryProfile;
   previousBudget: bigint;
 };
+
+export async function applyPopulationTaxCollection(
+  guildId: string,
+  country: Country,
+  options: {
+    taxAmount: bigint;
+    collectedAt: Date;
+  },
+  db?: PrismaClientOrTransaction
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country, db);
+  const currentBudget = current.budget ?? DEFAULT_BUDGET;
+  const nextProfile: CountryProfile = {
+    ...current,
+    budget: currentBudget + options.taxAmount,
+    lastPopulationTaxAt: options.collectedAt
+  };
+
+  return saveCountryProfile(guildId, country, nextProfile, db);
+}
 
 export async function updateCountryBudget(
   guildId: string,

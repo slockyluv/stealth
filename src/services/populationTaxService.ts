@@ -1,8 +1,8 @@
 import { prisma } from '../database/prisma.js';
-import { resolveCountryPopulation } from './countryProfileService.js';
-import { logger } from '../shared/logger.js';
+import { applyPopulationTaxCollection, resolveCountryPopulation } from './countryProfileService.js';
+import type { Country } from '../discord/features/settings/countriesView.js';
 
-const POPULATION_TAX_INTERVAL_MS = 8 * 60 * 60;
+export const POPULATION_TAX_INTERVAL_MS = 60_000;
 
 const TAXATION_MIN = 200000; // taxation min
 const TAXATION_MAX = 300000; // taxation max
@@ -74,43 +74,47 @@ function calculatePopulationTax(options: { population: string; taxRate: number }
   return BigInt(normalized);
 }
 
-async function collectPopulationTaxes(): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const profiles = await tx.countryProfile.findMany({
-      select: {
-        id: true,
-        countryName: true,
-        population: true,
-        populationTaxRate: true,
-        budget: true
-      }
-    });
-
-    if (profiles.length === 0) return;
-
-    await Promise.all(
-      profiles.map((profile) => {
-        const resolvedPopulation = resolveCountryPopulation(profile.countryName, profile.population);
-        const taxAmount = calculatePopulationTax({
-          population: resolvedPopulation,
-          taxRate: profile.populationTaxRate ?? 10
-        });
-        const currentBudget = typeof profile.budget === 'bigint' ? profile.budget : 0n;
-        return tx.countryProfile.update({
-          where: { id: profile.id },
-          data: { budget: currentBudget + taxAmount }
-        });
-      })
-    );
-  });
+export function getPopulationTaxCooldownMs(lastCollectedAt: Date | null | undefined, now = Date.now()): number {
+  if (!lastCollectedAt) return 0;
+  const elapsed = now - lastCollectedAt.getTime();
+  return Math.max(0, POPULATION_TAX_INTERVAL_MS - elapsed);
 }
 
-export function schedulePopulationTaxCollection(): void {
-  const interval = setInterval(() => {
-    collectPopulationTaxes().catch((error) => {
-      logger.error(error);
-    });
-  }, POPULATION_TAX_INTERVAL_MS);
+export function canCollectPopulationTax(lastCollectedAt: Date | null | undefined, now = Date.now()): boolean {
+  return getPopulationTaxCooldownMs(lastCollectedAt, now) <= 0;
+}
 
-  interval.unref();
+export type PopulationTaxCollectionResult =
+  | { status: 'collected'; taxAmount: bigint }
+  | { status: 'cooldown'; availableAt: Date };
+
+export async function collectPopulationTaxForCountry(options: {
+  guildId: string;
+  country: Country;
+  population: string;
+  taxRate: number;
+  lastCollectedAt?: Date;
+}): Promise<PopulationTaxCollectionResult> {
+  return prisma.$transaction(async (tx) => {
+    const now = new Date();
+    const cooldownMs = getPopulationTaxCooldownMs(options.lastCollectedAt, now.getTime());
+    if (cooldownMs > 0) {
+      return { status: 'cooldown', availableAt: new Date(now.getTime() + cooldownMs) };
+    }
+
+    const resolvedPopulation = resolveCountryPopulation(options.country.name, options.population);
+    const taxAmount = calculatePopulationTax({
+      population: resolvedPopulation,
+      taxRate: options.taxRate
+    });
+
+    await applyPopulationTaxCollection(
+      options.guildId,
+      options.country,
+      { taxAmount, collectedAt: now },
+      tx
+    );
+
+    return { status: 'collected', taxAmount };
+  });
 }

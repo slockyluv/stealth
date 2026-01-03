@@ -16,6 +16,7 @@ import { buildCustomId } from '../../shared/customId.js';
 import { createEmojiFormatter } from '../emoji.js';
 import type { CountryRegistrationRecord } from '../../services/countryRegistrationService.js';
 import type { CountryProfile } from '../../services/countryProfileService.js';
+import { canCollectPopulationTax } from '../../services/populationTaxService.js';
 
 function buildSeparator(): ComponentInContainerData {
   return {
@@ -141,7 +142,7 @@ export async function buildGovernmentBudgetView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: [`**${formatEmoji('wallet')} Финансы**`, '', `**Пользователь:** <@${user.id}>`].join('\n')
+        content: [`# ${formatEmoji('wallet')} Финансы`, '', `**Пользователь:** <@${user.id}>`].join('\n')
       }
     ],
     accessory: {
@@ -181,6 +182,28 @@ export async function buildGovernmentBudgetView(options: {
     accessory: editTaxButton
   };
 
+  const canCollectTax = canCollectPopulationTax(profile.lastPopulationTaxAt);
+
+  const collectTaxButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('finance', 'taxationCollect', user.id),
+    label: 'Собрать налог',
+    emoji: formatEmoji('taxation'),
+    disabled: !canCollectTax
+  };
+
+  const collectTaxSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: `**${formatEmoji('taxation')} Сбор налога:**`
+      }
+    ],
+    accessory: collectTaxButton
+  };
+
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('finance', 'budgetBack', user.id))
     .setLabel('Назад')
@@ -194,6 +217,7 @@ export async function buildGovernmentBudgetView(options: {
       buildSeparator(),
       { type: ComponentType.TextDisplay, content: budgetContent },
       populationTaxSection,
+      collectTaxSection,
       buildSeparator(),
       new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
     ]

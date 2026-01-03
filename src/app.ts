@@ -4,7 +4,6 @@ import { createClient } from './discord/client.js';
 import { registerEvents } from './discord/events/index.js';
 import { logger } from './shared/logger.js';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
-import { schedulePopulationTaxCollection } from './services/populationTaxService.js';
 
 loadEnv();
 
@@ -77,7 +76,6 @@ async function bootstrap() {
   registerEvents(client);
   registerShutdownHooks();
   startEventLoopMonitor();
-  schedulePopulationTaxCollection();
 
   await client.login(process.env.BOT_TOKEN);
   logger.info('stealth is ready');

@@ -44,12 +44,14 @@ export const actionLogsSectionSelect: SelectMenuHandler = {
       return;
     }
 
+    await interaction.deferUpdate();
+
     try {
       const view = await buildActionLogCategoryView({ guild, category: selection });
-      await interaction.update({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+      await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);
-      await interaction.reply({
+      await interaction.followUp({
         components: buildTextView('Не удалось открыть выбранный журнал. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });

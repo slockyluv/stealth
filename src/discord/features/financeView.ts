@@ -184,31 +184,18 @@ export async function buildGovernmentBudgetView(options: {
 
   const canCollectTax = canCollectPopulationTax(profile.lastPopulationTaxAt);
 
-  const collectTaxButton: ButtonComponentData = {
-    type: ComponentType.Button,
-    style: ButtonStyle.Secondary,
-    customId: buildCustomId('finance', 'taxationCollect', user.id),
-    label: 'Собрать налог',
-    emoji: formatEmoji('taxation'),
-    disabled: !canCollectTax
-  };
-
-  const collectTaxSection: SectionComponentData = {
-    type: ComponentType.Section,
-    components: [
-      {
-        type: ComponentType.TextDisplay,
-        content: `**${formatEmoji('taxation')} Сбор налога:**`
-      }
-    ],
-    accessory: collectTaxButton
-  };
-
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('finance', 'budgetBack', user.id))
     .setLabel('Назад')
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
+
+  const collectTaxButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('finance', 'taxationCollect', user.id))
+    .setLabel('Собрать налог')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('taxation'))
+    .setDisabled(!canCollectTax);
 
   const container: TopLevelComponentData = {
     type: ComponentType.Container,
@@ -217,9 +204,8 @@ export async function buildGovernmentBudgetView(options: {
       buildSeparator(),
       { type: ComponentType.TextDisplay, content: budgetContent },
       populationTaxSection,
-      collectTaxSection,
       buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, collectTaxButton).toJSON()
     ]
   };
 

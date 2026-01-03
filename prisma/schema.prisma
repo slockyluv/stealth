@@ -41,6 +41,8 @@ model ActionLogSetting {
   messagesUpdatedBy        BigInt?
   trafficChannelId         BigInt?
   trafficUpdatedBy         BigInt?
+  economyChannelId         BigInt?
+  economyUpdatedBy         BigInt?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 }

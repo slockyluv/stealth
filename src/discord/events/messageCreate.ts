@@ -1,12 +1,22 @@
-import type { Message } from 'discord.js';
+import { MessageFlags, type Message } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import { upsertUser } from '../../services/userService.js';
 import { COMMAND_PREFIX } from '../../config/bot.js';
+import { createEmojiFormatter } from '../emoji.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 
 async function safeReply(message: Message, content: string) {
   try {
     if (!message.channel?.isSendable()) return;
-    await message.channel.send({ content });
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+    await message.channel.send({
+      components: buildWarningView(formatEmoji, content),
+      flags: MessageFlags.IsComponentsV2
+    });
   } catch {
     // ignore
   }

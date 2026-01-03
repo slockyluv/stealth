@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../database/prisma.js';
 import { logger } from '../shared/logger.js';
 
-export type ActionLogCategory = 'moderation' | 'roles' | 'messages' | 'traffic';
+export type ActionLogCategory = 'moderation' | 'roles' | 'messages' | 'traffic' | 'economy';
 
 export type ActionLogSettings = {
   moderationChannelId: string | null;
@@ -13,6 +13,8 @@ export type ActionLogSettings = {
   messagesUpdatedBy: string | null;
   trafficChannelId: string | null;
   trafficUpdatedBy: string | null;
+  economyChannelId: string | null;
+  economyUpdatedBy: string | null;
 };
 
 function mapRecord(record: {
@@ -24,6 +26,8 @@ function mapRecord(record: {
   messagesUpdatedBy: bigint | null;
   trafficChannelId: bigint | null;
   trafficUpdatedBy: bigint | null;
+  economyChannelId: bigint | null;
+  economyUpdatedBy: bigint | null;
 }): ActionLogSettings {
   return {
     moderationChannelId: record.moderationChannelId?.toString() ?? null,
@@ -33,7 +37,9 @@ function mapRecord(record: {
     messagesChannelId: record.messagesChannelId?.toString() ?? null,
     messagesUpdatedBy: record.messagesUpdatedBy?.toString() ?? null,
     trafficChannelId: record.trafficChannelId?.toString() ?? null,
-    trafficUpdatedBy: record.trafficUpdatedBy?.toString() ?? null
+    trafficUpdatedBy: record.trafficUpdatedBy?.toString() ?? null,
+    economyChannelId: record.economyChannelId?.toString() ?? null,
+    economyUpdatedBy: record.economyUpdatedBy?.toString() ?? null
   };
 }
 
@@ -51,7 +57,9 @@ export async function getActionLogSettings(guildId: string): Promise<ActionLogSe
         messagesChannelId: true,
         messagesUpdatedBy: true,
         trafficChannelId: true,
-        trafficUpdatedBy: true
+        trafficUpdatedBy: true,
+        economyChannelId: true,
+        economyUpdatedBy: true
       }
     });
 
@@ -64,7 +72,9 @@ export async function getActionLogSettings(guildId: string): Promise<ActionLogSe
         messagesChannelId: null,
         messagesUpdatedBy: null,
         trafficChannelId: null,
-        trafficUpdatedBy: null
+        trafficUpdatedBy: null,
+        economyChannelId: null,
+        economyUpdatedBy: null
       };
     }
 
@@ -80,7 +90,9 @@ export async function getActionLogSettings(guildId: string): Promise<ActionLogSe
         messagesChannelId: null,
         messagesUpdatedBy: null,
         trafficChannelId: null,
-        trafficUpdatedBy: null
+        trafficUpdatedBy: null,
+        economyChannelId: null,
+        economyUpdatedBy: null
       };
     }
 

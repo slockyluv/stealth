@@ -9,15 +9,31 @@ import {
 import { logger } from '../../shared/logger.js';
 import { upsertUser } from '../../services/userService.js';
 import { parseCustomId, customIdKey } from '../../shared/customId.js';
+import { createEmojiFormatter } from '../emoji.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 
 async function safeReply(interaction: Interaction, message: string) {
   if (!interaction.isRepliable()) return;
 
+  const formatEmoji = await createEmojiFormatter({
+    client: interaction.client,
+    guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+    guildEmojis: interaction.guild?.emojis.cache.values()
+  });
+
+  const components = buildWarningView(formatEmoji, message);
+
   try {
     if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ content: message, ephemeral: true });
+      await interaction.followUp({
+        components,
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
     } else {
-      await interaction.reply({ content: message, ephemeral: true });
+      await interaction.reply({
+        components,
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
     }
   } catch {
     // ignore

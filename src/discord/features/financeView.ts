@@ -57,7 +57,7 @@ export async function buildFinanceView(options: {
     `# ${formatEmoji('governmentbudget')} Казна`,
     '',
     `**${formatEmoji('sackdollar')} Государственный бюджет:**`,
-    `> *${formatBudgetValue(profile.budget)}*`,
+    `> *${formatBudgetValue(profile.budget)}* ${formatEmoji('stackmoney')}`,
     '',
     `**${formatEmoji('goldres')} Золотовалютные резервы:**`,
     '> В будущем',

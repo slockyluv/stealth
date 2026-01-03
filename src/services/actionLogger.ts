@@ -1,7 +1,8 @@
-import { channelMention, roleMention, userMention, type Guild, type User } from 'discord.js';
+import { channelMention, roleMention, userMention, ComponentType, type Guild, type User } from 'discord.js';
 import { createEmojiFormatter } from '../discord/emoji.js';
 import { sendActionLog, buildBaseContainer } from './actionLogSender.js';
 import { formatDateTime, formatDuration, formatRelative } from '../shared/time.js';
+import { MESSAGE_SEPARATOR_COMPONENT } from '../discord/features/applications/config.js';
 
 function formatMention(id: string | null | undefined, italic = false): string {
   if (!id) return italic ? '*неизвестно*' : 'неизвестно';
@@ -311,4 +312,38 @@ export async function logTrafficLeave(options: {
 
   const components = buildBaseContainer(lines);
   await sendActionLog({ guild, category: 'traffic', components });
+}
+
+export async function logEconomyAction(options: {
+  guild: Guild;
+  targetId: string;
+  moderatorId: string;
+  amount: bigint;
+  createdAt?: Date;
+}) {
+  const { guild, targetId, moderatorId, amount, createdAt } = options;
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const amountText = amount.toLocaleString('ru-RU');
+  const header = `**${formatEmoji('opendollar')} Выдача денежных средств**`;
+
+  const components = [
+    {
+      type: ComponentType.Container,
+      components: [
+        { type: ComponentType.TextDisplay, content: header },
+        { ...MESSAGE_SEPARATOR_COMPONENT },
+        { type: ComponentType.TextDisplay, content: `**Государство:** <@${targetId}>` },
+        { type: ComponentType.TextDisplay, content: `**Администратор:** <@${moderatorId}>` },
+        { type: ComponentType.TextDisplay, content: `**Сумма:** *${amountText}*` },
+        { type: ComponentType.TextDisplay, content: `**Дата и время:** \`${formatDateTime(createdAt ?? new Date())}\`` }
+      ]
+    }
+  ];
+
+  await sendActionLog({ guild, category: 'economy', components });
 }

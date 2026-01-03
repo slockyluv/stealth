@@ -15,6 +15,7 @@ import {
 import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { type ActionLogCategory, getActionLogSettings } from '../../../services/actionLogSettingsService.js';
+import { MESSAGE_SEPARATOR_COMPONENT } from '../applications/config.js';
 
 const CHANNEL_PAGE_SIZE = 10;
 
@@ -43,6 +44,11 @@ const CATEGORY_META: Record<
     label: 'Трафик',
     emoji: 'exit',
     description: '*Журнал посещения серверами пользователями Discord.*'
+  },
+  economy: {
+    label: 'Экономика',
+    emoji: 'sackdollar',
+    description: '*Журнал действий с экономикой (выдача, списание, обнуление бюджета).*'
   }
 };
 
@@ -99,27 +105,32 @@ export async function buildActionLogsOverview(guild: Guild): Promise<ActionLogsV
           '*Выберите каналы для журнала различных действий пользователей и администраторов.*'
         ].join('\n')
       },
-      { type: ComponentType.Separator, divider: true },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
       {
         type: ComponentType.TextDisplay,
         content: `**Модерирование:** *${formatChannelDisplay(settings.moderationChannelId, channelMap)}*`
       },
-      { type: ComponentType.Separator, divider: true },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
       {
         type: ComponentType.TextDisplay,
         content: `**Управление ролями:** *${formatChannelDisplay(settings.rolesChannelId, channelMap)}*`
       },
-      { type: ComponentType.Separator, divider: true },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
       {
         type: ComponentType.TextDisplay,
         content: `**Сообщения:** *${formatChannelDisplay(settings.messagesChannelId, channelMap)}*`
       },
-      { type: ComponentType.Separator, divider: true },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
       {
         type: ComponentType.TextDisplay,
         content: `**Трафик:** *${formatChannelDisplay(settings.trafficChannelId, channelMap)}*`
       },
-      { type: ComponentType.Separator, divider: true },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
+      {
+        type: ComponentType.TextDisplay,
+        content: `**Экономика:** *${formatChannelDisplay(settings.economyChannelId, channelMap)}*`
+      },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select).toJSON()
     ]
   };
@@ -229,7 +240,7 @@ export async function buildActionLogCategoryView(options: {
         type: ComponentType.TextDisplay,
         content: [`# ${emoji(meta.emoji)} ${meta.label}`, meta.description].join('\n')
       },
-      { type: ComponentType.Separator, divider: true },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
       {
         type: ComponentType.TextDisplay,
         content: [
@@ -237,7 +248,7 @@ export async function buildActionLogCategoryView(options: {
           `**Администратор:** ${formatAdmin(adminId)}`
         ].join('\n')
       },
-      { type: ComponentType.Separator, divider: true },
+      { ...MESSAGE_SEPARATOR_COMPONENT },
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select).toJSON(),
       navRow.toJSON(),
       new ActionRowBuilder<ButtonBuilder>().addComponents(overviewButton).toJSON()

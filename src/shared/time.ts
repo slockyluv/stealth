@@ -1,6 +1,7 @@
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
   dateStyle: 'medium',
-  timeStyle: 'medium'
+  timeStyle: 'medium',
+  timeZone: 'Europe/Moscow'
 });
 
 type DurationUnit = 'day' | 'hour' | 'minute' | 'second';

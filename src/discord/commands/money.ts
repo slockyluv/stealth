@@ -17,6 +17,7 @@ import { MESSAGE_SEPARATOR_COMPONENT } from '../features/applications/config.js'
 import { updateCountryBudget, type CountryBudgetChangeType } from '../../services/countryProfileService.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_MONEY, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
+import { logEconomyAction } from '../../services/actionLogger.js';
 
 const GIVE_MONEY_USAGE = '!give-money @Пользователь <Кол-во>';
 const TAKE_MONEY_USAGE = '!take-money @Пользователь <Кол-во>';
@@ -79,8 +80,9 @@ async function resolveMoneyCommand(options: {
   type: CountryBudgetChangeType;
   formatEmoji: (name: string) => string;
   moderatorMention: string;
+  moderatorId: string;
 }): Promise<MoneyCommandResult> {
-  const { guildId, guild, targetUserId, amount, type, formatEmoji, moderatorMention } = options;
+  const { guildId, guild, targetUserId, amount, type, formatEmoji, moderatorMention, moderatorId } = options;
   const registration = await getUserRegistration(guildId, targetUserId);
 
   if (!registration) {
@@ -96,6 +98,13 @@ async function resolveMoneyCommand(options: {
   const countryLabel = await formatCountryDisplay(guild, countryLookup.country);
   const targetMention = `<@${targetUserId}>`;
   const amountForDisplay = type === 'reset' ? previousBudget : amount;
+
+  void logEconomyAction({
+    guild,
+    targetId: targetUserId,
+    moderatorId,
+    amount: amountForDisplay
+  }).catch((error) => logger.error(error));
 
   return {
     view: buildMoneyView({
@@ -161,7 +170,8 @@ async function handleInteraction(
       amount,
       type,
       formatEmoji,
-      moderatorMention: `<@${interaction.user.id}>`
+      moderatorMention: `<@${interaction.user.id}>`,
+      moderatorId: interaction.user.id
     });
 
     if ('error' in result) {
@@ -229,7 +239,8 @@ async function handleMessage(message: Message, args: string[], type: CountryBudg
       amount,
       type,
       formatEmoji,
-      moderatorMention: `<@${message.author.id}>`
+      moderatorMention: `<@${message.author.id}>`,
+      moderatorId: message.author.id
     });
 
     if ('error' in result) {

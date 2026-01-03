@@ -320,8 +320,9 @@ export async function logEconomyAction(options: {
   moderatorId: string;
   amount: bigint;
   createdAt?: Date;
+  action: 'give-money' | 'take-money' | 'reset-money';
 }) {
-  const { guild, targetId, moderatorId, amount, createdAt } = options;
+  const { guild, targetId, moderatorId, amount, createdAt, action } = options;
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
     guildId: guild.id,
@@ -329,7 +330,12 @@ export async function logEconomyAction(options: {
   });
 
   const amountText = amount.toLocaleString('ru-RU');
-  const header = `**${formatEmoji('opendollar')} Выдача денежных средств**`;
+  const header =
+    action === 'take-money'
+      ? `**${formatEmoji('opendollar')} Снятие денежных средств**`
+      : action === 'reset-money'
+        ? `**${formatEmoji('opendollar')} Обнуление денежных средств**`
+        : `**${formatEmoji('opendollar')} Выдача денежных средств**`;
 
   const components = [
     {

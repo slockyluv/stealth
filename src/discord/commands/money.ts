@@ -98,12 +98,14 @@ async function resolveMoneyCommand(options: {
   const countryLabel = await formatCountryDisplay(guild, countryLookup.country);
   const targetMention = `<@${targetUserId}>`;
   const amountForDisplay = type === 'reset' ? previousBudget : amount;
+  const action = type === 'decrease' ? 'take-money' : type === 'reset' ? 'reset-money' : 'give-money';
 
   void logEconomyAction({
     guild,
     targetId: targetUserId,
     moderatorId,
-    amount: amountForDisplay
+    amount: amountForDisplay,
+    action
   }).catch((error) => logger.error(error));
 
   return {

@@ -1,7 +1,7 @@
 import { prisma } from '../database/prisma.js';
 import { logger } from '../shared/logger.js';
 
-const POPULATION_TAX_INTERVAL_MS = 8 * 60 * 60 * 1000;
+const POPULATION_TAX_INTERVAL_MS = 8 * 60 * 60;
 
 const TAXATION_MIN = 200000; // taxation min
 const TAXATION_MAX = 300000; // taxation max

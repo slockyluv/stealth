@@ -70,16 +70,15 @@ export async function buildFinanceView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: `**${formatEmoji('governmentbudget')} Государственный бюджет**`
+        content: `**${formatEmoji('governmentbudget')} Государственный бюджет:**`
       }
     ],
     accessory: governmentBudgetButton
   };
 
+  const treasuryHeaderContent = [`# ${formatEmoji('governmentbudget')} Казна`, ''].join('\n');
+
   const treasuryContent = [
-    `# ${formatEmoji('governmentbudget')} Казна`,
-    '',
-    `**${formatEmoji('sackdollar')} Денежные средства:**`,
     `> *${formatBudgetValue(profile.budget)}* ${formatEmoji('stackmoney')}`,
     '',
     `**${formatEmoji('goldres')} Золотовалютные резервы:**`,
@@ -112,6 +111,7 @@ export async function buildFinanceView(options: {
     components: [
       header,
       buildSeparator(),
+      { type: ComponentType.TextDisplay, content: treasuryHeaderContent },
       governmentBudgetSection,
       { type: ComponentType.TextDisplay, content: treasuryContent },
       buildSeparator(),
@@ -152,12 +152,13 @@ export async function buildGovernmentBudgetView(options: {
   };
 
   const budgetContent = [
-    `**${formatEmoji('governmentbudget')} Государственный бюджет:**`,
+    `# ${formatEmoji('governmentbudget')} Государственный бюджет:`,
+    '',
     `**${formatEmoji('sackdollar')} Денежные средства:**`,
     `> ${formatBudgetValue(profile.budget)} ${formatEmoji('stackmoney')}`,
     '',
     `**${formatEmoji('taxation')} Налоги организаций:**`,
-    '*Скоро*',
+    '> *Скоро*',
     ''
   ].join('\n');
 
@@ -174,7 +175,7 @@ export async function buildGovernmentBudgetView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: [`**${formatEmoji('taxation')} Налоги населения:**`, `*${profile.populationTaxRate}%*`].join('\n')
+        content: [`**${formatEmoji('taxation')} Налоги населения:**`, `> *${profile.populationTaxRate}%*`].join('\n')
       }
     ],
     accessory: editTaxButton

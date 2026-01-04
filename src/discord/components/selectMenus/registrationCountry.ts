@@ -67,14 +67,14 @@ export const registrationCountrySelect: SelectMenuHandler = {
         result.status === 'registered'
           ? buildSuccessView(
               formatEmoji,
-              `Вы успешно зарегистрировались за **${country.name}**.${nicknameNotice}`
+              `Вы успешно зарегистрировались за __${country.name}__.${nicknameNotice}`
             )
           : result.status === 'alreadyRegistered'
-            ? buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${result.registration.countryName}**.`)
+            ? buildWarningView(formatEmoji, `Вы уже зарегистрированы!`)
             : result.status === 'companyRegistered'
               ? buildWarningView(
                   formatEmoji,
-                  `Вы уже зарегистрированы как владелец компании **${result.company.name}**.`
+                  `Вы уже зарегистрированы!`
                 )
               : buildWarningView(formatEmoji, 'Эта страна уже занята. Список свободных стран обновлен.');
 

@@ -40,7 +40,7 @@ export const registrationTypeSelect: SelectMenuHandler = {
           await interaction.editReply({
             components: buildWarningView(
               formatEmoji,
-              `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
+              `Вы уже зарегистрированы!`
             ),
             flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
@@ -50,7 +50,7 @@ export const registrationTypeSelect: SelectMenuHandler = {
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
           await interaction.editReply({
-            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
+            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы!`),
             flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
           return;
@@ -86,7 +86,7 @@ export const registrationTypeSelect: SelectMenuHandler = {
           await interaction.editReply({
             components: buildWarningView(
               formatEmoji,
-              `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
+              `Вы уже зарегистрированы!`
             ),
             flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
@@ -96,7 +96,7 @@ export const registrationTypeSelect: SelectMenuHandler = {
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
           await interaction.editReply({
-            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
+            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы!`),
             flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
           return;

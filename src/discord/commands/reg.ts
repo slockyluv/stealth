@@ -44,14 +44,14 @@ export const reg: Command = {
       ]);
       if (existingRegistration) {
         await interaction.followUp({
-          components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
+          components: buildWarningView(formatEmoji, `Вы уже зарегистрированы!`),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       } else if (existingCompany) {
         await interaction.followUp({
           components: buildWarningView(
             formatEmoji,
-            `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
+            `Вы уже зарегистрированы!`
           ),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });

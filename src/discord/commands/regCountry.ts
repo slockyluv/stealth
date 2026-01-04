@@ -120,7 +120,7 @@ export const regCountry: Command = {
         await interaction.editReply({
           components: buildSuccessView(
             formatEmoji,
-            `Пользователь <@${targetUser.id}> зарегистрирован за **${countryLookup.country.name}**.${nicknameNotice}`
+            `Пользователь <@${targetUser.id}> зарегистрирован за __${countryLookup.country.name}__.${nicknameNotice}`
           ),
           flags: MessageFlags.IsComponentsV2
         });
@@ -128,7 +128,7 @@ export const regCountry: Command = {
         await interaction.editReply({
           components: buildWarningView(
             formatEmoji,
-            `Пользователь уже зарегистрирован за **${result.registration.countryName}**.`
+            `Пользователь уже зарегистрирован за __${result.registration.countryName}__.`
           ),
           flags: MessageFlags.IsComponentsV2
         });
@@ -136,7 +136,7 @@ export const regCountry: Command = {
         await interaction.editReply({
           components: buildWarningView(
             formatEmoji,
-            `Пользователь уже зарегистрирован как владелец компании **${result.company.name}**.`
+            `Пользователь уже зарегистрирован как владелец компании __${result.company.name}__.`
           ),
           flags: MessageFlags.IsComponentsV2
         });
@@ -220,20 +220,20 @@ export const regCountry: Command = {
           message,
           buildSuccessView(
             formatEmoji,
-            `Пользователь <@${userId}> зарегистрирован за **${countryLookup.country.name}**.${nicknameNotice}`
+            `Пользователь <@${userId}> зарегистрирован за __${countryLookup.country.name}__.${nicknameNotice}`
           )
         );
       } else if (result.status === 'alreadyRegistered') {
         await sendMessageResponse(
           message,
-          buildWarningView(formatEmoji, `Пользователь уже зарегистрирован за **${result.registration.countryName}**.`)
+          buildWarningView(formatEmoji, `Пользователь уже зарегистрирован за __${result.registration.countryName}__.`)
         );
       } else if (result.status === 'companyRegistered') {
         await sendMessageResponse(
           message,
           buildWarningView(
             formatEmoji,
-            `Пользователь уже зарегистрирован как владелец компании **${result.company.name}**.`
+            `Пользователь уже зарегистрирован как владелец компании __${result.company.name}__.`
           )
         );
       } else {
@@ -288,7 +288,7 @@ export const unreg: Command = {
 
       if (countryResult.status === 'notRegistered' && companyResult.status === 'notRegistered') {
         await interaction.editReply({
-          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован ни за одной страной или компанией.'),
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован!'),
           flags: MessageFlags.IsComponentsV2
         });
         return;
@@ -304,11 +304,11 @@ export const unreg: Command = {
       const notices: string[] = [];
       if (countryResult.status === 'unregistered') {
         notices.push(
-          `Пользователь <@${targetUser.id}> снят с регистрации страны **${countryResult.registration.countryName}**.${nicknameNotice}`
+          `Пользователь <@${targetUser.id}> снят с регистрации страны __${countryResult.registration.countryName}__.${nicknameNotice}`
         );
       }
       if (companyResult.status === 'unregistered') {
-        notices.push(`Регистрация компании **${companyResult.company.name}** отключена.`);
+        notices.push(`Пользователь снят с компании __${companyResult.company.name}__.`);
       }
 
       await interaction.editReply({

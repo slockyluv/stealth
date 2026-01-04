@@ -11,6 +11,7 @@ import { registrationTypeSelect } from './registrationType.js';
 import { companyIndustrySelect } from './companyIndustry.js';
 import { companyContinentSelect } from './companyContinent.js';
 import { companyCountrySelect } from './companyCountry.js';
+import { companyProfileTabSelect } from './companyProfile.js';
 
 export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsSectionSelect,
@@ -27,5 +28,6 @@ export const selectMenuHandlers: SelectMenuHandler[] = [
   actionLogsChannelSelect,
   applicationSelectMenu,
   applicationReviewSelect,
-  profileTabSelect
+  profileTabSelect,
+  companyProfileTabSelect
 ];

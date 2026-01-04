@@ -179,7 +179,7 @@ export const companyCreateButton: ButtonHandler = {
         await interaction.followUp({
           components: buildWarningView(
             formatEmoji,
-            `Вы уже зарегистрированы за **${result.registration.countryName}**.`
+            `Вы уже зарегистрированы!`
           ),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
@@ -190,7 +190,7 @@ export const companyCreateButton: ButtonHandler = {
         await interaction.followUp({
           components: buildWarningView(
             formatEmoji,
-            `Вы уже зарегистрировали компанию **${result.company.name}**.`
+            `Вы уже зарегистрировали компанию!`
           ),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
@@ -212,7 +212,7 @@ export const companyCreateButton: ButtonHandler = {
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
 
       await interaction.followUp({
-        components: buildSuccessView(formatEmoji, `Компания **${result.company.name}** успешно зарегистрирована.`),
+        components: buildSuccessView(formatEmoji, `Компания __${result.company.name}__ успешно зарегистрирована.`),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     } catch (error) {

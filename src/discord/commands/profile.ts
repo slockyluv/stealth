@@ -12,7 +12,9 @@ import { buildWarningView } from '../responses/messageBuilders.js';
 import { getUserRegistration, findCountryByKey } from '../../services/countryRegistrationService.js';
 import { getCountryProfile } from '../../services/countryProfileService.js';
 import { buildProfileView } from '../features/profileView.js';
+import { buildCompanyProfileView } from '../features/companyProfileView.js';
 import { logger } from '../../shared/logger.js';
+import { getUserActiveCompany } from '../../services/privateCompanyService.js';
 
 type ProfileViewResult = { view: TopLevelComponentData[] } | { error: string };
 
@@ -22,25 +24,34 @@ async function resolveProfileView(options: {
   user: Message['author'];
 }): Promise<ProfileViewResult> {
   const { guildId, guild, user } = options;
-  const registration = await getUserRegistration(guildId, user.id);
-  if (!registration) {
-    return { error: 'Пользователь не зарегистрирован за страной.' };
+  const [registration, company] = await Promise.all([
+    getUserRegistration(guildId, user.id),
+    getUserActiveCompany(guildId, user.id)
+  ]);
+
+  if (registration) {
+    const countryLookup = findCountryByKey(registration.countryName);
+    if (!countryLookup) {
+      return { error: 'Страна пользователя не найдена.' };
+    }
+
+    const profileData = await getCountryProfile(guildId, countryLookup.country);
+    const view = await buildProfileView({
+      guild,
+      user,
+      registration,
+      profile: profileData
+    });
+
+    return { view };
   }
 
-  const countryLookup = findCountryByKey(registration.countryName);
-  if (!countryLookup) {
-    return { error: 'Страна пользователя не найдена.' };
+  if (company) {
+    const view = await buildCompanyProfileView({ guild, user, company });
+    return { view };
   }
 
-  const profileData = await getCountryProfile(guildId, countryLookup.country);
-  const view = await buildProfileView({
-    guild,
-    user,
-    registration,
-    profile: profileData
-  });
-
-  return { view };
+  return { error: 'Пользователь не зарегистрирован.' };
 }
 
 export const profile: Command = {

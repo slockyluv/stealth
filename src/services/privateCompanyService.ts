@@ -3,6 +3,7 @@ import type { ContinentId, Country } from '../discord/features/settings/countrie
 import { getContinent } from '../discord/features/settings/countriesView.js';
 import { prisma } from '../database/prisma.js';
 import { normalizeCountryKey } from './countryProfileService.js';
+import type { CountryRegistrationRecord } from './countryRegistrationService.js';
 
 export const COMPANY_PER_COUNTRY_LIMIT = 1;
 
@@ -122,7 +123,24 @@ export async function getAvailableCompanyCountries(
 
 export type RegisterCompanyResult =
   | { status: 'registered'; company: PrivateCompanyRecord }
+  | { status: 'countryRegistered'; registration: CountryRegistrationRecord }
   | { status: 'missingData'; missing: Array<'name' | 'industry' | 'country'> };
+
+export async function getUserActiveCompany(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.privateCompany.findFirst({
+    where: {
+      guildId: BigInt(guildId),
+      ownerId: BigInt(userId),
+      isActive: true
+    },
+    orderBy: {
+      registeredAt: 'desc'
+    }
+  });
+}
 
 export async function registerPrivateCompany(options: {
   guildId: string;
@@ -134,6 +152,18 @@ export async function registerPrivateCompany(options: {
   continentId: ContinentId | null;
   limit?: number;
 }): Promise<RegisterCompanyResult> {
+  const existingRegistration = await prisma.countryRegistration.findUnique({
+    where: {
+      guildId_userId: {
+        guildId: BigInt(options.guildId),
+        userId: BigInt(options.userId)
+      }
+    }
+  });
+  if (existingRegistration) {
+    return { status: 'countryRegistered', registration: existingRegistration };
+  }
+
   const missing: Array<'name' | 'industry' | 'country'> = [];
   if (!options.name) missing.push('name');
   if (!options.industryKey || !options.industryLabel) missing.push('industry');

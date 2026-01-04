@@ -7,6 +7,7 @@ import {
 import type { Command } from '../../types/command.js';
 import { buildRegistrationEntryView } from '../features/registration/registrationEntryView.js';
 import { getUserRegistration } from '../../services/countryRegistrationService.js';
+import { getUserActiveCompany } from '../../services/privateCompanyService.js';
 import { logger } from '../../shared/logger.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildWarningView } from '../responses/messageBuilders.js';
@@ -37,10 +38,21 @@ export const reg: Command = {
       const view = await buildRegistrationEntryView({ guild: interaction.guild });
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
 
-      const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
+      const [existingRegistration, existingCompany] = await Promise.all([
+        getUserRegistration(interaction.guildId, interaction.user.id),
+        getUserActiveCompany(interaction.guildId, interaction.user.id)
+      ]);
       if (existingRegistration) {
         await interaction.followUp({
           components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } else if (existingCompany) {
+        await interaction.followUp({
+          components: buildWarningView(
+            formatEmoji,
+            `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
+          ),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }

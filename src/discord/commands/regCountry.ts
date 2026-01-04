@@ -95,7 +95,7 @@ export const regCountry: Command = {
     }
 
     if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
     }
 
     try {
@@ -128,6 +128,14 @@ export const regCountry: Command = {
           components: buildWarningView(
             formatEmoji,
             `Пользователь уже зарегистрирован за **${result.registration.countryName}**.`
+          ),
+          flags: MessageFlags.IsComponentsV2
+        });
+      } else if (result.status === 'companyRegistered') {
+        await interaction.editReply({
+          components: buildWarningView(
+            formatEmoji,
+            `Пользователь уже зарегистрирован как владелец компании **${result.company.name}**.`
           ),
           flags: MessageFlags.IsComponentsV2
         });
@@ -219,6 +227,14 @@ export const regCountry: Command = {
           message,
           buildWarningView(formatEmoji, `Пользователь уже зарегистрирован за **${result.registration.countryName}**.`)
         );
+      } else if (result.status === 'companyRegistered') {
+        await sendMessageResponse(
+          message,
+          buildWarningView(
+            formatEmoji,
+            `Пользователь уже зарегистрирован как владелец компании **${result.company.name}**.`
+          )
+        );
       } else {
         const takenBy = result.registration?.userId ? `<@${result.registration.userId.toString()}>` : 'другим пользователем';
         await sendMessageResponse(
@@ -260,7 +276,7 @@ export const unreg: Command = {
     const targetUser = interaction.options.getUser('user', true);
 
     if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
     }
 
     try {

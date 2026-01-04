@@ -71,6 +71,7 @@ export async function buildPrivateCompanyRegistrationView(options: {
       .setDisabled(!canCreate)
   );
 
+  const spacer = '\u200B';
   const containerComponents: ContainerComponentData['components'] = [
     {
       type: ComponentType.TextDisplay,
@@ -83,7 +84,7 @@ export async function buildPrivateCompanyRegistrationView(options: {
     },
     {
       type: ComponentType.TextDisplay,
-      content: ' '
+      content: spacer
     },
     {
       type: ComponentType.TextDisplay,
@@ -96,7 +97,7 @@ export async function buildPrivateCompanyRegistrationView(options: {
     nameButtonRow.toJSON(),
     {
       type: ComponentType.TextDisplay,
-      content: ' '
+      content: spacer
     },
     {
       type: ComponentType.TextDisplay,
@@ -109,7 +110,7 @@ export async function buildPrivateCompanyRegistrationView(options: {
     industryButtonRow.toJSON(),
     {
       type: ComponentType.TextDisplay,
-      content: ' '
+      content: spacer
     },
     {
       type: ComponentType.TextDisplay,

@@ -28,7 +28,7 @@ export const registrationBackButton: ButtonHandler = {
     }
 
     try {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+      await interaction.deferUpdate();
       const view = await buildRegistrationView({ guild: interaction.guild });
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
@@ -74,7 +74,7 @@ export const registrationPageButton: ButtonHandler = {
     }
 
     try {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+      await interaction.deferUpdate();
       const view = await buildRegistrationView({
         guild: interaction.guild,
         selectedContinentId: continent.id,

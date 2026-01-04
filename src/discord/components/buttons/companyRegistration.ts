@@ -159,6 +159,17 @@ export const companyCreateButton: ButtonHandler = {
         continentId: countryLookup?.continentId ?? draft?.continent ?? null
       });
 
+      if (result.status === 'countryRegistered') {
+        await interaction.editReply({
+          components: buildWarningView(
+            formatEmoji,
+            `Вы уже зарегистрированы за **${result.registration.countryName}**.`
+          ),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
       if (result.status === 'missingData') {
         await interaction.editReply({
           components: buildWarningView(formatEmoji, 'Заполните все поля перед созданием компании.'),

@@ -30,7 +30,7 @@ export const registrationContinentSelect: SelectMenuHandler = {
     const selectedContinent = interaction.values[0] as ContinentId | undefined;
 
     try {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+      await interaction.deferUpdate();
       const view = await buildRegistrationView({
         guild: interaction.guild,
         selectedContinentId: selectedContinent,

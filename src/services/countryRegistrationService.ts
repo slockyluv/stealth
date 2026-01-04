@@ -3,6 +3,7 @@ import type { ContinentId, Country } from '../discord/features/settings/countrie
 import { getContinent, getContinents } from '../discord/features/settings/countriesView.js';
 import { prisma } from '../database/prisma.js';
 import { clearCountryRegistration, normalizeCountryKey, setCountryRegistration } from './countryProfileService.js';
+import { getUserActiveCompany, type PrivateCompanyRecord } from './privateCompanyService.js';
 
 export type CountryRegistrationRecord = Prisma.CountryRegistrationGetPayload<{ }>;
 
@@ -149,7 +150,8 @@ export async function getAvailableCountries(
 export type RegisterCountryResult =
   | { status: 'registered'; registration: CountryRegistrationRecord }
   | { status: 'alreadyRegistered'; registration: CountryRegistrationRecord }
-  | { status: 'countryTaken'; registration: CountryRegistrationRecord | null };
+  | { status: 'countryTaken'; registration: CountryRegistrationRecord | null }
+  | { status: 'companyRegistered'; company: PrivateCompanyRecord };
 
 export type UnregisterCountryResult =
   | { status: 'notRegistered' }
@@ -161,6 +163,11 @@ export async function registerCountryForUser(
   continentId: ContinentId,
   country: Country
 ): Promise<RegisterCountryResult> {
+  const existingCompany = await getUserActiveCompany(guildId, userId);
+  if (existingCompany) {
+    return { status: 'companyRegistered', company: existingCompany };
+  }
+
   const normalizedKey = normalizeCountryKey(country.name);
   const registeredAt = new Date();
 

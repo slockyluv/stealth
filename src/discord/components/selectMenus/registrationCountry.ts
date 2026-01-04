@@ -71,7 +71,12 @@ export const registrationCountrySelect: SelectMenuHandler = {
             )
           : result.status === 'alreadyRegistered'
             ? buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${result.registration.countryName}**.`)
-            : buildWarningView(formatEmoji, 'Эта страна уже занята. Список свободных стран обновлен.');
+            : result.status === 'companyRegistered'
+              ? buildWarningView(
+                  formatEmoji,
+                  `Вы уже зарегистрированы как владелец компании **${result.company.name}**.`
+                )
+              : buildWarningView(formatEmoji, 'Эта страна уже занята. Список свободных стран обновлен.');
 
       const updatedView = await buildRegistrationView({
         guild: interaction.guild,

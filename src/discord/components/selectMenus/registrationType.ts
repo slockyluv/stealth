@@ -5,6 +5,7 @@ import { buildPrivateCompanyRegistrationView } from '../../features/registration
 import { buildWarningView } from '../../responses/messageBuilders.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { getUserRegistration } from '../../../services/countryRegistrationService.js';
+import { getUserActiveCompany } from '../../../services/privateCompanyService.js';
 import { logger } from '../../../shared/logger.js';
 
 async function getFormatEmoji(interaction: Parameters<SelectMenuHandler['execute']>[0]) {
@@ -33,23 +34,33 @@ export const registrationTypeSelect: SelectMenuHandler = {
 
     if (selected === 'state') {
       try {
-        await interaction.deferUpdate();
-        const view = await buildRegistrationView({ guild: interaction.guild });
-        await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+        const existingCompany = await getUserActiveCompany(interaction.guildId, interaction.user.id);
+        if (existingCompany) {
+          await interaction.editReply({
+            components: buildWarningView(
+              formatEmoji,
+              `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
+            )
+          });
+          return;
+        }
 
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
-          await interaction.followUp({
-            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
-            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          await interaction.editReply({
+            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`)
           });
+          return;
         }
+
+        const view = await buildRegistrationView({ guild: interaction.guild });
+        await interaction.editReply({ components: view.components });
       } catch (error) {
         logger.error(error);
         if (interaction.deferred || interaction.replied) {
-          await interaction.followUp({
-            components: buildWarningView(formatEmoji, 'Не удалось открыть меню регистрации. Попробуйте позже.'),
-            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          await interaction.editReply({
+            components: buildWarningView(formatEmoji, 'Не удалось открыть меню регистрации. Попробуйте позже.')
           });
         } else {
           await interaction.reply({
@@ -63,18 +74,25 @@ export const registrationTypeSelect: SelectMenuHandler = {
 
     if (selected === 'company') {
       try {
-        await interaction.deferUpdate();
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+        const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
+        if (existingRegistration) {
+          await interaction.editReply({
+            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`)
+          });
+          return;
+        }
+
         const view = await buildPrivateCompanyRegistrationView({
           guild: interaction.guild,
           userId: interaction.user.id
         });
-        await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+        await interaction.editReply({ components: view.components });
       } catch (error) {
         logger.error(error);
         if (interaction.deferred || interaction.replied) {
-          await interaction.followUp({
-            components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.'),
-            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          await interaction.editReply({
+            components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.')
           });
         } else {
           await interaction.reply({

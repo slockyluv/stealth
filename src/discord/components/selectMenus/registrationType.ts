@@ -41,7 +41,8 @@ export const registrationTypeSelect: SelectMenuHandler = {
             components: buildWarningView(
               formatEmoji,
               `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
-            )
+            ),
+            flags: MessageFlags.IsComponentsV2
           });
           return;
         }
@@ -49,18 +50,20 @@ export const registrationTypeSelect: SelectMenuHandler = {
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
           await interaction.editReply({
-            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`)
+            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
+            flags: MessageFlags.IsComponentsV2
           });
           return;
         }
 
         const view = await buildRegistrationView({ guild: interaction.guild });
-        await interaction.editReply({ components: view.components });
+        await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
       } catch (error) {
         logger.error(error);
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({
-            components: buildWarningView(formatEmoji, 'Не удалось открыть меню регистрации. Попробуйте позже.')
+            components: buildWarningView(formatEmoji, 'Не удалось открыть меню регистрации. Попробуйте позже.'),
+            flags: MessageFlags.IsComponentsV2
           });
         } else {
           await interaction.reply({
@@ -78,7 +81,8 @@ export const registrationTypeSelect: SelectMenuHandler = {
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
           await interaction.editReply({
-            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`)
+            components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
+            flags: MessageFlags.IsComponentsV2
           });
           return;
         }
@@ -87,12 +91,13 @@ export const registrationTypeSelect: SelectMenuHandler = {
           guild: interaction.guild,
           userId: interaction.user.id
         });
-        await interaction.editReply({ components: view.components });
+        await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
       } catch (error) {
         logger.error(error);
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({
-            components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.')
+            components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.'),
+            flags: MessageFlags.IsComponentsV2
           });
         } else {
           await interaction.reply({

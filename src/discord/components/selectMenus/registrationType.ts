@@ -81,6 +81,18 @@ export const registrationTypeSelect: SelectMenuHandler = {
     if (selected === 'company') {
       try {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const existingCompany = await getUserActiveCompany(interaction.guildId, interaction.user.id);
+        if (existingCompany) {
+          await interaction.editReply({
+            components: buildWarningView(
+              formatEmoji,
+              `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
+            ),
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          });
+          return;
+        }
+        
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
           await interaction.editReply({

@@ -7,6 +7,10 @@ import { settingsCountriesContinentSelect, settingsCountriesSelect } from './set
 import { registrationContinentSelect } from './registrationContinent.js';
 import { registrationCountrySelect } from './registrationCountry.js';
 import { profileTabSelect } from './profile.js';
+import { registrationTypeSelect } from './registrationType.js';
+import { companyIndustrySelect } from './companyIndustry.js';
+import { companyContinentSelect } from './companyContinent.js';
+import { companyCountrySelect } from './companyCountry.js';
 
 export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsSectionSelect,
@@ -15,6 +19,10 @@ export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsCountriesSelect,
   registrationContinentSelect,
   registrationCountrySelect,
+  registrationTypeSelect,
+  companyIndustrySelect,
+  companyContinentSelect,
+  companyCountrySelect,
   actionLogsSectionSelect,
   actionLogsChannelSelect,
   applicationSelectMenu,

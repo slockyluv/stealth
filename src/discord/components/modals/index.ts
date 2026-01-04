@@ -4,6 +4,7 @@ import { applicationDecisionModal, applicationSubmitModal } from './applications
 import { settingsCountriesEditModal } from './settingsCountries.js';
 import { profileEditModal } from './profile.js';
 import { financeTaxationEditModal } from './finance.js';
+import { companyNameModal } from './companyRegistration.js';
 
 export const modalHandlers: ModalHandler[] = [
   settingsEmojiColorModal,
@@ -11,5 +12,6 @@ export const modalHandlers: ModalHandler[] = [
   applicationDecisionModal,
   settingsCountriesEditModal,
   profileEditModal,
-  financeTaxationEditModal
+  financeTaxationEditModal,
+  companyNameModal
 ];

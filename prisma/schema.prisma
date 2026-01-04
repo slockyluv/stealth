@@ -98,3 +98,39 @@ model CountryRegistration {
   @@unique([guildId, countryKey])
   @@index([guildId, continent])
 }
+
+model PrivateCompanyDraft {
+  id            BigInt      @id @default(autoincrement())
+  guildId       BigInt
+  userId        BigInt
+  name          String?
+  industryKey   String?
+  industryLabel String?
+  countryName   String?
+  countryKey    String?
+  continent     ContinentId?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([guildId, userId])
+  @@index([guildId])
+}
+
+model PrivateCompany {
+  id            BigInt      @id @default(autoincrement())
+  guildId       BigInt
+  ownerId       BigInt
+  name          String
+  industryKey   String
+  industryLabel String
+  countryName   String
+  countryKey    String
+  continent     ContinentId
+  isActive      Boolean     @default(true)
+  registeredAt  DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([guildId, countryKey])
+  @@index([guildId, ownerId])
+}

@@ -27,6 +27,14 @@ import {
   financeTaxationCollectButton,
   financeTaxationEditButton
 } from './finance.js';
+import {
+  companyCountryBackButton,
+  companyCountryPageButton,
+  companyCreateButton,
+  companyEditCountryButton,
+  companyEditIndustryButton,
+  companyEditNameButton
+} from './companyRegistration.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
@@ -48,6 +56,12 @@ export const buttonHandlers: ButtonHandler[] = [
   mutesPageButton,
   registrationBackButton,
   registrationPageButton,
+  companyEditNameButton,
+  companyEditIndustryButton,
+  companyEditCountryButton,
+  companyCreateButton,
+  companyCountryBackButton,
+  companyCountryPageButton,
   profileEditButton,
   financeBudgetButton,
   financeBudgetBackButton,

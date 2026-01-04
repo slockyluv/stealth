@@ -5,7 +5,7 @@ import {
   type Message
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
-import { buildRegistrationView } from '../features/registration/registrationView.js';
+import { buildRegistrationEntryView } from '../features/registration/registrationEntryView.js';
 import { getUserRegistration } from '../../services/countryRegistrationService.js';
 import { logger } from '../../shared/logger.js';
 import { createEmojiFormatter } from '../emoji.js';
@@ -34,7 +34,7 @@ export const reg: Command = {
     }
 
     try {
-      const view = await buildRegistrationView({ guild: interaction.guild });
+      const view = await buildRegistrationEntryView({ guild: interaction.guild });
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
 
       const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
@@ -63,7 +63,7 @@ export const reg: Command = {
     });
 
     try {
-      const view = await buildRegistrationView({ guild: message.guild });
+      const view = await buildRegistrationEntryView({ guild: message.guild });
       await message.channel.send({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);

@@ -54,21 +54,11 @@ export const companyIndustrySelect: SelectMenuHandler = {
         industryLabel: industry.label
       });
 
-      const channel = interaction.channel;
-      if (!channel || !channel.isTextBased()) {
-        await interaction.followUp({
-          components: buildWarningView(formatEmoji, 'Не удалось обновить сообщение регистрации.'),
-          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
-        return;
-      }
-
-      const message = await channel.messages.fetch(messageId);
       const view = await buildPrivateCompanyRegistrationView({
         guild: interaction.guild,
         userId: interaction.user.id
       });
-      await message.edit({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+      await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
     } catch (error) {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {

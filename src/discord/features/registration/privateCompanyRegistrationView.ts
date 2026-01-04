@@ -1,10 +1,10 @@
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  type ButtonComponentData,
   type ContainerComponentData,
   type Guild,
+  type SectionComponentData,
   type TopLevelComponentData
 } from 'discord.js';
 import { buildCustomId } from '../../../shared/customId.js';
@@ -36,42 +36,39 @@ export async function buildPrivateCompanyRegistrationView(options: {
     ? `${countryEmoji ? `${countryEmoji} | ` : ''}${draft.countryName}`
     : '*Не выбрана*';
 
-  const nameButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(buildCustomId('companyReg', 'editName'))
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji(formatEmoji('edit'))
-      .setLabel('Редактировать')
-  );
-
-  const industryButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(buildCustomId('companyReg', 'editIndustry'))
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji(formatEmoji('edit'))
-      .setLabel('Редактировать')
-  );
-
-  const countryButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(buildCustomId('companyReg', 'editCountry'))
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji(formatEmoji('edit'))
-      .setLabel('Редактировать')
-  );
-
   const canCreate = Boolean(draft?.name && draft?.industryKey && draft?.countryKey && draft?.continent);
 
-  const createButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(buildCustomId('companyReg', 'create'))
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji(formatEmoji('documentgavel'))
-      .setLabel('Создать компанию')
-      .setDisabled(!canCreate)
-  );
+  const createButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    customId: buildCustomId('companyReg', 'create'),
+    style: ButtonStyle.Secondary,
+    emoji: formatEmoji('documentgavel'),
+    label: 'Создать компанию',
+    disabled: !canCreate
+  };
 
   const spacer = '\u200B';
+
+  const buildEditableSection = (options: {
+    label: string;
+    value: string;
+    customId: string;
+  }): SectionComponentData => ({
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [`**${options.label}:**`, `> ${options.value}`].join('\n')
+      }
+    ],
+    accessory: {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      customId: options.customId,
+      label: 'Редактировать',
+      emoji: formatEmoji('edit')
+    }
+  });
   const containerComponents: ContainerComponentData['components'] = [
     {
       type: ComponentType.TextDisplay,
@@ -86,43 +83,34 @@ export async function buildPrivateCompanyRegistrationView(options: {
       type: ComponentType.TextDisplay,
       content: spacer
     },
-    {
-      type: ComponentType.TextDisplay,
-      content: `**${formatEmoji('infocompany')} Название:**`
-    },
-    {
-      type: ComponentType.TextDisplay,
-      content: `> ${nameLabel}`
-    },
-    nameButtonRow.toJSON(),
+    buildEditableSection({
+      label: `${formatEmoji('infocompany')} Название`,
+      value: nameLabel,
+      customId: buildCustomId('companyReg', 'editName')
+    }),
     {
       type: ComponentType.TextDisplay,
       content: spacer
     },
-    {
-      type: ComponentType.TextDisplay,
-      content: `**${formatEmoji('infocompany')} Отрасль:**`
-    },
-    {
-      type: ComponentType.TextDisplay,
-      content: `> ${industryLabel}`
-    },
-    industryButtonRow.toJSON(),
+    buildEditableSection({
+      label: `${formatEmoji('infocompany')} Отрасль`,
+      value: industryLabel,
+      customId: buildCustomId('companyReg', 'editIndustry')
+    }),
     {
       type: ComponentType.TextDisplay,
       content: spacer
     },
-    {
-      type: ComponentType.TextDisplay,
-      content: `**${formatEmoji('worldpulse')} Страна регистрации:**`
-    },
-    {
-      type: ComponentType.TextDisplay,
-      content: `> ${countryLabel}`
-    },
-    countryButtonRow.toJSON(),
+    buildEditableSection({
+      label: `${formatEmoji('worldpulse')} Страна регистрации`,
+      value: countryLabel,
+      customId: buildCustomId('companyReg', 'editCountry')
+    }),
     { type: ComponentType.Separator, divider: true },
-    createButtonRow.toJSON()
+    {
+      type: ComponentType.ActionRow,
+      components: [createButton]
+    }
   ];
 
   return {

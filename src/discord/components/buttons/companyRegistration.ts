@@ -77,20 +77,28 @@ export const companyEditIndustryButton: ButtonHandler = {
     }
 
     try {
+      await interaction.deferUpdate();
       const view = await buildCompanyIndustrySelectionView({
         guild: interaction.guild,
         messageId: interaction.message.id
       });
-      await interaction.reply({
+      await interaction.editReply({
         components: view.components,
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        flags: MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);
-      await interaction.reply({
-        components: buildWarningView(formatEmoji, 'Не удалось открыть список отраслей. Попробуйте позже.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список отраслей. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список отраслей. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
     }
   }
 };
@@ -110,20 +118,28 @@ export const companyEditCountryButton: ButtonHandler = {
     }
 
     try {
+      await interaction.deferUpdate();
       const view = await buildCompanyCountrySelectionView({
         guild: interaction.guild,
         messageId: interaction.message.id
       });
-      await interaction.reply({
+      await interaction.editReply({
         components: view.components,
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        flags: MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);
-      await interaction.reply({
-        components: buildWarningView(formatEmoji, 'Не удалось открыть список стран. Попробуйте позже.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список стран. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список стран. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
     }
   }
 };

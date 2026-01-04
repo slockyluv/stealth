@@ -34,24 +34,24 @@ export const registrationTypeSelect: SelectMenuHandler = {
 
     if (selected === 'state') {
       try {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+        await interaction.deferUpdate();
         const existingCompany = await getUserActiveCompany(interaction.guildId, interaction.user.id);
         if (existingCompany) {
-          await interaction.editReply({
+          await interaction.followUp({
             components: buildWarningView(
               formatEmoji,
               `Вы уже зарегистрированы как владелец компании **${existingCompany.name}**.`
             ),
-            flags: MessageFlags.IsComponentsV2
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
           return;
         }
 
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
-          await interaction.editReply({
+          await interaction.followUp({
             components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
-            flags: MessageFlags.IsComponentsV2
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
           return;
         }
@@ -61,9 +61,9 @@ export const registrationTypeSelect: SelectMenuHandler = {
       } catch (error) {
         logger.error(error);
         if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({
+          await interaction.followUp({
             components: buildWarningView(formatEmoji, 'Не удалось открыть меню регистрации. Попробуйте позже.'),
-            flags: MessageFlags.IsComponentsV2
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
         } else {
           await interaction.reply({
@@ -77,12 +77,12 @@ export const registrationTypeSelect: SelectMenuHandler = {
 
     if (selected === 'company') {
       try {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+        await interaction.deferUpdate();
         const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
         if (existingRegistration) {
-          await interaction.editReply({
+          await interaction.followUp({
             components: buildWarningView(formatEmoji, `Вы уже зарегистрированы за **${existingRegistration.countryName}**.`),
-            flags: MessageFlags.IsComponentsV2
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
           return;
         }
@@ -95,9 +95,9 @@ export const registrationTypeSelect: SelectMenuHandler = {
       } catch (error) {
         logger.error(error);
         if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({
+          await interaction.followUp({
             components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.'),
-            flags: MessageFlags.IsComponentsV2
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
           });
         } else {
           await interaction.reply({

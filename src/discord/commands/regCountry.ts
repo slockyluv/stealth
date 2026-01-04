@@ -5,6 +5,7 @@ import {
   registerCountryForUser,
   unregisterCountryForUser
 } from '../../services/countryRegistrationService.js';
+import { unregisterCompanyForUser } from '../../services/privateCompanyService.js'; 
 import { logger } from '../../shared/logger.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildSuccessView, buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
@@ -280,25 +281,38 @@ export const unreg: Command = {
     }
 
     try {
-      const result = await unregisterCountryForUser(interaction.guildId, targetUser.id);
+      const [countryResult, companyResult] = await Promise.all([
+        unregisterCountryForUser(interaction.guildId, targetUser.id),
+        unregisterCompanyForUser(interaction.guildId, targetUser.id)
+      ]);
 
-      if (result.status === 'notRegistered') {
+      if (countryResult.status === 'notRegistered' && companyResult.status === 'notRegistered') {
         await interaction.editReply({
-          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован ни за одной страной.'),
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован ни за одной страной или компанией.'),
           flags: MessageFlags.IsComponentsV2
         });
         return;
       }
 
-      const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-      const nicknameResult = await resetCountryNickname({ member });
-      const nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
+      let nicknameNotice = '';
+      if (countryResult.status === 'unregistered') {
+        const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        const nicknameResult = await resetCountryNickname({ member });
+        nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
+      }
+
+      const notices: string[] = [];
+      if (countryResult.status === 'unregistered') {
+        notices.push(
+          `Пользователь <@${targetUser.id}> снят с регистрации страны **${countryResult.registration.countryName}**.${nicknameNotice}`
+        );
+      }
+      if (companyResult.status === 'unregistered') {
+        notices.push(`Регистрация компании **${companyResult.company.name}** отключена.`);
+      }
 
       await interaction.editReply({
-        components: buildSuccessView(
-          formatEmoji,
-          `Пользователь <@${targetUser.id}> снят с регистрации страны **${result.registration.countryName}**.${nicknameNotice}`
-        ),
+        components: buildSuccessView(formatEmoji, notices.join('\n')),
         flags: MessageFlags.IsComponentsV2
       });
     } catch (error) {
@@ -340,24 +354,37 @@ export const unreg: Command = {
     }
 
     try {
-      const result = await unregisterCountryForUser(message.guild.id, userId);
+      const [countryResult, companyResult] = await Promise.all([
+        unregisterCountryForUser(message.guild.id, userId),
+        unregisterCompanyForUser(message.guild.id, userId)
+      ]);
 
-      if (result.status === 'notRegistered') {
-        await sendMessageResponse(message, buildWarningView(formatEmoji, 'Пользователь не зарегистрирован ни за одной страной.'));
+      if (countryResult.status === 'notRegistered' && companyResult.status === 'notRegistered') {
+        await sendMessageResponse(
+          message,
+          buildWarningView(formatEmoji, 'Пользователь не зарегистрирован ни за одной страной или компанией.')
+        );
         return;
       }
 
-      const member = await message.guild.members.fetch(userId).catch(() => null);
-      const nicknameResult = await resetCountryNickname({ member });
-      const nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
+      let nicknameNotice = '';
+      if (countryResult.status === 'unregistered') {
+        const member = await message.guild.members.fetch(userId).catch(() => null);
+        const nicknameResult = await resetCountryNickname({ member });
+        nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
+      }
 
-      await sendMessageResponse(
-        message,
-        buildSuccessView(
-          formatEmoji,
-          `Пользователь <@${userId}> снят со страны **${result.registration.countryName}**.${nicknameNotice}`
-        )
-      );
+      const notices: string[] = [];
+      if (countryResult.status === 'unregistered') {
+        notices.push(
+          `Пользователь <@${userId}> снят со страны **${countryResult.registration.countryName}**.${nicknameNotice}`
+        );
+      }
+      if (companyResult.status === 'unregistered') {
+        notices.push(`Регистрация компании **${companyResult.company.name}** отключена.`);
+      }
+
+      await sendMessageResponse(message, buildSuccessView(formatEmoji, notices.join('\n')));
     } catch (error) {
       logger.error(error);
       await sendMessageResponse(

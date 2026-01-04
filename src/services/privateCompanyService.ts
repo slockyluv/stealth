@@ -126,6 +126,10 @@ export type RegisterCompanyResult =
   | { status: 'countryRegistered'; registration: CountryRegistrationRecord }
   | { status: 'missingData'; missing: Array<'name' | 'industry' | 'country'> };
 
+export type UnregisterCompanyResult =
+  | { status: 'notRegistered' }
+  | { status: 'unregistered'; company: PrivateCompanyRecord };
+
 export async function getUserActiveCompany(
   guildId: string,
   userId: string
@@ -140,6 +144,33 @@ export async function getUserActiveCompany(
       registeredAt: 'desc'
     }
   });
+}
+
+export async function unregisterCompanyForUser(
+  guildId: string,
+  userId: string
+): Promise<UnregisterCompanyResult> {
+  const company = await prisma.privateCompany.findFirst({
+    where: {
+      guildId: BigInt(guildId),
+      ownerId: BigInt(userId),
+      isActive: true
+    },
+    orderBy: {
+      registeredAt: 'desc'
+    }
+  });
+
+  if (!company) {
+    return { status: 'notRegistered' };
+  }
+
+  const updated = await prisma.privateCompany.update({
+    where: { id: company.id },
+    data: { isActive: false }
+  });
+
+  return { status: 'unregistered', company: updated };
 }
 
 export async function registerPrivateCompany(options: {

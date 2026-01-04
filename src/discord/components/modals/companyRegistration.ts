@@ -17,12 +17,21 @@ async function getFormatEmoji(interaction: Parameters<ModalHandler['execute']>[0
 export const companyNameModal: ModalHandler = {
   key: 'companyReg:nameModal',
 
-  async execute(interaction) {
+  async execute(interaction, ctx) {
     const formatEmoji = await getFormatEmoji(interaction);
 
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
         components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const [messageId] = ctx.customId.args;
+    if (!messageId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная форма.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -37,7 +46,7 @@ export const companyNameModal: ModalHandler = {
       return;
     }
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+    await interaction.deferUpdate();
 
     try {
       await upsertCompanyDraft(interaction.guildId, interaction.user.id, {
@@ -54,11 +63,11 @@ export const companyNameModal: ModalHandler = {
       ];
       await interaction.editReply({
         components,
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        flags: MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);
-      await interaction.editReply({
+      await interaction.followUp({
         components: buildWarningView(formatEmoji, 'Не удалось сохранить название. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });

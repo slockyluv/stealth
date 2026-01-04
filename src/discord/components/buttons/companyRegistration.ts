@@ -186,6 +186,17 @@ export const companyCreateButton: ButtonHandler = {
         return;
       }
 
+      if (result.status === 'companyRegistered') {
+        await interaction.followUp({
+          components: buildWarningView(
+            formatEmoji,
+            `Вы уже зарегистрировали компанию **${result.company.name}**.`
+          ),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
       if (result.status === 'missingData') {
         await interaction.followUp({
           components: buildWarningView(formatEmoji, 'Заполните все поля перед созданием компании.'),

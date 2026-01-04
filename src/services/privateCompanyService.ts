@@ -123,6 +123,7 @@ export async function getAvailableCompanyCountries(
 
 export type RegisterCompanyResult =
   | { status: 'registered'; company: PrivateCompanyRecord }
+  | { status: 'companyRegistered'; company: PrivateCompanyRecord }
   | { status: 'countryRegistered'; registration: CountryRegistrationRecord }
   | { status: 'missingData'; missing: Array<'name' | 'industry' | 'country'> };
 
@@ -183,6 +184,11 @@ export async function registerPrivateCompany(options: {
   continentId: ContinentId | null;
   limit?: number;
 }): Promise<RegisterCompanyResult> {
+  const existingCompany = await getUserActiveCompany(options.guildId, options.userId);
+  if (existingCompany) {
+    return { status: 'companyRegistered', company: existingCompany };
+  }
+
   const existingRegistration = await prisma.countryRegistration.findUnique({
     where: {
       guildId_userId: {

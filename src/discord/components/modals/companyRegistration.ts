@@ -17,21 +17,12 @@ async function getFormatEmoji(interaction: Parameters<ModalHandler['execute']>[0
 export const companyNameModal: ModalHandler = {
   key: 'companyReg:nameModal',
 
-  async execute(interaction, ctx) {
+  async execute(interaction) {
     const formatEmoji = await getFormatEmoji(interaction);
 
     if (!interaction.inCachedGuild()) {
       await interaction.reply({
         components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
-      return;
-    }
-
-    const [messageId] = ctx.customId.args;
-    if (!messageId) {
-      await interaction.reply({
-        components: buildWarningView(formatEmoji, 'Некорректная форма.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
       return;
@@ -53,24 +44,16 @@ export const companyNameModal: ModalHandler = {
         name
       });
 
-      const channel = interaction.channel;
-      if (!channel || !channel.isTextBased()) {
-        await interaction.editReply({
-          components: buildWarningView(formatEmoji, 'Не удалось обновить сообщение регистрации.'),
-          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
-        return;
-      }
-
-      const message = await channel.messages.fetch(messageId);
       const view = await buildPrivateCompanyRegistrationView({
         guild: interaction.guild,
         userId: interaction.user.id
       });
-      await message.edit({ components: view.components, flags: MessageFlags.IsComponentsV2 });
-
+      const components = [
+        ...buildSuccessView(formatEmoji, 'Название компании сохранено.'),
+        ...view.components
+      ];
       await interaction.editReply({
-        components: buildSuccessView(formatEmoji, 'Название компании сохранено.'),
+        components,
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     } catch (error) {

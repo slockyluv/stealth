@@ -158,7 +158,7 @@ export const companyCreateButton: ButtonHandler = {
       return;
     }
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+    await interaction.deferUpdate();
 
     try {
       const draft = await getCompanyDraft(interaction.guildId, interaction.user.id);
@@ -176,7 +176,7 @@ export const companyCreateButton: ButtonHandler = {
       });
 
       if (result.status === 'countryRegistered') {
-        await interaction.editReply({
+        await interaction.followUp({
           components: buildWarningView(
             formatEmoji,
             `Вы уже зарегистрированы за **${result.registration.countryName}**.`
@@ -187,7 +187,7 @@ export const companyCreateButton: ButtonHandler = {
       }
 
       if (result.status === 'missingData') {
-        await interaction.editReply({
+        await interaction.followUp({
           components: buildWarningView(formatEmoji, 'Заполните все поля перед созданием компании.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
@@ -198,23 +198,23 @@ export const companyCreateButton: ButtonHandler = {
         guild: interaction.guild,
         userId: interaction.user.id
       });
-      await interaction.message.edit({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+      await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
 
-      await interaction.editReply({
+      await interaction.followUp({
         components: buildSuccessView(formatEmoji, `Компания **${result.company.name}** успешно зарегистрирована.`),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);
       if (isCountryLimitError(error)) {
-        await interaction.editReply({
+        await interaction.followUp({
           components: buildWarningView(formatEmoji, 'Эта страна уже занята. Выберите другую.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
         return;
       }
 
-      await interaction.editReply({
+      await interaction.followUp({
         components: buildWarningView(formatEmoji, 'Не удалось зарегистрировать компанию. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });

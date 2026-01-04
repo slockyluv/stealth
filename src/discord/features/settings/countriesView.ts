@@ -333,6 +333,10 @@ function resolveNicknameEmoji(country: Country): string {
   return /[a-z0-9_]/i.test(normalizedEmoji) ? '🏴' : normalizedEmoji;
 }
 
+export function getCountryNicknameEmoji(country: Country): string {
+  return resolveNicknameEmoji(country);
+}
+
 export function buildCountryNickname(country: Country): string {
   const emoji = resolveNicknameEmoji(country);
   const prefix = `${emoji} | `;

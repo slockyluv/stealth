@@ -17,10 +17,12 @@ import { buildPrivateCompanyRegistrationView } from '../../features/registration
 import {
   findIndustryByKey,
   getCompanyDraft,
+  isCompanyNameTakenError,
   isCountryLimitError,
   registerPrivateCompany
 } from '../../../services/privateCompanyService.js';
 import { findCountryByKey } from '../../../services/countryRegistrationService.js';
+import { formatNicknameUpdateNotice, updateCompanyNickname } from '../../nickname.js';
 import { logger } from '../../../shared/logger.js';
 import type { ContinentId } from '../../features/settings/countriesView.js';
 
@@ -211,12 +213,38 @@ export const companyCreateButton: ButtonHandler = {
       });
       await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
 
+      let nicknameNotice = '';
+      const countryInfo = findCountryByKey(result.company.countryName);
+      if (countryInfo?.country) {
+        const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+        const nicknameResult = await updateCompanyNickname({
+          member,
+          country: countryInfo.country,
+          industryKey: result.company.industryKey,
+          companyName: result.company.name
+        });
+        nicknameNotice = formatNicknameUpdateNotice(formatEmoji, nicknameResult);
+      }
+
       await interaction.followUp({
-        components: buildSuccessView(formatEmoji, `Компания __${result.company.name}__ успешно зарегистрирована.`),
+        components: buildSuccessView(
+          formatEmoji,
+          `Компания __${result.company.name}__ успешно зарегистрирована.${nicknameNotice}`
+        ),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);
+      if (isCompanyNameTakenError(error)) {
+        await interaction.followUp({
+          components: buildWarningView(
+            formatEmoji,
+            'Компания с таким названием уже зарегистрирована. Выберите другое название.'
+          ),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
       if (isCountryLimitError(error)) {
         await interaction.followUp({
           components: buildWarningView(formatEmoji, 'Эта страна уже занята. Выберите другую.'),

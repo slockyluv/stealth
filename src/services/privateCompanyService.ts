@@ -24,9 +24,22 @@ export const COMPANY_INDUSTRIES: CompanyIndustry[] = [
   { key: 'manufacturing', label: 'Производство', emoji: 'humanpictos' }
 ];
 
+const COMPANY_INDUSTRY_MARKERS: Record<string, string> = {
+  payment_system: 'PAY',
+  investment_exchange: 'EXCH',
+  crypto_exchange: 'CEX',
+  construction: 'DEV',
+  manufacturing: 'IND'
+};
+
 export function findIndustryByKey(key: string | null | undefined): CompanyIndustry | null {
   if (!key) return null;
   return COMPANY_INDUSTRIES.find((industry) => industry.key === key) ?? null;
+}
+
+export function getIndustryMarker(key: string | null | undefined): string | null {
+  if (!key) return null;
+  return COMPANY_INDUSTRY_MARKERS[key] ?? null;
 }
 
 export async function getCompanyDraft(guildId: string, userId: string): Promise<PrivateCompanyDraftRecord | null> {
@@ -218,13 +231,29 @@ export async function registerPrivateCompany(options: {
   const normalizedKey = normalizeCountryKey(country.name);
 
   const company = await prisma.$transaction(async (tx) => {
-    const count = await tx.privateCompany.count({
-      where: {
-        guildId: BigInt(options.guildId),
-        countryKey: normalizedKey,
-        isActive: true
-      }
-    });
+    const [existingName, count] = await Promise.all([
+      tx.privateCompany.findFirst({
+        where: {
+          guildId: BigInt(options.guildId),
+          isActive: true,
+          name: {
+            equals: name,
+            mode: 'insensitive'
+          }
+        }
+      }),
+      tx.privateCompany.count({
+        where: {
+          guildId: BigInt(options.guildId),
+          countryKey: normalizedKey,
+          isActive: true
+        }
+      })
+    ]);
+
+    if (existingName) {
+      throw new Error('nameTaken');
+    }
 
     const limit = options.limit ?? COMPANY_PER_COUNTRY_LIMIT;
     if (count >= limit) {
@@ -254,4 +283,8 @@ export async function registerPrivateCompany(options: {
 
 export function isCountryLimitError(error: unknown): boolean {
   return error instanceof Error && error.message === 'countryLimit';
+}
+
+export function isCompanyNameTakenError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'nameTaken';
 }

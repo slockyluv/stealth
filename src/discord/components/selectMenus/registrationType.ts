@@ -2,10 +2,11 @@ import { MessageFlags } from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildRegistrationView } from '../../features/registration/registrationView.js';
 import { buildPrivateCompanyRegistrationView } from '../../features/registration/privateCompanyRegistrationView.js';
-import { buildWarningView } from '../../responses/messageBuilders.js';
+import { buildSuccessView, buildWarningView } from '../../responses/messageBuilders.js';
 import { createEmojiFormatter } from '../../emoji.js';
-import { getUserRegistration } from '../../../services/countryRegistrationService.js';
-import { clearCompanyDraft, getUserActiveCompany } from '../../../services/privateCompanyService.js';
+import { getUserRegistration, unregisterCountryForUser } from '../../../services/countryRegistrationService.js';
+import { clearCompanyDraft, getUserActiveCompany, unregisterCompanyForUser } from '../../../services/privateCompanyService.js';
+import { formatNicknameResetNotice, resetCountryNickname } from '../../nickname.js';
 import { logger } from '../../../shared/logger.js';
 
 async function getFormatEmoji(interaction: Parameters<SelectMenuHandler['execute']>[0]) {
@@ -122,6 +123,60 @@ export const registrationTypeSelect: SelectMenuHandler = {
         } else {
           await interaction.reply({
             components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.'),
+            flags: MessageFlags.IsComponentsV2
+          });
+        }
+      }
+      return;
+    }
+
+    if (selected === 'unreg') {
+      try {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const [countryResult, companyResult] = await Promise.all([
+          unregisterCountryForUser(interaction.guildId, interaction.user.id),
+          unregisterCompanyForUser(interaction.guildId, interaction.user.id)
+        ]);
+
+        if (countryResult.status === 'notRegistered' && companyResult.status === 'notRegistered') {
+          await interaction.editReply({
+            components: buildWarningView(formatEmoji, 'Вы не зарегистрированы!'),
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          });
+          return;
+        }
+
+        let nicknameNotice = '';
+        if (countryResult.status === 'unregistered') {
+          const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+          const nicknameResult = await resetCountryNickname({ member });
+          nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
+        }
+
+        const notices: string[] = [];
+        if (countryResult.status === 'unregistered') {
+          notices.push(
+            `Вы сняты с регистрации страны __${countryResult.registration.countryName}__.${nicknameNotice}`
+          );
+        }
+        if (companyResult.status === 'unregistered') {
+          notices.push(`Вы сняты с компании __${companyResult.company.name}__.`);
+        }
+
+        await interaction.editReply({
+          components: buildSuccessView(formatEmoji, notices.join('\n')),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } catch (error) {
+        logger.error(error);
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({
+            components: buildWarningView(formatEmoji, 'Не удалось снять регистрацию. Попробуйте позже.'),
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          });
+        } else {
+          await interaction.reply({
+            components: buildWarningView(formatEmoji, 'Не удалось снять регистрацию. Попробуйте позже.'),
             flags: MessageFlags.IsComponentsV2
           });
         }

@@ -32,7 +32,11 @@ export async function buildRegistrationEntryView(options: {
         new StringSelectMenuOptionBuilder()
           .setLabel('Частная компания')
           .setValue('company')
-          .setEmoji(formatEmoji('filialscomp'))
+          .setEmoji(formatEmoji('filialscomp')),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('Снять с регистрации')
+          .setValue('unreg')
+          .setEmoji(formatEmoji('staff_warn'))
       )
   );
 

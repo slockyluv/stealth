@@ -11,7 +11,8 @@ import { createEmojiFormatter } from '../emoji.js';
 import { buildWarningView } from '../responses/messageBuilders.js';
 import { getUserRegistration, findCountryByKey } from '../../services/countryRegistrationService.js';
 import { getCountryProfile } from '../../services/countryProfileService.js';
-import { buildFinanceView } from '../features/financeView.js';
+import { getUserActiveCompany } from '../../services/privateCompanyService.js';
+import { buildCompanyFinanceView, buildFinanceView } from '../features/financeView.js';
 import { logger } from '../../shared/logger.js';
 
 type FinanceViewResult = { view: TopLevelComponentData[] } | { error: string };
@@ -22,6 +23,24 @@ async function resolveFinanceView(options: {
   user: Message['author'];
 }): Promise<FinanceViewResult> {
   const { guildId, guild, user } = options;
+  const company = await getUserActiveCompany(guildId, user.id);
+  if (company) {
+    const countryLookup = findCountryByKey(company.countryName);
+    if (!countryLookup) {
+      return { error: 'Страна компании не найдена.' };
+    }
+
+    const profileData = await getCountryProfile(guildId, countryLookup.country);
+    const view = await buildCompanyFinanceView({
+      guild,
+      user,
+      company,
+      countryProfile: profileData
+    });
+
+    return { view };
+  }
+  
   const registration = await getUserRegistration(guildId, user.id);
   if (!registration) {
     return { error: 'Пользователь не зарегистрирован за страной.' };

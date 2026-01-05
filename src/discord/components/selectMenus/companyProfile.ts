@@ -3,8 +3,11 @@ import type { SelectMenuHandler } from '../../../types/component.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { buildWarningView } from '../../responses/messageBuilders.js';
 import { logger } from '../../../shared/logger.js';
+import { findCountryByKey } from '../../../services/countryRegistrationService.js';
+import { getCountryProfile } from '../../../services/countryProfileService.js';
 import { getUserActiveCompany } from '../../../services/privateCompanyService.js';
 import { buildCompanyProfileView } from '../../features/companyProfileView.js';
+import { buildCompanyFinanceView } from '../../features/financeView.js';
 
 export const companyProfileTabSelect: SelectMenuHandler = {
   key: 'companyProfile:tab',
@@ -42,7 +45,7 @@ export const companyProfileTabSelect: SelectMenuHandler = {
     }
 
     const selectedTab = interaction.values[0];
-    if (!selectedTab || selectedTab !== 'profile') {
+    if (!selectedTab || (selectedTab !== 'profile' && selectedTab !== 'finance')) {
       await interaction.reply({
         components: buildWarningView(formatEmoji, 'Некорректный выбор раздела.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
@@ -59,6 +62,28 @@ export const companyProfileTabSelect: SelectMenuHandler = {
           components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
+        return;
+      }
+
+      if (selectedTab === 'finance') {
+        const countryLookup = findCountryByKey(company.countryName);
+        if (!countryLookup) {
+          await interaction.followUp({
+            components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          });
+          return;
+        }
+
+        const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+        const view = await buildCompanyFinanceView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company,
+          countryProfile: profile
+        });
+
+        await interaction.editReply({ components: view });
         return;
       }
 

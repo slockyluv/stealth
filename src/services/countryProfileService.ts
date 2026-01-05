@@ -19,6 +19,8 @@ type CountryPolitics = {
 type CountryEconomy = {
   budget: bigint;
   populationTaxRate: number;
+  residentCompanyTaxRate: number;
+  foreignCompanyTaxRate: number;
   lastPopulationTaxAt?: Date;
 };
 
@@ -46,6 +48,8 @@ const DEFAULT_POLITICS: Required<CountryPolitics> = {
 
 const DEFAULT_BUDGET = 0n;
 const DEFAULT_POPULATION_TAX_RATE = 10;
+const DEFAULT_RESIDENT_COMPANY_TAX_RATE = 10;
+const DEFAULT_FOREIGN_COMPANY_TAX_RATE = 10;
 
 function getDbClient(db?: PrismaClientOrTransaction): PrismaClientOrTransaction {
   return db ?? prisma;
@@ -379,6 +383,8 @@ function mapRecordToProfile(record: {
   religion: string | null;
   budget: bigint | null;
   populationTaxRate: number | null;
+  residentCompanyTaxRate: number | null;
+  foreignCompanyTaxRate: number | null;
   lastPopulationTaxAt: Date | null;
   registeredUserId: bigint | null;
   registeredAt: Date | null;
@@ -396,6 +402,14 @@ function mapRecordToProfile(record: {
     budget: typeof record.budget === 'bigint' ? record.budget : DEFAULT_BUDGET,
     populationTaxRate:
       typeof record.populationTaxRate === 'number' ? record.populationTaxRate : DEFAULT_POPULATION_TAX_RATE,
+    residentCompanyTaxRate:
+      typeof record.residentCompanyTaxRate === 'number'
+        ? record.residentCompanyTaxRate
+        : DEFAULT_RESIDENT_COMPANY_TAX_RATE,
+    foreignCompanyTaxRate:
+      typeof record.foreignCompanyTaxRate === 'number'
+        ? record.foreignCompanyTaxRate
+        : DEFAULT_FOREIGN_COMPANY_TAX_RATE,
     lastPopulationTaxAt: record.lastPopulationTaxAt ?? undefined,
     registeredUserId: record.registeredUserId ? record.registeredUserId.toString() : undefined,
     registeredAt: record.registeredAt ?? undefined
@@ -408,6 +422,8 @@ function buildDefaultProfile(country: Country): CountryProfile {
     ...DEFAULT_POLITICS,
     budget: DEFAULT_BUDGET,
     populationTaxRate: DEFAULT_POPULATION_TAX_RATE,
+    residentCompanyTaxRate: DEFAULT_RESIDENT_COMPANY_TAX_RATE,
+    foreignCompanyTaxRate: DEFAULT_FOREIGN_COMPANY_TAX_RATE,
     lastPopulationTaxAt: undefined
   };
 }
@@ -462,6 +478,12 @@ async function saveCountryProfile(
     populationTaxRate: Number.isFinite(profile.populationTaxRate)
       ? Math.trunc(profile.populationTaxRate)
       : DEFAULT_POPULATION_TAX_RATE,
+    residentCompanyTaxRate: Number.isFinite(profile.residentCompanyTaxRate)
+      ? Math.trunc(profile.residentCompanyTaxRate)
+      : DEFAULT_RESIDENT_COMPANY_TAX_RATE,
+    foreignCompanyTaxRate: Number.isFinite(profile.foreignCompanyTaxRate)
+      ? Math.trunc(profile.foreignCompanyTaxRate)
+      : DEFAULT_FOREIGN_COMPANY_TAX_RATE,
     lastPopulationTaxAt: profile.lastPopulationTaxAt ?? undefined
   };
 
@@ -484,6 +506,8 @@ async function saveCountryProfile(
       religion: sanitized.religion,
       budget: sanitized.budget,
       populationTaxRate: sanitized.populationTaxRate,
+      residentCompanyTaxRate: sanitized.residentCompanyTaxRate,
+      foreignCompanyTaxRate: sanitized.foreignCompanyTaxRate,
       lastPopulationTaxAt: sanitized.lastPopulationTaxAt ?? null,
       registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
       registeredAt: sanitized.registeredAt ?? null
@@ -500,6 +524,8 @@ async function saveCountryProfile(
       religion: sanitized.religion,
       budget: sanitized.budget,
       populationTaxRate: sanitized.populationTaxRate,
+      residentCompanyTaxRate: sanitized.residentCompanyTaxRate,
+      foreignCompanyTaxRate: sanitized.foreignCompanyTaxRate,
       lastPopulationTaxAt: sanitized.lastPopulationTaxAt ?? null,
       registeredUserId: sanitized.registeredUserId ? BigInt(sanitized.registeredUserId) : null,
       registeredAt: sanitized.registeredAt ?? null
@@ -588,6 +614,28 @@ export async function updateCountryPopulationTaxRate(
   const nextProfile: CountryProfile = {
     ...current,
     populationTaxRate: normalizedRate
+  };
+
+  return saveCountryProfile(guildId, country, nextProfile);
+}
+
+export async function updateCountryCompanyTaxRates(
+  guildId: string,
+  country: Country,
+  updates: Partial<Pick<CountryProfile, 'residentCompanyTaxRate' | 'foreignCompanyTaxRate'>>
+): Promise<CountryProfile> {
+  const current = await getCountryProfile(guildId, country);
+  const residentRate = Number.isFinite(updates.residentCompanyTaxRate)
+    ? Math.min(100, Math.max(0, Math.trunc(updates.residentCompanyTaxRate ?? 0)))
+    : current.residentCompanyTaxRate ?? DEFAULT_RESIDENT_COMPANY_TAX_RATE;
+  const foreignRate = Number.isFinite(updates.foreignCompanyTaxRate)
+    ? Math.min(100, Math.max(0, Math.trunc(updates.foreignCompanyTaxRate ?? 0)))
+    : current.foreignCompanyTaxRate ?? DEFAULT_FOREIGN_COMPANY_TAX_RATE;
+
+  const nextProfile: CountryProfile = {
+    ...current,
+    residentCompanyTaxRate: residentRate,
+    foreignCompanyTaxRate: foreignRate
   };
 
   return saveCountryProfile(guildId, country, nextProfile);

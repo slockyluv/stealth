@@ -22,8 +22,14 @@ import { mutesPageButton } from './mutes.js';
 import { registrationBackButton, registrationPageButton } from './registrationNavigation.js';
 import { profileEditButton } from './profile.js';
 import {
+  companyFinanceBranchesBackButton,
+  companyFinanceBranchesButton,
+  companyFinanceBranchesNextButton,
+  companyFinanceBranchesPrevButton,
   financeBudgetBackButton,
   financeBudgetButton,
+  financeForeignTaxEditButton,
+  financeResidentTaxEditButton,
   financeTaxationCollectButton,
   financeTaxationEditButton
 } from './finance.js';
@@ -66,5 +72,11 @@ export const buttonHandlers: ButtonHandler[] = [
   financeBudgetButton,
   financeBudgetBackButton,
   financeTaxationEditButton,
-  financeTaxationCollectButton
+  financeResidentTaxEditButton,
+  financeForeignTaxEditButton,
+  financeTaxationCollectButton,
+  companyFinanceBranchesButton,
+  companyFinanceBranchesBackButton,
+  companyFinanceBranchesPrevButton,
+  companyFinanceBranchesNextButton
 ];

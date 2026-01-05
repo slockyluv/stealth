@@ -74,6 +74,8 @@ model CountryProfile {
   religion        String?
   budget          BigInt   @default(0)
   populationTaxRate Int    @default(10)
+  residentCompanyTaxRate Int @default(10)
+  foreignCompanyTaxRate Int @default(10)
   lastPopulationTaxAt DateTime?
   registeredUserId BigInt?
   registeredAt    DateTime?
@@ -127,6 +129,7 @@ model PrivateCompany {
   countryKey    String
   continent     ContinentId
   isActive      Boolean     @default(true)
+  budget        BigInt      @default(0)
   registeredAt  DateTime    @default(now())
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt

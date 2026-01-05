@@ -16,6 +16,7 @@ import { buildCustomId } from '../../shared/customId.js';
 import { createEmojiFormatter } from '../emoji.js';
 import type { CountryRegistrationRecord } from '../../services/countryRegistrationService.js';
 import type { CountryProfile } from '../../services/countryProfileService.js';
+import type { PrivateCompanyRecord } from '../../services/privateCompanyService.js';
 import { canCollectPopulationTax } from '../../services/populationTaxService.js';
 
 function buildSeparator(): ComponentInContainerData {
@@ -156,12 +157,54 @@ export async function buildGovernmentBudgetView(options: {
     `# ${formatEmoji('governmentbudget')} Государственный бюджет:`,
     '',
     `**${formatEmoji('sackdollar')} Денежные средства:**`,
-    `> ${formatBudgetValue(profile.budget)} ${formatEmoji('stackmoney')}`,
-    '',
-    `**${formatEmoji('taxation')} Налоги организаций:**`,
-    '> *Скоро*',
-    ''
+    `> ${formatBudgetValue(profile.budget)} ${formatEmoji('stackmoney')}`
   ].join('\n');
+
+  const taxationHeader = [`**${formatEmoji('documentgavel')} Налоговые ставки:**`, ''].join('\n');
+
+  const residentTaxButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('finance', 'residentTaxEdit', user.id),
+    label: 'Изменить',
+    emoji: formatEmoji('edit')
+  };
+
+  const residentTaxSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          `**${formatEmoji('taxation')} Налог компаний резидентов:**`,
+          `> ${profile.residentCompanyTaxRate}%`,
+          ''
+        ].join('\n')
+      }
+    ],
+    accessory: residentTaxButton
+  };
+
+  const foreignTaxButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('finance', 'foreignTaxEdit', user.id),
+    label: 'Изменить',
+    emoji: formatEmoji('edit')
+  };
+
+  const foreignTaxSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [`**${formatEmoji('taxation')} Налог иностранных компаний:**`, `> ${profile.foreignCompanyTaxRate}%`].join(
+          '\n'
+        )
+      }
+    ],
+    accessory: foreignTaxButton
+  };
 
   const editTaxButton: ButtonComponentData = {
     type: ComponentType.Button,
@@ -203,9 +246,182 @@ export async function buildGovernmentBudgetView(options: {
       header,
       buildSeparator(),
       { type: ComponentType.TextDisplay, content: budgetContent },
+      buildSeparator(),
+      { type: ComponentType.TextDisplay, content: taxationHeader },
+      residentTaxSection,
+      foreignTaxSection,
       populationTaxSection,
       buildSeparator(),
       new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, collectTaxButton).toJSON()
+    ]
+  };
+
+  return [container];
+}
+
+export async function buildCompanyFinanceView(options: {
+  guild: Guild;
+  user: User;
+  company: PrivateCompanyRecord;
+  countryProfile: CountryProfile;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, company, countryProfile } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const header: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [`# ${formatEmoji('wallet')} Финансы`, '', `**Пользователь:** <@${user.id}>`].join('\n')
+      }
+    ],
+    accessory: {
+      type: ComponentType.Thumbnail,
+      media: { url: user.displayAvatarURL({ size: 256 }) },
+      description: `Аватар ${user.username}`
+    }
+  };
+
+  const companyBalanceContent = [
+    `# ${formatEmoji('opendollar')} Информация`,
+    '',
+    `**${formatEmoji('sackdollar')} Бюджет компании:**`,
+    `> ${formatBudgetValue(company.budget)} ${formatEmoji('stackmoney')}`,
+    '',
+    `# ${formatEmoji('taxation')} Отчисляемый налог`,
+    '',
+    `**${formatEmoji('europapulse')} Страна регистрации:**`,
+    `> ${countryProfile.residentCompanyTaxRate}%`
+  ].join('\n');
+
+  const foreignTaxButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'branches', user.id, '1'),
+    label: 'Список',
+    emoji: formatEmoji('list')
+  };
+
+  const foreignTaxSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: `**${formatEmoji('worldpulse')} Зарубежные страны:**`
+      }
+    ],
+    accessory: foreignTaxButton
+  };
+
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(buildCustomId('companyProfile', 'tab', user.id))
+    .setPlaceholder('Выберите раздел')
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('Профиль')
+        .setValue('profile')
+        .setEmoji(formatEmoji('usernew')),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('Финансы')
+        .setValue('finance')
+        .setDefault(true)
+        .setEmoji(formatEmoji('wallet'))
+    );
+
+  const container: TopLevelComponentData = {
+    type: ComponentType.Container,
+    components: [
+      header,
+      buildSeparator(),
+      { type: ComponentType.TextDisplay, content: companyBalanceContent },
+      foreignTaxSection,
+      buildSeparator(),
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
+    ]
+  };
+
+  return [container];
+}
+
+export async function buildCompanyBranchesView(options: {
+  guild: Guild;
+  user: User;
+  entries: Array<{
+    countryLabel: string;
+    registeredUserId?: string;
+    taxRate: number;
+  }>;
+  page: number;
+  totalPages: number;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, entries, page, totalPages } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const header: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [`**${formatEmoji('list')} Список филиалов:**`, '', `**Пользователь:** <@${user.id}>`].join('\n')
+      }
+    ],
+    accessory: {
+      type: ComponentType.Thumbnail,
+      media: { url: user.displayAvatarURL({ size: 256 }) },
+      description: `Аватар ${user.username}`
+    }
+  };
+
+  const listContent = entries.length
+    ? entries
+        .map((entry) => {
+          const registeredUser = entry.registeredUserId ? `<@${entry.registeredUserId}>` : '*Не найден*';
+          return [
+            `**>・${entry.countryLabel}**`,
+            `**Пользователь:** ${registeredUser}`,
+            `**Налоговая ставка:** \`${entry.taxRate}%\``
+          ].join('\n');
+        })
+        .join('\n\n')
+    : '*Филиалы не найдены.*';
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'branchesBack', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const prevButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'branchesPrev', user.id, String(page)))
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('anglesmallleft'))
+    .setDisabled(page <= 1);
+
+  const nextButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'branchesNext', user.id, String(page)))
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('anglesmallright'))
+    .setDisabled(page >= totalPages);
+
+  const container: TopLevelComponentData = {
+    type: ComponentType.Container,
+    components: [
+      header,
+      buildSeparator(),
+      { type: ComponentType.TextDisplay, content: listContent },
+      buildSeparator(),
+      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, prevButton, nextButton).toJSON()
     ]
   };
 

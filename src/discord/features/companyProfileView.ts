@@ -81,7 +81,11 @@ export async function buildCompanyProfileView(options: {
         .setLabel('Профиль')
         .setValue('profile')
         .setDefault(true)
-        .setEmoji(formatEmoji('usernew'))
+        .setEmoji(formatEmoji('usernew')),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('Финансы')
+        .setValue('finance')
+        .setEmoji(formatEmoji('wallet'))
     );
 
   const container: TopLevelComponentData = {

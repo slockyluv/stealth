@@ -27,6 +27,7 @@ export const ALLOW_ADD_ROLE: AllowList = [];
 export const ALLOW_TAKE_ROLE: AllowList = [];
 export const ALLOW_TEMP_ROLE: AllowList = [];
 export const ALLOW_MONEY: AllowList = [];
+export const ALLOW_OWNERPANEL: AllowList = ['owner'];
 
 const NO_PERMISSIONS_MESSAGE = 'У вас нет прав для использования этой команды.';
 
@@ -85,13 +86,19 @@ function resolveUserId(member: GuildMember | APIInteractionGuildMember | null | 
 export function isMemberAllowed(
   allowList: AllowList,
   member: GuildMember | APIInteractionGuildMember | null | undefined,
-  permissions?: PermissionResolvable | null
+  permissions?: PermissionResolvable | null,
+  guildOwnerId?: string | null
 ): boolean {
   if (allowList.length === 0) return true;
 
   const roleIds = resolveRoleIds(member);
   const userId = resolveUserId(member);
   const permissionsBitField = resolvePermissions(member, permissions);
+
+  const allowsOwner = allowList.some((value) => value.toLowerCase() === 'owner');
+  if (allowsOwner && userId && guildOwnerId && userId === guildOwnerId) {
+    return true;
+  }
 
   const allowsAdministrator = allowList.some((value) => value.toLowerCase() === 'administrator');
   if (allowsAdministrator && permissionsBitField?.has(PermissionsBitField.Flags.Administrator)) {
@@ -110,7 +117,7 @@ export async function enforceInteractionAllow(
 ): Promise<boolean> {
   const formatEmoji = options?.formatEmoji;
 
-  if (isMemberAllowed(allowList, interaction.member, interaction.memberPermissions)) {
+  if (isMemberAllowed(allowList, interaction.member, interaction.memberPermissions, interaction.guild?.ownerId)) {
     return true;
   }
 
@@ -137,7 +144,7 @@ export async function enforceMessageAllow(
   allowList: AllowList,
   options?: { formatEmoji?: (name: string) => string }
 ): Promise<boolean> {
-  if (isMemberAllowed(allowList, message.member)) {
+  if (isMemberAllowed(allowList, message.member, null, message.guild?.ownerId)) {
     return true;
   }
 

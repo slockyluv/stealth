@@ -232,7 +232,9 @@ export async function registerPrivateCompany(options: {
     return { status: 'missingData', missing };
   }
 
-  const { name, industryKey, industryLabel, country, continentId } = options;
+  const sanitizedName = options.name?.trim() ?? null;
+  const { industryKey, industryLabel, country, continentId } = options;
+  const name = sanitizedName;
   if (!name || !industryKey || !industryLabel || !country || !continentId) {
     return { status: 'missingData', missing };
   }
@@ -359,4 +361,27 @@ export function isCountryLimitError(error: unknown): boolean {
 
 export function isCompanyNameTakenError(error: unknown): boolean {
   return error instanceof Error && error.message === 'nameTaken';
+}
+
+export async function resetPrivateCompanies(guildId: string): Promise<{
+  companiesCleared: number;
+  draftsCleared: number;
+}> {
+  const [companies, drafts] = await prisma.$transaction([
+    prisma.privateCompany.deleteMany({
+      where: {
+        guildId: BigInt(guildId)
+      }
+    }),
+    prisma.privateCompanyDraft.deleteMany({
+      where: {
+        guildId: BigInt(guildId)
+      }
+    })
+  ]);
+
+  return {
+    companiesCleared: companies.count,
+    draftsCleared: drafts.count
+  };
 }

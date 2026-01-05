@@ -15,6 +15,7 @@ import { regCountry, unreg } from './regCountry.js';
 import { profile } from './profile.js';
 import { finance } from './finance.js';
 import { giveMoney, takeMoney, resetMoney } from './money.js';
+import { ownerpanel } from './ownerpanel.js';
 
 export const commands = [
   ping,
@@ -40,5 +41,6 @@ export const commands = [
   finance,
   giveMoney,
   takeMoney,
-  resetMoney
+  resetMoney,
+  ownerpanel
 ];

@@ -345,6 +345,10 @@ const DEFAULT_FALLBACK_FACTS = sanitizeCountryFacts(FALLBACK_FACTS);
 
 const profiles = new Map<string, CountryProfile>();
 
+export function clearCountryProfileCache(): void {
+  profiles.clear();
+}
+
 function getDefaultFacts(country: Country): CountryFacts {
   const defaults = DEFAULT_FACTS.get(normalizeCountryKey(country.name)) ?? DEFAULT_FALLBACK_FACTS;
   return defaults;
@@ -695,6 +699,31 @@ export async function updateCountryBudget(
 }
 
 export type CountryProfileSection = 'characteristics' | 'politics' | 'development';
+
+export async function resetAllCountryProfiles(guildId: string): Promise<{
+  registrationsCleared: number;
+  profilesCleared: number;
+}> {
+  const [registrations, profilesCleared] = await prisma.$transaction([
+    prisma.countryRegistration.deleteMany({
+      where: {
+        guildId: BigInt(guildId)
+      }
+    }),
+    prisma.countryProfile.deleteMany({
+      where: {
+        guildId: BigInt(guildId)
+      }
+    })
+  ]);
+
+  clearCountryProfileCache();
+
+  return {
+    registrationsCleared: registrations.count,
+    profilesCleared: profilesCleared.count
+  };
+}
 
 export async function resetCountryProfile(
   guildId: string,

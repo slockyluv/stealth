@@ -381,7 +381,7 @@ export const unreg: Command = {
         );
       }
       if (companyResult.status === 'unregistered') {
-        notices.push(`Регистрация компании **${companyResult.company.name}** отключена.`);
+        notices.push(`Пользователь снят с частной компании __${companyResult.company.name}.__`);
       }
 
       await sendMessageResponse(message, buildSuccessView(formatEmoji, notices.join('\n')));

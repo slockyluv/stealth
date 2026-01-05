@@ -45,6 +45,7 @@ import {
   companyExistingBackButton,
   companyExistingPageButton
 } from './companyRegistration.js';
+import { ownerPanelResetCompaniesButton, ownerPanelResetCountriesButton } from './ownerPanel.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
@@ -86,5 +87,7 @@ export const buttonHandlers: ButtonHandler[] = [
   companyFinanceBranchesButton,
   companyFinanceBranchesBackButton,
   companyFinanceBranchesPrevButton,
-  companyFinanceBranchesNextButton
+  companyFinanceBranchesNextButton,
+  ownerPanelResetCountriesButton,
+  ownerPanelResetCompaniesButton
 ];

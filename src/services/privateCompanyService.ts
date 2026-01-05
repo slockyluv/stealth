@@ -114,8 +114,7 @@ export async function getAvailableCompanyCountries(
     by: ['countryKey'],
     where: {
       guildId: BigInt(guildId),
-      continent: continentId,
-      isActive: true
+      continent: continentId
     },
     _count: {
       countryKey: true
@@ -131,6 +130,16 @@ export async function getAvailableCompanyCountries(
     const countryKey = normalizeCountryKey(country.name);
     const count = taken.get(countryKey) ?? 0;
     return count < limit;
+  });
+}
+
+export async function getInactiveCompanies(guildId: string): Promise<PrivateCompanyRecord[]> {
+  return prisma.privateCompany.findMany({
+    where: {
+      guildId: BigInt(guildId),
+      isActive: false
+    },
+    orderBy: [{ countryName: 'asc' }, { name: 'asc' }]
   });
 }
 
@@ -235,7 +244,6 @@ export async function registerPrivateCompany(options: {
       tx.privateCompany.findFirst({
         where: {
           guildId: BigInt(options.guildId),
-          isActive: true,
           name: {
             equals: name,
             mode: 'insensitive'
@@ -245,8 +253,7 @@ export async function registerPrivateCompany(options: {
       tx.privateCompany.count({
         where: {
           guildId: BigInt(options.guildId),
-          countryKey: normalizedKey,
-          isActive: true
+          countryKey: normalizedKey
         }
       })
     ]);
@@ -279,6 +286,71 @@ export async function registerPrivateCompany(options: {
   await clearCompanyDraft(options.guildId, options.userId);
 
   return { status: 'registered', company };
+}
+
+export type RegisterExistingCompanyResult =
+  | { status: 'registered'; company: PrivateCompanyRecord }
+  | { status: 'companyRegistered'; company: PrivateCompanyRecord }
+  | { status: 'countryRegistered'; registration: CountryRegistrationRecord }
+  | { status: 'notAvailable' };
+
+export async function registerExistingCompany(options: {
+  guildId: string;
+  userId: string;
+  companyId: string;
+}): Promise<RegisterExistingCompanyResult> {
+  const existingCompany = await getUserActiveCompany(options.guildId, options.userId);
+  if (existingCompany) {
+    return { status: 'companyRegistered', company: existingCompany };
+  }
+
+  const existingRegistration = await prisma.countryRegistration.findUnique({
+    where: {
+      guildId_userId: {
+        guildId: BigInt(options.guildId),
+        userId: BigInt(options.userId)
+      }
+    }
+  });
+  if (existingRegistration) {
+    return { status: 'countryRegistered', registration: existingRegistration };
+  }
+
+  let companyId: bigint;
+  try {
+    companyId = BigInt(options.companyId);
+  } catch {
+    return { status: 'notAvailable' };
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const availableCompany = await tx.privateCompany.findFirst({
+      where: {
+        id: companyId,
+        guildId: BigInt(options.guildId),
+        isActive: false
+      }
+    });
+
+    if (!availableCompany) {
+      return null;
+    }
+
+    return tx.privateCompany.update({
+      where: { id: availableCompany.id },
+      data: {
+        ownerId: BigInt(options.userId),
+        isActive: true,
+        registeredAt: new Date()
+      }
+    });
+  });
+
+  if (!updated) {
+    return { status: 'notAvailable' };
+  }
+
+  return { status: 'registered', company: updated };
 }
 
 export function isCountryLimitError(error: unknown): boolean {

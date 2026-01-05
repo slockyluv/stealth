@@ -39,7 +39,11 @@ import {
   companyCreateButton,
   companyEditCountryButton,
   companyEditIndustryButton,
-  companyEditNameButton
+  companyEditNameButton,
+  companyEntryExistingButton,
+  companyEntryNewButton,
+  companyExistingBackButton,
+  companyExistingPageButton
 } from './companyRegistration.js';
 
 export const buttonHandlers: ButtonHandler[] = [
@@ -63,11 +67,15 @@ export const buttonHandlers: ButtonHandler[] = [
   registrationBackButton,
   registrationPageButton,
   companyEditNameButton,
+  companyEntryNewButton,
+  companyEntryExistingButton,
   companyEditIndustryButton,
   companyEditCountryButton,
   companyCreateButton,
   companyCountryBackButton,
   companyCountryPageButton,
+  companyExistingBackButton,
+  companyExistingPageButton,
   profileEditButton,
   financeBudgetButton,
   financeBudgetBackButton,

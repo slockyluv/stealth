@@ -1,11 +1,11 @@
 import { MessageFlags } from 'discord.js';
 import type { SelectMenuHandler } from '../../../types/component.js';
 import { buildRegistrationView } from '../../features/registration/registrationView.js';
-import { buildPrivateCompanyRegistrationView } from '../../features/registration/privateCompanyRegistrationView.js';
+import { buildPrivateCompanyEntryView } from '../../features/registration/privateCompanyEntryView.js';
 import { buildSuccessView, buildWarningView } from '../../responses/messageBuilders.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { getUserRegistration, unregisterCountryForUser } from '../../../services/countryRegistrationService.js';
-import { clearCompanyDraft, getUserActiveCompany, unregisterCompanyForUser } from '../../../services/privateCompanyService.js';
+import { getUserActiveCompany, unregisterCompanyForUser } from '../../../services/privateCompanyService.js';
 import { formatNicknameResetNotice, resetCountryNickname } from '../../nickname.js';
 import { logger } from '../../../shared/logger.js';
 
@@ -103,11 +103,8 @@ export const registrationTypeSelect: SelectMenuHandler = {
           return;
         }
 
-        await clearCompanyDraft(interaction.guildId, interaction.user.id);
-
-        const view = await buildPrivateCompanyRegistrationView({
-          guild: interaction.guild,
-          userId: interaction.user.id
+        const view = await buildPrivateCompanyEntryView({
+          guild: interaction.guild
         });
         await interaction.editReply({
           components: view.components,

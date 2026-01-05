@@ -13,18 +13,142 @@ import {
   buildCompanyIndustrySelectionView,
   buildCompanyCountrySelectionView
 } from '../../features/registration/privateCompanySelectionView.js';
+import { buildPrivateCompanyEntryView } from '../../features/registration/privateCompanyEntryView.js';
+import { buildExistingCompanySelectionView } from '../../features/registration/privateCompanyExistingView.js';
 import { buildPrivateCompanyRegistrationView } from '../../features/registration/privateCompanyRegistrationView.js';
 import {
   findIndustryByKey,
   getCompanyDraft,
+  clearCompanyDraft,
+  getUserActiveCompany,
   isCompanyNameTakenError,
   isCountryLimitError,
   registerPrivateCompany
 } from '../../../services/privateCompanyService.js';
-import { findCountryByKey } from '../../../services/countryRegistrationService.js';
+import { findCountryByKey, getUserRegistration } from '../../../services/countryRegistrationService.js';
 import { formatNicknameUpdateNotice, updateCompanyNickname } from '../../nickname.js';
 import { logger } from '../../../shared/logger.js';
 import type { ContinentId } from '../../features/settings/countriesView.js';
+
+export const companyEntryNewButton: ButtonHandler = {
+  key: 'companyReg:entryNew',
+
+  async execute(interaction) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    try {
+      await interaction.deferUpdate();
+      const existingCompany = await getUserActiveCompany(interaction.guildId, interaction.user.id);
+      if (existingCompany) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Вы уже зарегистрированы!'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
+      if (existingRegistration) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Вы уже зарегистрированы!'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      await clearCompanyDraft(interaction.guildId, interaction.user.id);
+
+      const view = await buildPrivateCompanyRegistrationView({
+        guild: interaction.guild,
+        userId: interaction.user.id
+      });
+      await interaction.editReply({
+        components: view.components,
+        flags: MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть регистрацию компании. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
+    }
+  }
+};
+
+export const companyEntryExistingButton: ButtonHandler = {
+  key: 'companyReg:entryExisting',
+
+  async execute(interaction) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    try {
+      await interaction.deferUpdate();
+      const existingCompany = await getUserActiveCompany(interaction.guildId, interaction.user.id);
+      if (existingCompany) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Вы уже зарегистрированы!'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const existingRegistration = await getUserRegistration(interaction.guildId, interaction.user.id);
+      if (existingRegistration) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Вы уже зарегистрированы!'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildExistingCompanySelectionView({
+        guild: interaction.guild,
+        page: 1
+      });
+      await interaction.editReply({
+        components: view.components,
+        flags: MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список компаний. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildWarningView(formatEmoji, 'Не удалось открыть список компаний. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
+    }
+  }
+};
 
 async function getFormatEmoji(interaction: Parameters<ButtonHandler['execute']>[0]) {
   return createEmojiFormatter({
@@ -352,6 +476,82 @@ export const companyCountryPageButton: ButtonHandler = {
       } else {
         await interaction.reply({
           components: buildWarningView(formatEmoji, 'Не удалось обновить список стран. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
+    }
+  }
+};
+
+export const companyExistingBackButton: ButtonHandler = {
+  key: 'companyReg:existingBack',
+
+  async execute(interaction) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    try {
+      await interaction.deferUpdate();
+      const view = await buildPrivateCompanyEntryView({ guild: interaction.guild });
+      await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+    } catch (error) {
+      logger.error(error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось вернуться назад. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildWarningView(formatEmoji, 'Не удалось вернуться назад. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      }
+    }
+  }
+};
+
+export const companyExistingPageButton: ButtonHandler = {
+  key: 'companyReg:existingPage',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await getFormatEmoji(interaction);
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const [pageRaw] = ctx.customId.args;
+    const page = Number.parseInt(pageRaw ?? '1', 10);
+
+    try {
+      await interaction.deferUpdate();
+      const view = await buildExistingCompanySelectionView({
+        guild: interaction.guild,
+        page: Number.isFinite(page) ? page : 1
+      });
+      await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+    } catch (error) {
+      logger.error(error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить список компаний. Попробуйте позже.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+      } else {
+        await interaction.reply({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить список компаний. Попробуйте позже.'),
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
         });
       }

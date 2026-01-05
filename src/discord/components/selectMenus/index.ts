@@ -12,6 +12,7 @@ import { companyIndustrySelect } from './companyIndustry.js';
 import { companyContinentSelect } from './companyContinent.js';
 import { companyCountrySelect } from './companyCountry.js';
 import { companyProfileTabSelect } from './companyProfile.js';
+import { companyExistingSelect } from './companyExisting.js';
 
 export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsSectionSelect,
@@ -24,6 +25,7 @@ export const selectMenuHandlers: SelectMenuHandler[] = [
   companyIndustrySelect,
   companyContinentSelect,
   companyCountrySelect,
+  companyExistingSelect,
   actionLogsSectionSelect,
   actionLogsChannelSelect,
   applicationSelectMenu,

@@ -5,7 +5,7 @@ import {
   registerCountryForUser,
   unregisterCountryForUser
 } from '../../services/countryRegistrationService.js';
-import { unregisterCompanyForUser } from '../../services/privateCompanyService.js'; 
+import { unregisterCompanyForUser } from '../../services/privateCompanyService.js';
 import { logger } from '../../shared/logger.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildSuccessView, buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
@@ -295,7 +295,7 @@ export const unreg: Command = {
       }
 
       let nicknameNotice = '';
-      if (countryResult.status === 'unregistered') {
+      if (countryResult.status === 'unregistered' || companyResult.status === 'unregistered') {
         const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
         const nicknameResult = await resetCountryNickname({ member });
         nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
@@ -308,7 +308,8 @@ export const unreg: Command = {
         );
       }
       if (companyResult.status === 'unregistered') {
-        notices.push(`Пользователь снят с компании __${companyResult.company.name}__.`);
+        const suffix = countryResult.status === 'unregistered' ? '' : nicknameNotice;
+        notices.push(`Пользователь снят с компании __${companyResult.company.name}__.${suffix}`);
       }
 
       await interaction.editReply({
@@ -368,7 +369,7 @@ export const unreg: Command = {
       }
 
       let nicknameNotice = '';
-      if (countryResult.status === 'unregistered') {
+      if (countryResult.status === 'unregistered' || companyResult.status === 'unregistered') {
         const member = await message.guild.members.fetch(userId).catch(() => null);
         const nicknameResult = await resetCountryNickname({ member });
         nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
@@ -381,7 +382,8 @@ export const unreg: Command = {
         );
       }
       if (companyResult.status === 'unregistered') {
-        notices.push(`Пользователь снят с частной компании __${companyResult.company.name}.__`);
+        const suffix = countryResult.status === 'unregistered' ? '' : nicknameNotice;
+        notices.push(`Пользователь снят с частной компании __${companyResult.company.name}__.${suffix}`);
       }
 
       await sendMessageResponse(message, buildSuccessView(formatEmoji, notices.join('\n')));

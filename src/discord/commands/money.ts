@@ -18,6 +18,7 @@ import { updateCountryBudget, type CountryBudgetChangeType } from '../../service
 import { logger } from '../../shared/logger.js';
 import { ALLOW_MONEY, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { logEconomyAction } from '../../services/actionLogger.js';
+import { updateCompanyBudgetForUser } from '../../services/privateCompanyService.js';
 
 const GIVE_MONEY_USAGE = '!give-money @Пользователь <Кол-во>';
 const TAKE_MONEY_USAGE = '!take-money @Пользователь <Кол-во>';
@@ -32,32 +33,32 @@ function parseAmount(value: string | undefined): bigint | null {
   return BigInt(parsed);
 }
 
-function buildHeader(type: CountryBudgetChangeType, countryLabel: string, formatEmoji: (name: string) => string): string {
+function buildHeader(type: CountryBudgetChangeType, targetLabel: string, formatEmoji: (name: string) => string): string {
   const emoji = formatEmoji('opendollar');
 
   if (type === 'reset') {
-    return `**${emoji} Баланс ${countryLabel} обнулён**`;
+    return `**${emoji} Баланс ${targetLabel} обнулён**`;
   }
 
   if (type === 'decrease') {
-    return `**${emoji} Денежные средства списаны у ${countryLabel}**`;
+    return `**${emoji} Денежные средства списаны у ${targetLabel}**`;
   }
 
-  return `**${emoji} Денежные средства выданы ${countryLabel}**`;
+  return `**${emoji} Денежные средства выданы ${targetLabel}**`;
 }
 
 function buildMoneyView(options: {
   type: CountryBudgetChangeType;
-  countryLabel: string;
+  targetLabel: string;
   moderatorMention: string;
   targetMention: string;
   amount: bigint;
   formatEmoji: (name: string) => string;
 }): TopLevelComponentData[] {
-  const { type, countryLabel, moderatorMention, targetMention, amount, formatEmoji } = options;
+  const { type, targetLabel, moderatorMention, targetMention, amount, formatEmoji } = options;
   const amountText = amount.toLocaleString('ru-RU');
   const components: ComponentInContainerData[] = [
-    { type: ComponentType.TextDisplay, content: buildHeader(type, countryLabel, formatEmoji) },
+    { type: ComponentType.TextDisplay, content: buildHeader(type, targetLabel, formatEmoji) },
     { ...MESSAGE_SEPARATOR_COMPONENT },
     { type: ComponentType.TextDisplay, content: `**Администратор: ${moderatorMention}**` },
     { type: ComponentType.TextDisplay, content: `**Пользователь: ${targetMention}**` },
@@ -83,10 +84,36 @@ async function resolveMoneyCommand(options: {
   moderatorId: string;
 }): Promise<MoneyCommandResult> {
   const { guildId, guild, targetUserId, amount, type, formatEmoji, moderatorMention, moderatorId } = options;
+  const companyBudgetResult = await updateCompanyBudgetForUser(guildId, targetUserId, { type, amount });
+  const targetMention = `<@${targetUserId}>`;
+  const amountForDisplay = type === 'reset' ? companyBudgetResult?.previousBudget ?? amount : amount;
+  const action = type === 'decrease' ? 'take-money' : type === 'reset' ? 'reset-money' : 'give-money';
+
+  if (companyBudgetResult) {
+    void logEconomyAction({
+      guild,
+      targetId: targetUserId,
+      moderatorId,
+      amount: amountForDisplay,
+      action
+    }).catch((error) => logger.error(error));
+
+    return {
+      view: buildMoneyView({
+        type,
+        targetLabel: `компании __${companyBudgetResult.company.name}__`,
+        moderatorMention,
+        targetMention,
+        amount: amountForDisplay,
+        formatEmoji
+      })
+    };
+  }
+
   const registration = await getUserRegistration(guildId, targetUserId);
 
   if (!registration) {
-    return { error: 'Пользователь не зарегистрирован за страной.' };
+    return { error: 'Пользователь не зарегистрирован!' };
   }
 
   const countryLookup = findCountryByKey(registration.countryName);
@@ -96,25 +123,23 @@ async function resolveMoneyCommand(options: {
 
   const { previousBudget } = await updateCountryBudget(guildId, countryLookup.country, { type, amount });
   const countryLabel = await formatCountryDisplay(guild, countryLookup.country);
-  const targetMention = `<@${targetUserId}>`;
-  const amountForDisplay = type === 'reset' ? previousBudget : amount;
-  const action = type === 'decrease' ? 'take-money' : type === 'reset' ? 'reset-money' : 'give-money';
+  const countryAmountForDisplay = type === 'reset' ? previousBudget : amount;
 
   void logEconomyAction({
     guild,
     targetId: targetUserId,
     moderatorId,
-    amount: amountForDisplay,
+    amount: countryAmountForDisplay,
     action
   }).catch((error) => logger.error(error));
 
   return {
     view: buildMoneyView({
       type,
-      countryLabel,
+      targetLabel: countryLabel,
       moderatorMention,
       targetMention,
-      amount: amountForDisplay,
+      amount: countryAmountForDisplay,
       formatEmoji
     })
   };
@@ -273,7 +298,7 @@ async function handleMessage(message: Message, args: string[], type: CountryBudg
 }
 
 export const giveMoney: Command = {
-  data: buildMoneyCommand('give-money', 'Выдать деньги на бюджет страны пользователя'),
+  data: buildMoneyCommand('give-money', 'Выдать деньги'),
 
   async execute(interaction: ChatInputCommandInteraction) {
     await handleInteraction(interaction, 'increase');
@@ -285,7 +310,7 @@ export const giveMoney: Command = {
 };
 
 export const takeMoney: Command = {
-  data: buildMoneyCommand('take-money', 'Списать деньги с бюджета страны пользователя'),
+  data: buildMoneyCommand('take-money', 'Списать деньги'),
 
   async execute(interaction: ChatInputCommandInteraction) {
     await handleInteraction(interaction, 'decrease');
@@ -297,7 +322,7 @@ export const takeMoney: Command = {
 };
 
 export const resetMoney: Command = {
-  data: buildResetMoneyCommand('reset-money', 'Обнулить бюджет страны пользователя'),
+  data: buildResetMoneyCommand('reset-money', 'Обнулить баланс'),
 
   async execute(interaction: ChatInputCommandInteraction) {
     await handleInteraction(interaction, 'reset');

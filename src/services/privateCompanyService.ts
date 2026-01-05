@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { ContinentId, Country } from '../discord/features/settings/countriesView.js';
 import { getContinent } from '../discord/features/settings/countriesView.js';
 import { prisma } from '../database/prisma.js';
-import { normalizeCountryKey } from './countryProfileService.js';
+import { normalizeCountryKey, type CountryBudgetChangeType } from './countryProfileService.js';
 import type { CountryRegistrationRecord } from './countryRegistrationService.js';
 
 export const COMPANY_PER_COUNTRY_LIMIT = 1;
@@ -153,6 +153,11 @@ export type UnregisterCompanyResult =
   | { status: 'notRegistered' }
   | { status: 'unregistered'; company: PrivateCompanyRecord };
 
+export type CompanyBudgetUpdateResult = {
+  company: PrivateCompanyRecord;
+  previousBudget: bigint;
+};
+
 export async function getUserActiveCompany(
   guildId: string,
   userId: string
@@ -194,6 +199,47 @@ export async function unregisterCompanyForUser(
   });
 
   return { status: 'unregistered', company: updated };
+}
+
+export async function updateCompanyBudgetForUser(
+  guildId: string,
+  userId: string,
+  options: { type: CountryBudgetChangeType; amount: bigint }
+): Promise<CompanyBudgetUpdateResult | null> {
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    let nextBudget = currentBudget;
+
+    if (options.type === 'increase') {
+      nextBudget = currentBudget + options.amount;
+    } else if (options.type === 'decrease') {
+      nextBudget = currentBudget - options.amount;
+    } else if (options.type === 'reset') {
+      nextBudget = 0n;
+    }
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: { budget: nextBudget }
+    });
+
+    return { company: updated, previousBudget: currentBudget };
+  });
 }
 
 export async function registerPrivateCompany(options: {

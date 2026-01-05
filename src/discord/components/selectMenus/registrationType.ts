@@ -144,7 +144,7 @@ export const registrationTypeSelect: SelectMenuHandler = {
         }
 
         let nicknameNotice = '';
-        if (countryResult.status === 'unregistered') {
+        if (countryResult.status === 'unregistered' || companyResult.status === 'unregistered') {
           const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
           const nicknameResult = await resetCountryNickname({ member });
           nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
@@ -157,7 +157,8 @@ export const registrationTypeSelect: SelectMenuHandler = {
           );
         }
         if (companyResult.status === 'unregistered') {
-          notices.push(`Вы сняты с компании __${companyResult.company.name}__.`);
+          const suffix = countryResult.status === 'unregistered' ? '' : nicknameNotice;
+          notices.push(`Вы сняты с компании __${companyResult.company.name}__.${suffix}`);
         }
 
         await interaction.editReply({

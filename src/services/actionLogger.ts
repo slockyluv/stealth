@@ -345,7 +345,7 @@ export async function logEconomyAction(options: {
       components: [
         { type: ComponentType.TextDisplay, content: header },
         { ...MESSAGE_SEPARATOR_COMPONENT },
-        { type: ComponentType.TextDisplay, content: `**Государство:** <@${targetId}>` },
+        { type: ComponentType.TextDisplay, content: `**Пользователь:** <@${targetId}>` },
         { type: ComponentType.TextDisplay, content: `**Администратор:** <@${moderatorId}>` },
         { type: ComponentType.TextDisplay, content: `**Сумма:** *${amountText}*` },
         { type: ComponentType.TextDisplay, content: `**Дата и время:** \`${formatDateTime(createdAt ?? new Date())}\`` }

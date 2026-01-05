@@ -308,15 +308,9 @@ export async function buildCompanyFinanceView(options: {
     emoji: formatEmoji('list')
   };
 
-  const foreignTaxSection: SectionComponentData = {
-    type: ComponentType.Section,
-    components: [
-      {
-        type: ComponentType.TextDisplay,
-        content: `**${formatEmoji('worldpulse')} Зарубежные страны:**`
-      }
-    ],
-    accessory: foreignTaxButton
+  const foreignTaxSection: ComponentInContainerData = {
+    type: ComponentType.TextDisplay,
+    content: `**${formatEmoji('worldpulse')} Зарубежные страны:**`
   };
 
   const selectMenu = new StringSelectMenuBuilder()
@@ -341,6 +335,9 @@ export async function buildCompanyFinanceView(options: {
       buildSeparator(),
       { type: ComponentType.TextDisplay, content: companyBalanceContent },
       foreignTaxSection,
+      new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(new ButtonBuilder(foreignTaxButton))
+        .toJSON(),
       buildSeparator(),
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
     ]
@@ -373,7 +370,7 @@ export async function buildCompanyBranchesView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: [`**${formatEmoji('list')} Список филиалов:**`, '', `**Пользователь:** <@${user.id}>`].join('\n')
+        content: [`# ${formatEmoji('list')} Список филиалов:`, '', `**Пользователь:** <@${user.id}>`].join('\n')
       }
     ],
     accessory: {

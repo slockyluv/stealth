@@ -11,7 +11,7 @@ import { createEmojiFormatter } from '../../emoji.js';
 import { buildSuccessView, buildWarningView } from '../../responses/messageBuilders.js';
 import { getUserRegistration, findCountryByKey } from '../../../services/countryRegistrationService.js';
 import { getCountryProfile } from '../../../services/countryProfileService.js';
-import { getUserActiveCompany } from '../../../services/privateCompanyService.js';
+import { findIndustryByKey, getUserActiveCompany, type CompanyFeeKey } from '../../../services/privateCompanyService.js';
 import { buildCompanyBranchesView, buildCompanyFinanceView, buildFinanceView, buildGovernmentBudgetView } from '../../features/financeView.js';
 import { collectPopulationTaxForCountry } from '../../../services/populationTaxService.js';
 import { logger } from '../../../shared/logger.js';
@@ -489,6 +489,155 @@ export const companyFinanceBranchesButton: ButtonHandler = {
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }
+  }
+};
+
+export const companyFinanceBranchesInfoButton: ButtonHandler = {
+  key: 'companyFinance:branchesInfo',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.reply({
+      components: buildWarningView(formatEmoji, 'Список филиалов пока недоступен.'),
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+  }
+};
+
+const COMPANY_FEE_KEYS_BY_INDUSTRY: Record<string, CompanyFeeKey[]> = {
+  payment_system: ['paymentTransfer'],
+  investment_exchange: ['investmentTrade'],
+  crypto_exchange: ['cryptoTrade', 'cryptoTransfer'],
+  construction: ['constructionProfit'],
+  manufacturing: ['manufacturingMarkup']
+};
+
+const COMPANY_FEE_MODAL_META: Record<CompanyFeeKey, { title: string; label: string }> = {
+  paymentTransfer: {
+    title: 'Комиссии за перевод',
+    label: 'Процент комиссии (0-100)'
+  },
+  investmentTrade: {
+    title: 'Комиссии за сделки',
+    label: 'Процент комиссии (0-100)'
+  },
+  cryptoTrade: {
+    title: 'Комиссии за сделки',
+    label: 'Процент комиссии (0-100)'
+  },
+  cryptoTransfer: {
+    title: 'Комиссии за перевод',
+    label: 'Процент комиссии (0-100)'
+  },
+  constructionProfit: {
+    title: 'Сметная прибыль',
+    label: 'Процент прибыли (0-100)'
+  },
+  manufacturingMarkup: {
+    title: 'Наценка на товар',
+    label: 'Процент наценки (0-100)'
+  }
+};
+
+export const companyFinanceFeeEditButton: ButtonHandler = {
+  key: 'companyFinance:feeEdit',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const feeKey = ctx.customId.args[0] as CompanyFeeKey | undefined;
+    const userId = ctx.customId.args[1];
+    if (!feeKey || !userId || !(feeKey in COMPANY_FEE_MODAL_META)) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const company = await getUserActiveCompany(interaction.guildId, userId);
+    if (!company) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const industry = findIndustryByKey(company.industryKey);
+    const allowedFees = industry ? COMPANY_FEE_KEYS_BY_INDUSTRY[industry.key] ?? [] : [];
+    if (!allowedFees.includes(feeKey)) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта настройка недоступна для отрасли компании.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const meta = COMPANY_FEE_MODAL_META[feeKey];
+    const modal = new ModalBuilder()
+      .setCustomId(buildCustomId('companyFinance', 'feeEditModal', feeKey, userId))
+      .setTitle(meta.title);
+
+    const input = new TextInputBuilder()
+      .setCustomId('fee-rate')
+      .setLabel(meta.label)
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+
+    await interaction.showModal(modal);
   }
 };
 

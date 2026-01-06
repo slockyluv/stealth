@@ -3,7 +3,12 @@ import { settingsEmojiColorModal } from './settingsEmojiColor.js';
 import { applicationDecisionModal, applicationSubmitModal } from './applications.js';
 import { settingsCountriesEditModal } from './settingsCountries.js';
 import { profileEditModal } from './profile.js';
-import { financeForeignTaxEditModal, financeResidentTaxEditModal, financeTaxationEditModal } from './finance.js';
+import {
+  companyFinanceFeeEditModal,
+  financeForeignTaxEditModal,
+  financeResidentTaxEditModal,
+  financeTaxationEditModal
+} from './finance.js';
 import { companyNameModal } from './companyRegistration.js';
 
 export const modalHandlers: ModalHandler[] = [
@@ -15,5 +20,6 @@ export const modalHandlers: ModalHandler[] = [
   financeTaxationEditModal,
   financeResidentTaxEditModal,
   financeForeignTaxEditModal,
+  companyFinanceFeeEditModal,
   companyNameModal
 ];

@@ -130,6 +130,12 @@ model PrivateCompany {
   continent     ContinentId
   isActive      Boolean     @default(true)
   budget        BigInt      @default(0)
+  paymentTransferFeeRate Int?
+  investmentTradeFeeRate Int?
+  cryptoTradeFeeRate Int?
+  cryptoTransferFeeRate Int?
+  constructionProfitRate Int?
+  manufacturingMarkupRate Int?
   registeredAt  DateTime    @default(now())
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt

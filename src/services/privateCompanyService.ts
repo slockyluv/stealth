@@ -16,6 +16,23 @@ export type CompanyIndustry = {
   emoji: string;
 };
 
+export type CompanyFeeKey =
+  | 'paymentTransfer'
+  | 'investmentTrade'
+  | 'cryptoTrade'
+  | 'cryptoTransfer'
+  | 'constructionProfit'
+  | 'manufacturingMarkup';
+
+const COMPANY_FEE_FIELDS: Record<CompanyFeeKey, keyof Prisma.PrivateCompanyUncheckedUpdateInput> = {
+  paymentTransfer: 'paymentTransferFeeRate',
+  investmentTrade: 'investmentTradeFeeRate',
+  cryptoTrade: 'cryptoTradeFeeRate',
+  cryptoTransfer: 'cryptoTransferFeeRate',
+  constructionProfit: 'constructionProfitRate',
+  manufacturingMarkup: 'manufacturingMarkupRate'
+};
+
 export const COMPANY_INDUSTRIES: CompanyIndustry[] = [
   { key: 'payment_system', label: 'Платежная система', emoji: 'transactionglobe' },
   { key: 'investment_exchange', label: 'Инвестиционная биржа', emoji: 'investment' },
@@ -239,6 +256,39 @@ export async function updateCompanyBudgetForUser(
     });
 
     return { company: updated, previousBudget: currentBudget };
+  });
+}
+
+export async function updateCompanyFeeRateForUser(
+  guildId: string,
+  userId: string,
+  feeKey: CompanyFeeKey,
+  rate: number | null
+): Promise<PrivateCompanyRecord | null> {
+  const field = COMPANY_FEE_FIELDS[feeKey];
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: { [field]: rate }
+    });
+
+    return updated;
   });
 }
 

@@ -16,7 +16,7 @@ import { buildCustomId } from '../../shared/customId.js';
 import { createEmojiFormatter } from '../emoji.js';
 import type { CountryRegistrationRecord } from '../../services/countryRegistrationService.js';
 import type { CountryProfile } from '../../services/countryProfileService.js';
-import type { PrivateCompanyRecord } from '../../services/privateCompanyService.js';
+import { findIndustryByKey, type CompanyFeeKey, type PrivateCompanyRecord } from '../../services/privateCompanyService.js';
 import { canCollectPopulationTax } from '../../services/populationTaxService.js';
 
 function buildSeparator(): ComponentInContainerData {
@@ -294,24 +294,117 @@ export async function buildCompanyFinanceView(options: {
     `**${formatEmoji('sackdollar')} Бюджет компании:**`,
     `> ${formatBudgetValue(company.budget)} ${formatEmoji('stackmoney')}`,
     '',
+    `**${formatEmoji('companies')} Отрасль:**`,
+    `> ${company.industryLabel}`,
+    ''
+  ].join('\n');
+
+  const branchesButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'branchesInfo', user.id),
+    label: 'Список',
+    emoji: formatEmoji('list')
+  };
+
+  const branchesSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: `**${formatEmoji('filialscomp')} Филиалы компании:**`
+      }
+    ],
+    accessory: branchesButton
+  };
+
+  const branchCount = 1;
+  const branchesCountContent = [
+    `> ${branchCount}`,
+    ''
+  ].join('\n');
+
+  const industry = findIndustryByKey(company.industryKey);
+
+  const formatRateValue = (value: number | null | undefined) => (value === null || value === undefined ? '*Не выбрано*' : `${value}%`);
+
+  const feeMeta: Record<
+    CompanyFeeKey,
+    {
+      label: string;
+      value: number | null;
+    }
+  > = {
+    paymentTransfer: {
+      label: 'Коммисии за перевод',
+      value: company.paymentTransferFeeRate
+    },
+    investmentTrade: {
+      label: 'Коммисии за сделки',
+      value: company.investmentTradeFeeRate
+    },
+    cryptoTrade: {
+      label: 'Коммисии за сделки',
+      value: company.cryptoTradeFeeRate
+    },
+    cryptoTransfer: {
+      label: 'Коммисии за перевод',
+      value: company.cryptoTransferFeeRate
+    },
+    constructionProfit: {
+      label: 'Сметная прибыль',
+      value: company.constructionProfitRate
+    },
+    manufacturingMarkup: {
+      label: 'Наценка на товар',
+      value: company.manufacturingMarkupRate
+    }
+  };
+
+  const feeKeysByIndustry: Record<string, CompanyFeeKey[]> = {
+    payment_system: ['paymentTransfer'],
+    investment_exchange: ['investmentTrade'],
+    crypto_exchange: ['cryptoTrade', 'cryptoTransfer'],
+    construction: ['constructionProfit'],
+    manufacturing: ['manufacturingMarkup']
+  };
+
+  const feeKeys = industry ? (feeKeysByIndustry[industry.key] ?? []) : [];
+  const feeComponents: ComponentInContainerData[] = [];
+
+  for (const feeKey of feeKeys) {
+    const entry = feeMeta[feeKey];
+    const editButton: ButtonComponentData = {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      customId: buildCustomId('companyFinance', 'feeEdit', feeKey, user.id),
+      label: 'Редактировать',
+      emoji: formatEmoji('edit')
+    };
+
+    feeComponents.push({
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `**${formatEmoji('badgepercent')} ${entry.label}:**`
+        }
+      ],
+      accessory: editButton
+    });
+
+    feeComponents.push({
+      type: ComponentType.TextDisplay,
+      content: `> ${formatRateValue(entry.value)}`
+    });
+  }
+
+  const taxationContent = [
     `# ${formatEmoji('taxation')} Отчисляемый налог`,
     '',
     `**${formatEmoji('europapulse')} Страна регистрации:**`,
     `> ${countryProfile.residentCompanyTaxRate}%`
   ].join('\n');
-
-  const foreignTaxButton: ButtonComponentData = {
-    type: ComponentType.Button,
-    style: ButtonStyle.Secondary,
-    customId: buildCustomId('companyFinance', 'branches', user.id, '1'),
-    label: 'Список',
-    emoji: formatEmoji('list')
-  };
-
-  const foreignTaxSection: ComponentInContainerData = {
-    type: ComponentType.TextDisplay,
-    content: `**${formatEmoji('worldpulse')} Зарубежные страны:**`
-  };
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(buildCustomId('companyProfile', 'tab', user.id))
@@ -334,10 +427,10 @@ export async function buildCompanyFinanceView(options: {
       header,
       buildSeparator(),
       { type: ComponentType.TextDisplay, content: companyBalanceContent },
-      foreignTaxSection,
-      new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(new ButtonBuilder(foreignTaxButton))
-        .toJSON(),
+      branchesSection,
+      { type: ComponentType.TextDisplay, content: branchesCountContent },
+      ...feeComponents,
+      { type: ComponentType.TextDisplay, content: taxationContent },
       buildSeparator(),
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
     ]

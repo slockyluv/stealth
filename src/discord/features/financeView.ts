@@ -299,6 +299,8 @@ export async function buildCompanyFinanceView(options: {
     ''
   ].join('\n');
 
+  const branchCount = 1;
+
   const branchesButton: ButtonComponentData = {
     type: ComponentType.Button,
     style: ButtonStyle.Secondary,
@@ -312,17 +314,11 @@ export async function buildCompanyFinanceView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: `**${formatEmoji('filialscomp')} Филиалы компании:**`
+        content: [`**${formatEmoji('filialscomp')} Филиалы компании:**`, `> ${branchCount}`].join('\n')
       }
     ],
     accessory: branchesButton
   };
-
-  const branchCount = 1;
-  const branchesCountContent = [
-    `> ${branchCount}`,
-    ''
-  ].join('\n');
 
   const industry = findIndustryByKey(company.industryKey);
 
@@ -387,22 +383,15 @@ export async function buildCompanyFinanceView(options: {
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `**${formatEmoji('badgepercent')} ${entry.label}:**`
+          content: [`**${formatEmoji('badgepercent')} ${entry.label}:**`, `> ${formatRateValue(entry.value)}`].join('\n')
         }
       ],
       accessory: editButton
     });
-
-    feeComponents.push({
-      type: ComponentType.TextDisplay,
-      content: `> ${formatRateValue(entry.value)}`
-    });
   }
 
   const taxationContent = [
-    `# ${formatEmoji('taxation')} Отчисляемый налог`,
-    '',
-    `**${formatEmoji('europapulse')} Страна регистрации:**`,
+    `**${formatEmoji('taxation')} Внутренний налог:**`,
     `> ${countryProfile.residentCompanyTaxRate}%`
   ].join('\n');
 
@@ -428,7 +417,6 @@ export async function buildCompanyFinanceView(options: {
       buildSeparator(),
       { type: ComponentType.TextDisplay, content: companyBalanceContent },
       branchesSection,
-      { type: ComponentType.TextDisplay, content: branchesCountContent },
       ...feeComponents,
       { type: ComponentType.TextDisplay, content: taxationContent },
       buildSeparator(),

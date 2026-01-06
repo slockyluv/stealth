@@ -11,8 +11,27 @@ import { createEmojiFormatter } from '../../emoji.js';
 import { buildSuccessView, buildWarningView } from '../../responses/messageBuilders.js';
 import { getUserRegistration, findCountryByKey } from '../../../services/countryRegistrationService.js';
 import { getCountryProfile } from '../../../services/countryProfileService.js';
-import { findIndustryByKey, getUserActiveCompany, type CompanyFeeKey } from '../../../services/privateCompanyService.js';
-import { buildCompanyBranchesView, buildCompanyFinanceView, buildFinanceView, buildGovernmentBudgetView } from '../../features/financeView.js';
+import {
+  buildPaymentSystemInfrastructure,
+  findIndustryByKey,
+  getUserActiveCompany,
+  markPaymentSystemLegalNewsDone,
+  markPaymentSystemLegalNewsStarted,
+  orderPaymentSystemWebDevelopment,
+  type CompanyFeeKey,
+  type PaymentSystemInfrastructureKey
+} from '../../../services/privateCompanyService.js';
+import {
+  buildCompanyBranchesView,
+  buildCompanyFinanceView,
+  buildFinanceView,
+  buildGovernmentBudgetView,
+  buildPaymentSystemInfrastructureView,
+  buildPaymentSystemLegalNewsActionView,
+  buildPaymentSystemPurchaseResultView,
+  buildPaymentSystemWebDevelopmentView
+} from '../../features/financeView.js';
+import { buildCompanyProfileView } from '../../features/companyProfileView.js';
 import { collectPopulationTaxForCountry } from '../../../services/populationTaxService.js';
 import { logger } from '../../../shared/logger.js';
 import { formatDateTime } from '../../../shared/time.js';
@@ -531,6 +550,582 @@ export const companyFinanceBranchesInfoButton: ButtonHandler = {
       components: buildWarningView(formatEmoji, 'Список филиалов пока недоступен.'),
       flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
     });
+  }
+};
+
+export const companyFinancePaymentSystemBackButton: ButtonHandler = {
+  key: 'companyFinance:paymentSystemBack',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const target = ctx.customId.args[0];
+    const userId = ctx.customId.args[1];
+    if (!target || !userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (target === 'profile') {
+        const view = await buildCompanyProfileView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'finance') {
+        const countryLookup = findCountryByKey(company.countryName);
+        if (!countryLookup) {
+          await interaction.followUp({
+            components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          });
+          return;
+        }
+
+        const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+        const view = await buildCompanyFinanceView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company,
+          countryProfile: profile
+        });
+
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'infrastructure') {
+        const view = await buildPaymentSystemInfrastructureView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'web') {
+        const view = await buildPaymentSystemWebDevelopmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Неизвестное действие.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось вернуться назад. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinancePaymentSystemLegalStartButton: ButtonHandler = {
+  key: 'companyFinance:paymentSystemLegalStart',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const updated = await markPaymentSystemLegalNewsStarted(interaction.guildId, userId);
+      if (!updated) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить статус действия.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildPaymentSystemLegalNewsActionView({
+        guild: interaction.guild,
+        user: interaction.user
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinancePaymentSystemLegalDoneButton: ButtonHandler = {
+  key: 'companyFinance:paymentSystemLegalDone',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const updatedCompany = await markPaymentSystemLegalNewsDone(interaction.guildId, userId);
+      if (!updatedCompany) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить статус действия.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const countryLookup = findCountryByKey(updatedCompany.countryName);
+      if (!countryLookup) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+      const view = await buildCompanyFinanceView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company: updatedCompany,
+        countryProfile: profile
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить статус. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinancePaymentSystemInfrastructureOpenButton: ButtonHandler = {
+  key: 'companyFinance:paymentSystemInfrastructureOpen',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildPaymentSystemInfrastructureView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть раздел. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinancePaymentSystemInfrastructureBuildButton: ButtonHandler = {
+  key: 'companyFinance:paymentSystemInfrastructureBuild',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const itemKey = ctx.customId.args[0] as PaymentSystemInfrastructureKey | undefined;
+    const userId = ctx.customId.args[1];
+    if (!itemKey || !userId || !['mainOffice', 'serverInfrastructure'].includes(itemKey)) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const result = await buildPaymentSystemInfrastructure(interaction.guildId, userId, itemKey);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'alreadyCompleted') {
+        const view = await buildPaymentSystemInfrastructureView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company: result.company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const nameLabel =
+        itemKey === 'mainOffice' ? 'Главный офис компании' : 'Серверная инфраструктура';
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildPaymentSystemPurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для строительства!**`,
+          price: result.price,
+          backTarget: 'infrastructure'
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const view = await buildPaymentSystemPurchaseResultView({
+        guild: interaction.guild,
+        user: interaction.user,
+        title: `**${formatEmoji('slide_d')} Вы успешно построили __${nameLabel}__.**`,
+        price: result.price,
+        backTarget: 'infrastructure'
+      });
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось выполнить строительство. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinancePaymentSystemWebOpenButton: ButtonHandler = {
+  key: 'companyFinance:paymentSystemWebOpen',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildPaymentSystemWebDevelopmentView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть раздел. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinancePaymentSystemWebOrderButton: ButtonHandler = {
+  key: 'companyFinance:paymentSystemWebOrder',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const result = await orderPaymentSystemWebDevelopment(interaction.guildId, userId);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'alreadyCompleted') {
+        const view = await buildPaymentSystemWebDevelopmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company: result.company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildPaymentSystemPurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для заказа WEB разработки!**`,
+          price: result.price,
+          backTarget: 'web'
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const view = await buildPaymentSystemPurchaseResultView({
+        guild: interaction.guild,
+        user: interaction.user,
+        title: `**${formatEmoji('slide_d')} Вы успешно заказали WEB разработку.**`,
+        price: result.price,
+        backTarget: 'web'
+      });
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось оформить заказ. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
   }
 };
 

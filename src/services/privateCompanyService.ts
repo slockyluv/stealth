@@ -24,6 +24,17 @@ export type CompanyFeeKey =
   | 'constructionProfit'
   | 'manufacturingMarkup';
 
+export const PAYMENT_SYSTEM_ONBOARDING_PRICES = {
+  mainOffice: 100000n,
+  serverInfrastructure: 150000n,
+  webDevelopment: 200000n
+} as const;
+
+export type PaymentSystemInfrastructureKey = keyof Pick<
+  typeof PAYMENT_SYSTEM_ONBOARDING_PRICES,
+  'mainOffice' | 'serverInfrastructure'
+>;
+
 const COMPANY_FEE_FIELDS: Record<CompanyFeeKey, keyof Prisma.PrivateCompanyUncheckedUpdateInput> = {
   paymentTransfer: 'paymentTransferFeeRate',
   investmentTrade: 'investmentTradeFeeRate',
@@ -289,6 +300,211 @@ export async function updateCompanyFeeRateForUser(
     });
 
     return updated;
+  });
+}
+
+export function isPaymentSystemOnboardingComplete(company: PrivateCompanyRecord): boolean {
+  return (
+    company.paymentSystemLegalNewsDone &&
+    company.paymentSystemInfrastructureMainOfficeBuilt &&
+    company.paymentSystemInfrastructureServerBuilt &&
+    company.paymentSystemWebDevelopmentOrdered
+  );
+}
+
+export async function markPaymentSystemLegalNewsStarted(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.privateCompany.updateMany({
+    where: {
+      guildId: BigInt(guildId),
+      ownerId: BigInt(userId),
+      isActive: true,
+      industryKey: 'payment_system'
+    },
+    data: {
+      paymentSystemLegalNewsStarted: true
+    }
+  }).then(async (result) => {
+    if (result.count === 0) {
+      return null;
+    }
+    return getUserActiveCompany(guildId, userId);
+  });
+}
+
+export async function markPaymentSystemLegalNewsDone(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true,
+        industryKey: 'payment_system'
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    const nextState = {
+      paymentSystemLegalNewsDone: true,
+      paymentSystemInfrastructureMainOfficeBuilt: company.paymentSystemInfrastructureMainOfficeBuilt,
+      paymentSystemInfrastructureServerBuilt: company.paymentSystemInfrastructureServerBuilt,
+      paymentSystemWebDevelopmentOrdered: company.paymentSystemWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch = company.branchCount === 0 && isPaymentSystemOnboardingComplete({ ...company, ...nextState });
+
+    return tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        paymentSystemLegalNewsStarted: true,
+        paymentSystemLegalNewsDone: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+  });
+}
+
+export type PaymentSystemPurchaseResult =
+  | { status: 'notFound' | 'notAllowed'; price: bigint }
+  | { status: 'insufficientFunds'; company: PrivateCompanyRecord; price: bigint }
+  | { status: 'alreadyCompleted'; company: PrivateCompanyRecord; price: bigint }
+  | { status: 'success'; company: PrivateCompanyRecord; price: bigint };
+
+export async function buildPaymentSystemInfrastructure(
+  guildId: string,
+  userId: string,
+  item: PaymentSystemInfrastructureKey
+): Promise<PaymentSystemPurchaseResult> {
+  const price = PAYMENT_SYSTEM_ONBOARDING_PRICES[item];
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'payment_system') {
+      return { status: 'notAllowed', price };
+    }
+
+    const isBuilt =
+      item === 'mainOffice'
+        ? company.paymentSystemInfrastructureMainOfficeBuilt
+        : company.paymentSystemInfrastructureServerBuilt;
+
+    if (isBuilt) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const updates =
+      item === 'mainOffice'
+        ? { paymentSystemInfrastructureMainOfficeBuilt: true }
+        : { paymentSystemInfrastructureServerBuilt: true };
+
+    const nextState = {
+      paymentSystemLegalNewsDone: company.paymentSystemLegalNewsDone,
+      paymentSystemInfrastructureMainOfficeBuilt:
+        item === 'mainOffice' ? true : company.paymentSystemInfrastructureMainOfficeBuilt,
+      paymentSystemInfrastructureServerBuilt:
+        item === 'serverInfrastructure' ? true : company.paymentSystemInfrastructureServerBuilt,
+      paymentSystemWebDevelopmentOrdered: company.paymentSystemWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch = company.branchCount === 0 && isPaymentSystemOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        ...updates,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function orderPaymentSystemWebDevelopment(
+  guildId: string,
+  userId: string
+): Promise<PaymentSystemPurchaseResult> {
+  const price = PAYMENT_SYSTEM_ONBOARDING_PRICES.webDevelopment;
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'payment_system') {
+      return { status: 'notAllowed', price };
+    }
+
+    if (company.paymentSystemWebDevelopmentOrdered) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const nextState = {
+      paymentSystemLegalNewsDone: company.paymentSystemLegalNewsDone,
+      paymentSystemInfrastructureMainOfficeBuilt: company.paymentSystemInfrastructureMainOfficeBuilt,
+      paymentSystemInfrastructureServerBuilt: company.paymentSystemInfrastructureServerBuilt,
+      paymentSystemWebDevelopmentOrdered: true
+    };
+
+    const shouldOpenBranch = company.branchCount === 0 && isPaymentSystemOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        paymentSystemWebDevelopmentOrdered: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
   });
 }
 

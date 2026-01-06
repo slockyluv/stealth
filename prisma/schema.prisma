@@ -130,6 +130,12 @@ model PrivateCompany {
   continent     ContinentId
   isActive      Boolean     @default(true)
   budget        BigInt      @default(0)
+  branchCount   Int         @default(0)
+  paymentSystemLegalNewsStarted Boolean @default(false)
+  paymentSystemLegalNewsDone Boolean @default(false)
+  paymentSystemInfrastructureMainOfficeBuilt Boolean @default(false)
+  paymentSystemInfrastructureServerBuilt Boolean @default(false)
+  paymentSystemWebDevelopmentOrdered Boolean @default(false)
   paymentTransferFeeRate Int?
   investmentTradeFeeRate Int?
   cryptoTradeFeeRate Int?

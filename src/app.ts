@@ -4,6 +4,7 @@ import { createClient } from './discord/client.js';
 import { registerEvents } from './discord/events/index.js';
 import { logger } from './shared/logger.js';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
+import { registerCanvasFonts } from './render/registerCanvasFonts.js';
 
 loadEnv();
 
@@ -71,6 +72,8 @@ function registerShutdownHooks() {
 async function bootstrap() {
   await prisma.$connect();
   logger.info('Prisma connected');
+
+  registerCanvasFonts();
 
   client = createClient();
   registerEvents(client);

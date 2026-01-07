@@ -13,7 +13,7 @@ function getDayStart(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
-function xpToNext(level: number) {
+export function getXpToNextLevel(level: number) {
   return 1800 + level * 220;
 }
 
@@ -28,8 +28,8 @@ function computeStreakBonus(streakDays: number) {
 function applyLevelProgress(currentXp: number, currentLevel: number, earnedXp: number) {
   let xp = currentXp + earnedXp;
   let level = currentLevel;
-  while (xp >= xpToNext(level)) {
-    xp -= xpToNext(level);
+  while (xp >= getXpToNextLevel(level)) {
+    xp -= getXpToNextLevel(level);
     level += 1;
   }
   return { xp, level };

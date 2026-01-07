@@ -468,37 +468,41 @@ export async function buildPaymentSystemOnboardingView(options: {
   const legalNewsCompleted = company.paymentSystemLegalNewsDone;
   const legalNewsStarted = company.paymentSystemLegalNewsStarted && !legalNewsCompleted;
 
-  const legalNewsButton = new ButtonBuilder()
-    .setStyle(ButtonStyle.Secondary)
-    .setCustomId(
-      buildCustomId(
-        'companyFinance',
-        legalNewsCompleted ? 'paymentSystemLegalDone' : legalNewsStarted ? 'paymentSystemLegalDone' : 'paymentSystemLegalStart',
-        user.id
-      )
-    )
-    .setLabel(legalNewsCompleted || legalNewsStarted ? 'Выполнено' : 'Выполнить')
-    .setEmoji(formatEmoji(legalNewsCompleted || legalNewsStarted ? 'slide_d' : 'bolt'))
-    .setDisabled(legalNewsCompleted);
+  const legalNewsButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId(
+      'companyFinance',
+      legalNewsCompleted ? 'paymentSystemLegalDone' : legalNewsStarted ? 'paymentSystemLegalDone' : 'paymentSystemLegalStart',
+      user.id
+    ),
+    label: legalNewsCompleted || legalNewsStarted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(legalNewsCompleted || legalNewsStarted ? 'slide_d' : 'bolt'),
+    disabled: legalNewsCompleted
+  };
 
   const infrastructureCompleted =
     company.paymentSystemInfrastructureMainOfficeBuilt && company.paymentSystemInfrastructureServerBuilt;
 
-  const infrastructureButton = new ButtonBuilder()
-    .setStyle(ButtonStyle.Secondary)
-    .setCustomId(buildCustomId('companyFinance', 'paymentSystemInfrastructureOpen', user.id))
-    .setLabel(infrastructureCompleted ? 'Выполнено' : 'Выполнить')
-    .setEmoji(formatEmoji(infrastructureCompleted ? 'slide_d' : 'bolt'))
-    .setDisabled(infrastructureCompleted);
+  const infrastructureButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'paymentSystemInfrastructureOpen', user.id),
+    label: infrastructureCompleted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(infrastructureCompleted ? 'slide_d' : 'bolt'),
+    disabled: infrastructureCompleted
+  };
 
   const webDevelopmentCompleted = company.paymentSystemWebDevelopmentOrdered;
 
-  const webDevelopmentButton = new ButtonBuilder()
-    .setStyle(ButtonStyle.Secondary)
-    .setCustomId(buildCustomId('companyFinance', 'paymentSystemWebOpen', user.id))
-    .setLabel(webDevelopmentCompleted ? 'Выполнено' : 'Выполнить')
-    .setEmoji(formatEmoji(webDevelopmentCompleted ? 'slide_d' : 'bolt'))
-    .setDisabled(webDevelopmentCompleted);
+  const webDevelopmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'paymentSystemWebOpen', user.id),
+    label: webDevelopmentCompleted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(webDevelopmentCompleted ? 'slide_d' : 'bolt'),
+    disabled: webDevelopmentCompleted
+  };
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'paymentSystemBack', 'profile', user.id))
@@ -523,7 +527,7 @@ export async function buildPaymentSystemOnboardingView(options: {
           ].join('\n')
         }
       ],
-      accessory: legalNewsButton.toJSON()
+      accessory: legalNewsButton
     },
     buildSeparator(),
     {
@@ -537,7 +541,7 @@ export async function buildPaymentSystemOnboardingView(options: {
           ].join('\n')
         }
       ],
-      accessory: infrastructureButton.toJSON()
+      accessory: infrastructureButton
     },
     buildSeparator(),
     {
@@ -551,7 +555,7 @@ export async function buildPaymentSystemOnboardingView(options: {
           ].join('\n')
         }
       ],
-      accessory: webDevelopmentButton.toJSON()
+      accessory: webDevelopmentButton
     },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
@@ -611,19 +615,23 @@ export async function buildPaymentSystemInfrastructureView(options: {
   const mainOfficePrice = PAYMENT_SYSTEM_ONBOARDING_PRICES.mainOffice;
   const serverPrice = PAYMENT_SYSTEM_ONBOARDING_PRICES.serverInfrastructure;
 
-  const mainOfficeButton = new ButtonBuilder()
-    .setCustomId(buildCustomId('companyFinance', 'paymentSystemInfrastructureBuild', 'mainOffice', user.id))
-    .setLabel(company.paymentSystemInfrastructureMainOfficeBuilt ? 'Построено' : 'Построить')
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji(formatEmoji(company.paymentSystemInfrastructureMainOfficeBuilt ? 'slide_d' : 'buybutton'))
-    .setDisabled(company.paymentSystemInfrastructureMainOfficeBuilt);
+  const mainOfficeButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'paymentSystemInfrastructureBuild', 'mainOffice', user.id),
+    label: company.paymentSystemInfrastructureMainOfficeBuilt ? 'Построено' : 'Построить',
+    emoji: formatEmoji(company.paymentSystemInfrastructureMainOfficeBuilt ? 'slide_d' : 'buybutton'),
+    disabled: company.paymentSystemInfrastructureMainOfficeBuilt
+  };
 
-  const serverButton = new ButtonBuilder()
-    .setCustomId(buildCustomId('companyFinance', 'paymentSystemInfrastructureBuild', 'serverInfrastructure', user.id))
-    .setLabel(company.paymentSystemInfrastructureServerBuilt ? 'Построено' : 'Построить')
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji(formatEmoji(company.paymentSystemInfrastructureServerBuilt ? 'slide_d' : 'buybutton'))
-    .setDisabled(company.paymentSystemInfrastructureServerBuilt);
+  const serverButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'paymentSystemInfrastructureBuild', 'serverInfrastructure', user.id),
+    label: company.paymentSystemInfrastructureServerBuilt ? 'Построено' : 'Построить',
+    emoji: formatEmoji(company.paymentSystemInfrastructureServerBuilt ? 'slide_d' : 'buybutton'),
+    disabled: company.paymentSystemInfrastructureServerBuilt
+  };
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'paymentSystemBack', 'finance', user.id))
@@ -649,7 +657,7 @@ export async function buildPaymentSystemInfrastructureView(options: {
           ].join('\n')
         }
       ],
-      accessory: mainOfficeButton.toJSON()
+      accessory: mainOfficeButton
     },
     { type: ComponentType.TextDisplay, content: '\u200b' },
     {
@@ -663,7 +671,7 @@ export async function buildPaymentSystemInfrastructureView(options: {
           ].join('\n')
         }
       ],
-      accessory: serverButton.toJSON()
+      accessory: serverButton
     },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
@@ -687,12 +695,14 @@ export async function buildPaymentSystemWebDevelopmentView(options: {
 
   const price = PAYMENT_SYSTEM_ONBOARDING_PRICES.webDevelopment;
 
-  const orderButton = new ButtonBuilder()
-    .setCustomId(buildCustomId('companyFinance', 'paymentSystemWebOrder', user.id))
-    .setLabel(company.paymentSystemWebDevelopmentOrdered ? 'Завершено' : 'Заказать')
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji(formatEmoji(company.paymentSystemWebDevelopmentOrdered ? 'slide_d' : 'buybutton'))
-    .setDisabled(company.paymentSystemWebDevelopmentOrdered);
+  const orderButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'paymentSystemWebOrder', user.id),
+    label: company.paymentSystemWebDevelopmentOrdered ? 'Завершено' : 'Заказать',
+    emoji: formatEmoji(company.paymentSystemWebDevelopmentOrdered ? 'slide_d' : 'buybutton'),
+    disabled: company.paymentSystemWebDevelopmentOrdered
+  };
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'paymentSystemBack', 'finance', user.id))
@@ -714,7 +724,7 @@ export async function buildPaymentSystemWebDevelopmentView(options: {
           ].join('\n')
         }
       ],
-      accessory: orderButton.toJSON()
+      accessory: orderButton
     },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()

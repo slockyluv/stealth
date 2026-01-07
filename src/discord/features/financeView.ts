@@ -31,6 +31,13 @@ function buildSeparator(): ComponentInContainerData {
   };
 }
 
+function buildContainer(components: ComponentInContainerData[]): TopLevelComponentData {
+  return {
+    type: ComponentType.Container,
+    components
+  };
+}
+
 function formatBudgetValue(budget: bigint): string {
   return budget.toLocaleString('ru-RU');
 }
@@ -113,18 +120,15 @@ export async function buildFinanceView(options: {
         .setEmoji(formatEmoji('wallet'))
     );
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      header,
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: treasuryHeaderContent },
-      governmentBudgetSection,
-      { type: ComponentType.TextDisplay, content: treasuryContent },
-      buildSeparator(),
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    header,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: treasuryHeaderContent },
+    governmentBudgetSection,
+    { type: ComponentType.TextDisplay, content: treasuryContent },
+    buildSeparator(),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
+  ]);
 
   return [container];
 }
@@ -245,21 +249,18 @@ export async function buildGovernmentBudgetView(options: {
     .setEmoji(formatEmoji('taxation'))
     .setDisabled(!canCollectTax);
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      header,
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: budgetContent },
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: taxationHeader },
-      residentTaxSection,
-      foreignTaxSection,
-      populationTaxSection,
-      buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, collectTaxButton).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    header,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: budgetContent },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: taxationHeader },
+    residentTaxSection,
+    foreignTaxSection,
+    populationTaxSection,
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, collectTaxButton).toJSON()
+  ]);
 
   return [container];
 }
@@ -419,19 +420,16 @@ export async function buildCompanyFinanceView(options: {
         .setEmoji(formatEmoji('wallet'))
     );
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      header,
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: companyBalanceContent },
-      branchesSection,
-      ...feeComponents,
-      { type: ComponentType.TextDisplay, content: taxationContent },
-      buildSeparator(),
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    header,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: companyBalanceContent },
+    branchesSection,
+    ...feeComponents,
+    { type: ComponentType.TextDisplay, content: taxationContent },
+    buildSeparator(),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
+  ]);
 
   return [container];
 }
@@ -508,59 +506,56 @@ export async function buildPaymentSystemOnboardingView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      header,
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: introContent },
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: '**1. Платежная система:**' },
-      {
-        type: ComponentType.Section,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: [
-              '**Юридическая регистрация**',
-              '> *Напишите подробную новость о юридической регистрации Вашей компании и подготовке к началу операционной деятельности.*'
-            ].join('\n')
-          }
-        ],
-        accessory: legalNewsButton.toJSON()
-      },
-      buildSeparator(),
-      {
-        type: ComponentType.Section,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: [
-              '**Строительство инфраструктуры**',
-              '> *Вам необходимо построить инфраструктуру, требуемую для старта деятельности вашей компании.*'
-            ].join('\n')
-          }
-        ],
-        accessory: infrastructureButton.toJSON()
-      },
-      buildSeparator(),
-      {
-        type: ComponentType.Section,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: [
-              '**WEB разработка**',
-              '> *Вам необходимо разработать собственное WEB структуру, на базе которой будет работать платежная система.*'
-            ].join('\n')
-          }
-        ],
-        accessory: webDevelopmentButton.toJSON()
-      },
-      buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    header,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: introContent },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: '**1. Платежная система:**' },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Юридическая регистрация**',
+            '> *Напишите подробную новость о юридической регистрации Вашей компании и подготовке к началу операционной деятельности.*'
+          ].join('\n')
+        }
+      ],
+      accessory: legalNewsButton.toJSON()
+    },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Строительство инфраструктуры**',
+            '> *Вам необходимо построить инфраструктуру, требуемую для старта деятельности вашей компании.*'
+          ].join('\n')
+        }
+      ],
+      accessory: infrastructureButton.toJSON()
+    },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**WEB разработка**',
+            '> *Вам необходимо разработать собственное WEB структуру, на базе которой будет работать платежная система.*'
+          ].join('\n')
+        }
+      ],
+      accessory: webDevelopmentButton.toJSON()
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
 
   return [container];
 }
@@ -589,16 +584,13 @@ export async function buildPaymentSystemLegalNewsActionView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content },
-      buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
 
   return [container];
 }
@@ -642,43 +634,40 @@ export async function buildPaymentSystemInfrastructureView(options: {
   const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
   const subHeader = `**${formatEmoji('filialscomp')} Необходимая инфраструктура:**`;
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      { type: ComponentType.TextDisplay, content: contentHeader },
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
-      {
-        type: ComponentType.Section,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: [
-              '**Главный офис компании**',
-              `**Цена: ${formatBudgetValue(mainOfficePrice)} ${formatEmoji('stackmoney')}**`
-            ].join('\n')
-          }
-        ],
-        accessory: mainOfficeButton.toJSON()
-      },
-      { type: ComponentType.TextDisplay, content: '\u200b' },
-      {
-        type: ComponentType.Section,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: [
-              '**Серверная инфраструктура**',
-              `**Цена: ${formatBudgetValue(serverPrice)} ${formatEmoji('stackmoney')}**`
-            ].join('\n')
-          }
-        ],
-        accessory: serverButton.toJSON()
-      },
-      buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: contentHeader },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Главный офис компании**',
+            `**Цена: ${formatBudgetValue(mainOfficePrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: mainOfficeButton.toJSON()
+    },
+    { type: ComponentType.TextDisplay, content: '\u200b' },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Серверная инфраструктура**',
+            `**Цена: ${formatBudgetValue(serverPrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: serverButton.toJSON()
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
 
   return [container];
 }
@@ -711,28 +700,25 @@ export async function buildPaymentSystemWebDevelopmentView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-      buildSeparator(),
-      {
-        type: ComponentType.Section,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: [
-              '**WEB разработка**',
-              `**Цена: ${formatBudgetValue(price)} ${formatEmoji('stackmoney')}**`
-            ].join('\n')
-          }
-        ],
-        accessory: orderButton.toJSON()
-      },
-      buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**WEB разработка**',
+            `**Цена: ${formatBudgetValue(price)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: orderButton.toJSON()
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
 
   return [container];
 }
@@ -758,16 +744,13 @@ export async function buildPaymentSystemPurchaseResultView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      { type: ComponentType.TextDisplay, content: title },
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
-      buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
 
   return [container];
 }
@@ -837,16 +820,13 @@ export async function buildCompanyBranchesView(options: {
     .setEmoji(formatEmoji('anglesmallright'))
     .setDisabled(page >= totalPages);
 
-  const container: TopLevelComponentData = {
-    type: ComponentType.Container,
-    components: [
-      header,
-      buildSeparator(),
-      { type: ComponentType.TextDisplay, content: listContent },
-      buildSeparator(),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, prevButton, nextButton).toJSON()
-    ]
-  };
+  const container = buildContainer([
+    header,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: listContent },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, prevButton, nextButton).toJSON()
+  ]);
 
   return [container];
 }

@@ -15,20 +15,31 @@ import {
   buildCryptoExchangeInfrastructure,
   buildInvestmentExchangeInfrastructure,
   buildPaymentSystemInfrastructure,
+  buildManufacturingInfrastructure,
   findIndustryByKey,
   getUserActiveCompany,
   markCryptoExchangeLegalNewsDone,
   markCryptoExchangeLegalNewsStarted,
+  markConstructionLegalNewsDone,
+  markConstructionLegalNewsStarted,
   markInvestmentExchangeLegalNewsDone,
   markInvestmentExchangeLegalNewsStarted,
+  markManufacturingLegalNewsDone,
+  markManufacturingLegalNewsStarted,
   markPaymentSystemLegalNewsDone,
   markPaymentSystemLegalNewsStarted,
   orderCryptoExchangeWebDevelopment,
+  orderConstructionWebDevelopment,
   orderInvestmentExchangeWebDevelopment,
+  purchaseConstructionEquipment,
+  purchaseManufacturingEquipment,
   orderPaymentSystemWebDevelopment,
   type CompanyFeeKey,
+  type ConstructionEquipmentKey,
   type CryptoExchangeInfrastructureKey,
   type InvestmentExchangeInfrastructureKey,
+  type ManufacturingEquipmentKey,
+  type ManufacturingInfrastructureKey,
   type PaymentSystemInfrastructureKey
 } from '../../../services/privateCompanyService.js';
 import {
@@ -40,10 +51,18 @@ import {
   buildCryptoExchangeLegalNewsActionView,
   buildCryptoExchangePurchaseResultView,
   buildCryptoExchangeWebDevelopmentView,
+  buildConstructionEquipmentView,
+  buildConstructionLegalNewsActionView,
+  buildConstructionPurchaseResultView,
+  buildConstructionWebDevelopmentView,
   buildInvestmentExchangeInfrastructureView,
   buildInvestmentExchangeLegalNewsActionView,
   buildInvestmentExchangePurchaseResultView,
   buildInvestmentExchangeWebDevelopmentView,
+  buildManufacturingEquipmentView,
+  buildManufacturingInfrastructureView,
+  buildManufacturingLegalNewsActionView,
+  buildManufacturingPurchaseResultView,
   buildPaymentSystemInfrastructureView,
   buildPaymentSystemLegalNewsActionView,
   buildPaymentSystemPurchaseResultView,
@@ -2293,6 +2312,1160 @@ export const companyFinanceCryptoExchangeWebOrderButton: ButtonHandler = {
       logger.error(error);
       await interaction.followUp({
         components: buildWarningView(formatEmoji, 'Не удалось оформить заказ. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceConstructionBackButton: ButtonHandler = {
+  key: 'companyFinance:constructionBack',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const target = ctx.customId.args[0];
+    const userId = ctx.customId.args[1];
+    if (!target || !userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (target === 'profile') {
+        const view = await buildCompanyProfileView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'finance') {
+        const countryLookup = findCountryByKey(company.countryName);
+        if (!countryLookup) {
+          await interaction.followUp({
+            components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          });
+          return;
+        }
+
+        const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+        const view = await buildCompanyFinanceView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company,
+          countryProfile: profile
+        });
+
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'equipment') {
+        const view = await buildConstructionEquipmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'web') {
+        const view = await buildConstructionWebDevelopmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Неизвестное действие.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось вернуться назад. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceConstructionLegalStartButton: ButtonHandler = {
+  key: 'companyFinance:constructionLegalStart',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const updated = await markConstructionLegalNewsStarted(interaction.guildId, userId);
+      if (!updated) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить статус действия.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildConstructionLegalNewsActionView({
+        guild: interaction.guild,
+        user: interaction.user
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceConstructionLegalDoneButton: ButtonHandler = {
+  key: 'companyFinance:constructionLegalDone',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const updatedCompany = await markConstructionLegalNewsDone(interaction.guildId, userId);
+      if (!updatedCompany) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить статус действия.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const countryLookup = findCountryByKey(updatedCompany.countryName);
+      if (!countryLookup) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+      const view = await buildCompanyFinanceView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company: updatedCompany,
+        countryProfile: profile
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить статус. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceConstructionEquipmentOpenButton: ButtonHandler = {
+  key: 'companyFinance:constructionEquipmentOpen',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildConstructionEquipmentView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть раздел. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceConstructionEquipmentBuyButton: ButtonHandler = {
+  key: 'companyFinance:constructionEquipmentBuy',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const itemKey = ctx.customId.args[0] as ConstructionEquipmentKey | undefined;
+    const userId = ctx.customId.args[1];
+    if (!itemKey || !userId || !['mainEquipment', 'supportEquipment'].includes(itemKey)) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const result = await purchaseConstructionEquipment(interaction.guildId, userId, itemKey);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'alreadyCompleted') {
+        const view = await buildConstructionEquipmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company: result.company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const nameLabel = itemKey === 'mainEquipment' ? 'Основная техника' : 'Вспомогательная техника';
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildConstructionPurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для закупки строительной техники!**`,
+          price: result.price,
+          backTarget: 'equipment'
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const view = await buildConstructionPurchaseResultView({
+        guild: interaction.guild,
+        user: interaction.user,
+        title: `**${formatEmoji('slide_d')} Вы успешно приобрели __${nameLabel}__.**`,
+        price: result.price,
+        backTarget: 'equipment'
+      });
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось выполнить действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceConstructionWebOpenButton: ButtonHandler = {
+  key: 'companyFinance:constructionWebOpen',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildConstructionWebDevelopmentView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть раздел. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceConstructionWebOrderButton: ButtonHandler = {
+  key: 'companyFinance:constructionWebOrder',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const result = await orderConstructionWebDevelopment(interaction.guildId, userId);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'alreadyCompleted') {
+        const view = await buildConstructionWebDevelopmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company: result.company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildConstructionPurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для заказа разработки WEB сайта!**`,
+          price: result.price,
+          backTarget: 'web'
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const view = await buildConstructionPurchaseResultView({
+        guild: interaction.guild,
+        user: interaction.user,
+        title: `**${formatEmoji('slide_d')} Вы успешно заказали разработку собственного WEB сайта!**`,
+        price: result.price,
+        backTarget: 'web'
+      });
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось выполнить действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceManufacturingBackButton: ButtonHandler = {
+  key: 'companyFinance:manufacturingBack',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const target = ctx.customId.args[0];
+    const userId = ctx.customId.args[1];
+    if (!target || !userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (target === 'profile') {
+        const view = await buildCompanyProfileView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'finance') {
+        const countryLookup = findCountryByKey(company.countryName);
+        if (!countryLookup) {
+          await interaction.followUp({
+            components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+          });
+          return;
+        }
+
+        const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+        const view = await buildCompanyFinanceView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company,
+          countryProfile: profile
+        });
+
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'infrastructure') {
+        const view = await buildManufacturingInfrastructureView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      if (target === 'equipment') {
+        const view = await buildManufacturingEquipmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Неизвестное действие.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось вернуться назад. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceManufacturingLegalStartButton: ButtonHandler = {
+  key: 'companyFinance:manufacturingLegalStart',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const updated = await markManufacturingLegalNewsStarted(interaction.guildId, userId);
+      if (!updated) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить статус действия.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildManufacturingLegalNewsActionView({
+        guild: interaction.guild,
+        user: interaction.user
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceManufacturingLegalDoneButton: ButtonHandler = {
+  key: 'companyFinance:manufacturingLegalDone',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const updatedCompany = await markManufacturingLegalNewsDone(interaction.guildId, userId);
+      if (!updatedCompany) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Не удалось обновить статус действия.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const countryLookup = findCountryByKey(updatedCompany.countryName);
+      if (!countryLookup) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+      const view = await buildCompanyFinanceView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company: updatedCompany,
+        countryProfile: profile
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить статус. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceManufacturingInfrastructureOpenButton: ButtonHandler = {
+  key: 'companyFinance:manufacturingInfrastructureOpen',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildManufacturingInfrastructureView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть раздел. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceManufacturingInfrastructureBuildButton: ButtonHandler = {
+  key: 'companyFinance:manufacturingInfrastructureBuild',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const itemKey = ctx.customId.args[0] as ManufacturingInfrastructureKey | undefined;
+    const userId = ctx.customId.args[1];
+    if (!itemKey || !userId || !['mainOffice', 'productionInfrastructure'].includes(itemKey)) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const result = await buildManufacturingInfrastructure(interaction.guildId, userId, itemKey);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'alreadyCompleted') {
+        const view = await buildManufacturingInfrastructureView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company: result.company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const nameLabel =
+        itemKey === 'mainOffice' ? 'Главный офис компании' : 'Производственная инфраструктура';
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildManufacturingPurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для строительства!**`,
+          price: result.price,
+          backTarget: 'infrastructure'
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const view = await buildManufacturingPurchaseResultView({
+        guild: interaction.guild,
+        user: interaction.user,
+        title: `**${formatEmoji('slide_d')} Вы успешно построили __${nameLabel}__.**`,
+        price: result.price,
+        backTarget: 'infrastructure'
+      });
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось выполнить действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceManufacturingEquipmentOpenButton: ButtonHandler = {
+  key: 'companyFinance:manufacturingEquipmentOpen',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const view = await buildManufacturingEquipmentView({
+        guild: interaction.guild,
+        user: interaction.user,
+        company
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть раздел. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceManufacturingEquipmentBuyButton: ButtonHandler = {
+  key: 'companyFinance:manufacturingEquipmentBuy',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const itemKey = ctx.customId.args[0] as ManufacturingEquipmentKey | undefined;
+    const userId = ctx.customId.args[1];
+    if (!itemKey || !userId || !['mainEquipment', 'supportEquipment'].includes(itemKey)) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const result = await purchaseManufacturingEquipment(interaction.guildId, userId, itemKey);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'alreadyCompleted') {
+        const view = await buildManufacturingEquipmentView({
+          guild: interaction.guild,
+          user: interaction.user,
+          company: result.company
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const nameLabel = itemKey === 'mainEquipment' ? 'Основное оборудование' : 'Вспомогательное оборудование';
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildManufacturingPurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для закупки производственного оборудования!**`,
+          price: result.price,
+          backTarget: 'equipment'
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const view = await buildManufacturingPurchaseResultView({
+        guild: interaction.guild,
+        user: interaction.user,
+        title: `**${formatEmoji('slide_d')} Вы успешно приобрели __${nameLabel}__.**`,
+        price: result.price,
+        backTarget: 'equipment'
+      });
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось выполнить действие. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }

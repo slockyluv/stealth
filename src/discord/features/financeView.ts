@@ -20,6 +20,8 @@ import {
   PAYMENT_SYSTEM_ONBOARDING_PRICES,
   INVESTMENT_EXCHANGE_ONBOARDING_PRICES,
   CRYPTO_EXCHANGE_ONBOARDING_PRICES,
+  CONSTRUCTION_ONBOARDING_PRICES,
+  MANUFACTURING_ONBOARDING_PRICES,
   findIndustryByKey,
   type CompanyFeeKey,
   type PrivateCompanyRecord
@@ -290,6 +292,12 @@ export async function buildCompanyFinanceView(options: {
     }
     if (company.industryKey === 'crypto_exchange') {
       return buildCryptoExchangeOnboardingView({ guild, user, company });
+    }
+    if (company.industryKey === 'construction') {
+      return buildConstructionOnboardingView({ guild, user, company });
+    }
+    if (company.industryKey === 'manufacturing') {
+      return buildManufacturingOnboardingView({ guild, user, company });
     }
   }
 
@@ -1429,6 +1437,690 @@ export async function buildCryptoExchangePurchaseResultView(options: {
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'cryptoExchangeBack', backTarget, user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildConstructionOnboardingView(options: {
+  guild: Guild;
+  user: User;
+  company: PrivateCompanyRecord;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, company } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const header: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [`# ${formatEmoji('control')} Заключительный этап.`, '', `**Пользователь:** <@${user.id}>`].join('\n')
+      }
+    ],
+    accessory: {
+      type: ComponentType.Thumbnail,
+      media: { url: user.displayAvatarURL({ size: 256 }) },
+      description: `Аватар ${user.username}`
+    }
+  };
+
+  const introContent =
+    '*Поздравляем, Вы успешно юридически зарегистрировали свою частную коммерческую компанию! Теперь вам предстоит заключительный этап: Вам необходимо найти источник финансирования для полноценного физического запуска цикла деятельности организации, затем выполнить все находящиеся ниже пункты.*';
+
+  const legalNewsCompleted = company.constructionLegalNewsDone;
+  const legalNewsStarted = company.constructionLegalNewsStarted && !legalNewsCompleted;
+
+  const legalNewsButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId(
+      'companyFinance',
+      legalNewsCompleted ? 'constructionLegalDone' : legalNewsStarted ? 'constructionLegalDone' : 'constructionLegalStart',
+      user.id
+    ),
+    label: legalNewsCompleted || legalNewsStarted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(legalNewsCompleted || legalNewsStarted ? 'slide_d' : 'bolt'),
+    disabled: legalNewsCompleted
+  };
+
+  const equipmentCompleted = company.constructionEquipmentMainPurchased && company.constructionEquipmentSupportPurchased;
+
+  const equipmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'constructionEquipmentOpen', user.id),
+    label: equipmentCompleted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(equipmentCompleted ? 'slide_d' : 'bolt'),
+    disabled: equipmentCompleted
+  };
+
+  const webDevelopmentCompleted = company.constructionWebDevelopmentOrdered;
+
+  const webDevelopmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'constructionWebOpen', user.id),
+    label: webDevelopmentCompleted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(webDevelopmentCompleted ? 'slide_d' : 'bolt'),
+    disabled: webDevelopmentCompleted
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'constructionBack', 'profile', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    header,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: introContent },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Юридическая регистрация**',
+            '> *Напишите подробную новость о юридической регистрации Вашей компании и подготовке к началу операционной деятельности.*'
+          ].join('\n')
+        }
+      ],
+      accessory: legalNewsButton
+    },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Строительная техника**',
+            '> *Вам необходимо закупить строительную технику, требуемую для старта деятельности вашей компании.*'
+          ].join('\n')
+        }
+      ],
+      accessory: equipmentButton
+    },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Разработка WEB сайта**',
+            '> *Вам необходимо разработать собственный WEB сайт, на котором будет размещена детальная информация о деятельности и опыте вашей компании.*'
+          ].join('\n')
+        }
+      ],
+      accessory: webDevelopmentButton
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildConstructionLegalNewsActionView(options: {
+  guild: Guild;
+  user: User;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const content = [
+    '*- Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.*',
+    '',
+    '*После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*'
+  ].join('\n');
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'constructionBack', 'finance', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildConstructionEquipmentView(options: {
+  guild: Guild;
+  user: User;
+  company: PrivateCompanyRecord;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, company } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const mainEquipmentPrice = CONSTRUCTION_ONBOARDING_PRICES.mainEquipment;
+  const supportEquipmentPrice = CONSTRUCTION_ONBOARDING_PRICES.supportEquipment;
+
+  const mainEquipmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'constructionEquipmentBuy', 'mainEquipment', user.id),
+    label: company.constructionEquipmentMainPurchased ? 'Закуплено' : 'Закупить',
+    emoji: formatEmoji(company.constructionEquipmentMainPurchased ? 'slide_d' : 'buybutton'),
+    disabled: company.constructionEquipmentMainPurchased
+  };
+
+  const supportEquipmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'constructionEquipmentBuy', 'supportEquipment', user.id),
+    label: company.constructionEquipmentSupportPurchased ? 'Закуплено' : 'Закупить',
+    emoji: formatEmoji(company.constructionEquipmentSupportPurchased ? 'slide_d' : 'buybutton'),
+    disabled: company.constructionEquipmentSupportPurchased
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'constructionBack', 'finance', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
+  const subHeader = `**${formatEmoji('filialscomp')} Необходимая техника:**`;
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: contentHeader },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Основная техника**',
+            `**Цена: ${formatBudgetValue(mainEquipmentPrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: mainEquipmentButton
+    },
+    { type: ComponentType.TextDisplay, content: '\u200b' },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Вспомогательная техника**',
+            `**Цена: ${formatBudgetValue(supportEquipmentPrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: supportEquipmentButton
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildConstructionWebDevelopmentView(options: {
+  guild: Guild;
+  user: User;
+  company: PrivateCompanyRecord;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, company } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const price = CONSTRUCTION_ONBOARDING_PRICES.webDevelopment;
+
+  const orderButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'constructionWebOrder', user.id),
+    label: company.constructionWebDevelopmentOrdered ? 'Завершено' : 'Заказать',
+    emoji: formatEmoji(company.constructionWebDevelopmentOrdered ? 'slide_d' : 'buybutton'),
+    disabled: company.constructionWebDevelopmentOrdered
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'constructionBack', 'finance', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: ['**WEB сайт**', `**Цена: ${formatBudgetValue(price)} ${formatEmoji('stackmoney')}**`].join('\n')
+        }
+      ],
+      accessory: orderButton
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildConstructionPurchaseResultView(options: {
+  guild: Guild;
+  user: User;
+  title: string;
+  price: bigint;
+  backTarget: 'finance' | 'equipment' | 'web';
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, title, price, backTarget } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'constructionBack', backTarget, user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildManufacturingOnboardingView(options: {
+  guild: Guild;
+  user: User;
+  company: PrivateCompanyRecord;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, company } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const header: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [`# ${formatEmoji('control')} Заключительный этап.`, '', `**Пользователь:** <@${user.id}>`].join('\n')
+      }
+    ],
+    accessory: {
+      type: ComponentType.Thumbnail,
+      media: { url: user.displayAvatarURL({ size: 256 }) },
+      description: `Аватар ${user.username}`
+    }
+  };
+
+  const introContent =
+    '*Поздравляем, Вы успешно юридически зарегистрировали свою частную коммерческую компанию! Теперь вам предстоит заключительный этап: Вам необходимо найти источник финансирования для полноценного физического запуска цикла деятельности организации, затем выполнить все находящиеся ниже пункты.*';
+
+  const legalNewsCompleted = company.manufacturingLegalNewsDone;
+  const legalNewsStarted = company.manufacturingLegalNewsStarted && !legalNewsCompleted;
+
+  const legalNewsButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId(
+      'companyFinance',
+      legalNewsCompleted ? 'manufacturingLegalDone' : legalNewsStarted ? 'manufacturingLegalDone' : 'manufacturingLegalStart',
+      user.id
+    ),
+    label: legalNewsCompleted || legalNewsStarted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(legalNewsCompleted || legalNewsStarted ? 'slide_d' : 'bolt'),
+    disabled: legalNewsCompleted
+  };
+
+  const infrastructureCompleted =
+    company.manufacturingInfrastructureMainOfficeBuilt && company.manufacturingInfrastructureProductionBuilt;
+
+  const infrastructureButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'manufacturingInfrastructureOpen', user.id),
+    label: infrastructureCompleted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(infrastructureCompleted ? 'slide_d' : 'bolt'),
+    disabled: infrastructureCompleted
+  };
+
+  const equipmentCompleted = company.manufacturingEquipmentMainPurchased && company.manufacturingEquipmentSupportPurchased;
+
+  const equipmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'manufacturingEquipmentOpen', user.id),
+    label: equipmentCompleted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(equipmentCompleted ? 'slide_d' : 'bolt'),
+    disabled: equipmentCompleted
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'manufacturingBack', 'profile', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    header,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: introContent },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Юридическая регистрация**',
+            '> *Напишите подробную новость о юридической регистрации Вашей компании и подготовке к началу операционной деятельности.*'
+          ].join('\n')
+        }
+      ],
+      accessory: legalNewsButton
+    },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Строительство инфраструктуры**',
+            '> *Вам необходимо построить инфраструктуру, требуемую для старта деятельности вашей компании.*'
+          ].join('\n')
+        }
+      ],
+      accessory: infrastructureButton
+    },
+    buildSeparator(),
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Производственное оборудование**',
+            '> *Вам необходимо закупить производственное оборудование, требуемое для старта деятельности вашей компании.*'
+          ].join('\n')
+        }
+      ],
+      accessory: equipmentButton
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildManufacturingLegalNewsActionView(options: {
+  guild: Guild;
+  user: User;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const content = [
+    '*- Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.*',
+    '',
+    '*После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*'
+  ].join('\n');
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'manufacturingBack', 'finance', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildManufacturingInfrastructureView(options: {
+  guild: Guild;
+  user: User;
+  company: PrivateCompanyRecord;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, company } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const mainOfficePrice = MANUFACTURING_ONBOARDING_PRICES.mainOffice;
+  const productionPrice = MANUFACTURING_ONBOARDING_PRICES.productionInfrastructure;
+
+  const mainOfficeButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'manufacturingInfrastructureBuild', 'mainOffice', user.id),
+    label: company.manufacturingInfrastructureMainOfficeBuilt ? 'Построено' : 'Построить',
+    emoji: formatEmoji(company.manufacturingInfrastructureMainOfficeBuilt ? 'slide_d' : 'buybutton'),
+    disabled: company.manufacturingInfrastructureMainOfficeBuilt
+  };
+
+  const productionButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'manufacturingInfrastructureBuild', 'productionInfrastructure', user.id),
+    label: company.manufacturingInfrastructureProductionBuilt ? 'Построено' : 'Построить',
+    emoji: formatEmoji(company.manufacturingInfrastructureProductionBuilt ? 'slide_d' : 'buybutton'),
+    disabled: company.manufacturingInfrastructureProductionBuilt
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'manufacturingBack', 'finance', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
+  const subHeader = `**${formatEmoji('filialscomp')} Необходимая инфраструктура:**`;
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: contentHeader },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Главный офис компании**',
+            `**Цена: ${formatBudgetValue(mainOfficePrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: mainOfficeButton
+    },
+    { type: ComponentType.TextDisplay, content: '\u200b' },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Производственная инфраструктура**',
+            `**Цена: ${formatBudgetValue(productionPrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: productionButton
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildManufacturingEquipmentView(options: {
+  guild: Guild;
+  user: User;
+  company: PrivateCompanyRecord;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, company } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const mainEquipmentPrice = MANUFACTURING_ONBOARDING_PRICES.mainEquipment;
+  const supportEquipmentPrice = MANUFACTURING_ONBOARDING_PRICES.supportEquipment;
+
+  const mainEquipmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'manufacturingEquipmentBuy', 'mainEquipment', user.id),
+    label: company.manufacturingEquipmentMainPurchased ? 'Закуплено' : 'Закупить',
+    emoji: formatEmoji(company.manufacturingEquipmentMainPurchased ? 'slide_d' : 'buybutton'),
+    disabled: company.manufacturingEquipmentMainPurchased
+  };
+
+  const supportEquipmentButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'manufacturingEquipmentBuy', 'supportEquipment', user.id),
+    label: company.manufacturingEquipmentSupportPurchased ? 'Закуплено' : 'Закупить',
+    emoji: formatEmoji(company.manufacturingEquipmentSupportPurchased ? 'slide_d' : 'buybutton'),
+    disabled: company.manufacturingEquipmentSupportPurchased
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'manufacturingBack', 'finance', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
+  const subHeader = `**${formatEmoji('filialscomp')} Необходимое оборудование:**`;
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: contentHeader },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Основное оборудование**',
+            `**Цена: ${formatBudgetValue(mainEquipmentPrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: mainEquipmentButton
+    },
+    { type: ComponentType.TextDisplay, content: '\u200b' },
+    {
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            '**Вспомогательное оборудование**',
+            `**Цена: ${formatBudgetValue(supportEquipmentPrice)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: supportEquipmentButton
+    },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildManufacturingPurchaseResultView(options: {
+  guild: Guild;
+  user: User;
+  title: string;
+  price: bigint;
+  backTarget: 'finance' | 'infrastructure' | 'equipment';
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, title, price, backTarget } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'manufacturingBack', backTarget, user.id))
     .setLabel('Назад')
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));

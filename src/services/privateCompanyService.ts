@@ -42,6 +42,19 @@ export const CRYPTO_EXCHANGE_ONBOARDING_PRICES = {
   webDevelopment: 200000n
 } as const;
 
+export const CONSTRUCTION_ONBOARDING_PRICES = {
+  mainEquipment: 120000n,
+  supportEquipment: 80000n,
+  webDevelopment: 150000n
+} as const;
+
+export const MANUFACTURING_ONBOARDING_PRICES = {
+  mainOffice: 130000n,
+  productionInfrastructure: 180000n,
+  mainEquipment: 140000n,
+  supportEquipment: 90000n
+} as const;
+
 export type PaymentSystemInfrastructureKey = keyof Pick<
   typeof PAYMENT_SYSTEM_ONBOARDING_PRICES,
   'mainOffice' | 'serverInfrastructure'
@@ -55,6 +68,21 @@ export type InvestmentExchangeInfrastructureKey = keyof Pick<
 export type CryptoExchangeInfrastructureKey = keyof Pick<
   typeof CRYPTO_EXCHANGE_ONBOARDING_PRICES,
   'mainOffice' | 'serverInfrastructure'
+>;
+
+export type ConstructionEquipmentKey = keyof Pick<
+  typeof CONSTRUCTION_ONBOARDING_PRICES,
+  'mainEquipment' | 'supportEquipment'
+>;
+
+export type ManufacturingInfrastructureKey = keyof Pick<
+  typeof MANUFACTURING_ONBOARDING_PRICES,
+  'mainOffice' | 'productionInfrastructure'
+>;
+
+export type ManufacturingEquipmentKey = keyof Pick<
+  typeof MANUFACTURING_ONBOARDING_PRICES,
+  'mainEquipment' | 'supportEquipment'
 >;
 
 const COMPANY_FEE_FIELDS: Record<CompanyFeeKey, keyof Prisma.PrivateCompanyUncheckedUpdateInput> = {
@@ -352,6 +380,25 @@ export function isCryptoExchangeOnboardingComplete(company: PrivateCompanyRecord
   );
 }
 
+export function isConstructionOnboardingComplete(company: PrivateCompanyRecord): boolean {
+  return (
+    company.constructionLegalNewsDone &&
+    company.constructionEquipmentMainPurchased &&
+    company.constructionEquipmentSupportPurchased &&
+    company.constructionWebDevelopmentOrdered
+  );
+}
+
+export function isManufacturingOnboardingComplete(company: PrivateCompanyRecord): boolean {
+  return (
+    company.manufacturingLegalNewsDone &&
+    company.manufacturingInfrastructureMainOfficeBuilt &&
+    company.manufacturingInfrastructureProductionBuilt &&
+    company.manufacturingEquipmentMainPurchased &&
+    company.manufacturingEquipmentSupportPurchased
+  );
+}
+
 export async function markPaymentSystemLegalNewsStarted(
   guildId: string,
   userId: string
@@ -537,6 +584,135 @@ export async function markCryptoExchangeLegalNewsDone(
       data: {
         cryptoExchangeLegalNewsStarted: true,
         cryptoExchangeLegalNewsDone: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+  });
+}
+
+export async function markConstructionLegalNewsStarted(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.privateCompany.updateMany({
+    where: {
+      guildId: BigInt(guildId),
+      ownerId: BigInt(userId),
+      isActive: true,
+      industryKey: 'construction'
+    },
+    data: {
+      constructionLegalNewsStarted: true
+    }
+  }).then(async (result) => {
+    if (result.count === 0) {
+      return null;
+    }
+    return getUserActiveCompany(guildId, userId);
+  });
+}
+
+export async function markConstructionLegalNewsDone(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true,
+        industryKey: 'construction'
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    const nextState = {
+      constructionLegalNewsDone: true,
+      constructionEquipmentMainPurchased: company.constructionEquipmentMainPurchased,
+      constructionEquipmentSupportPurchased: company.constructionEquipmentSupportPurchased,
+      constructionWebDevelopmentOrdered: company.constructionWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isConstructionOnboardingComplete({ ...company, ...nextState });
+
+    return tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        constructionLegalNewsStarted: true,
+        constructionLegalNewsDone: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+  });
+}
+
+export async function markManufacturingLegalNewsStarted(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.privateCompany.updateMany({
+    where: {
+      guildId: BigInt(guildId),
+      ownerId: BigInt(userId),
+      isActive: true,
+      industryKey: 'manufacturing'
+    },
+    data: {
+      manufacturingLegalNewsStarted: true
+    }
+  }).then(async (result) => {
+    if (result.count === 0) {
+      return null;
+    }
+    return getUserActiveCompany(guildId, userId);
+  });
+}
+
+export async function markManufacturingLegalNewsDone(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true,
+        industryKey: 'manufacturing'
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    const nextState = {
+      manufacturingLegalNewsDone: true,
+      manufacturingInfrastructureMainOfficeBuilt: company.manufacturingInfrastructureMainOfficeBuilt,
+      manufacturingInfrastructureProductionBuilt: company.manufacturingInfrastructureProductionBuilt,
+      manufacturingEquipmentMainPurchased: company.manufacturingEquipmentMainPurchased,
+      manufacturingEquipmentSupportPurchased: company.manufacturingEquipmentSupportPurchased
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isManufacturingOnboardingComplete({ ...company, ...nextState });
+
+    return tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        manufacturingLegalNewsStarted: true,
+        manufacturingLegalNewsDone: true,
         branchCount: shouldOpenBranch ? 1 : company.branchCount
       }
     });
@@ -926,6 +1102,275 @@ export async function orderCryptoExchangeWebDevelopment(
       data: {
         budget: currentBudget - price,
         cryptoExchangeWebDevelopmentOrdered: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function purchaseConstructionEquipment(
+  guildId: string,
+  userId: string,
+  item: ConstructionEquipmentKey
+): Promise<PaymentSystemPurchaseResult> {
+  const price = CONSTRUCTION_ONBOARDING_PRICES[item];
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'construction') {
+      return { status: 'notAllowed', price };
+    }
+
+    const isPurchased =
+      item === 'mainEquipment' ? company.constructionEquipmentMainPurchased : company.constructionEquipmentSupportPurchased;
+
+    if (isPurchased) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const updates =
+      item === 'mainEquipment'
+        ? { constructionEquipmentMainPurchased: true }
+        : { constructionEquipmentSupportPurchased: true };
+
+    const nextState = {
+      constructionLegalNewsDone: company.constructionLegalNewsDone,
+      constructionEquipmentMainPurchased:
+        item === 'mainEquipment' ? true : company.constructionEquipmentMainPurchased,
+      constructionEquipmentSupportPurchased:
+        item === 'supportEquipment' ? true : company.constructionEquipmentSupportPurchased,
+      constructionWebDevelopmentOrdered: company.constructionWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isConstructionOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        ...updates,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function orderConstructionWebDevelopment(
+  guildId: string,
+  userId: string
+): Promise<PaymentSystemPurchaseResult> {
+  const price = CONSTRUCTION_ONBOARDING_PRICES.webDevelopment;
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'construction') {
+      return { status: 'notAllowed', price };
+    }
+
+    if (company.constructionWebDevelopmentOrdered) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const nextState = {
+      constructionLegalNewsDone: company.constructionLegalNewsDone,
+      constructionEquipmentMainPurchased: company.constructionEquipmentMainPurchased,
+      constructionEquipmentSupportPurchased: company.constructionEquipmentSupportPurchased,
+      constructionWebDevelopmentOrdered: true
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isConstructionOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        constructionWebDevelopmentOrdered: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function buildManufacturingInfrastructure(
+  guildId: string,
+  userId: string,
+  item: ManufacturingInfrastructureKey
+): Promise<PaymentSystemPurchaseResult> {
+  const price = MANUFACTURING_ONBOARDING_PRICES[item];
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'manufacturing') {
+      return { status: 'notAllowed', price };
+    }
+
+    const isBuilt =
+      item === 'mainOffice'
+        ? company.manufacturingInfrastructureMainOfficeBuilt
+        : company.manufacturingInfrastructureProductionBuilt;
+
+    if (isBuilt) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const updates =
+      item === 'mainOffice'
+        ? { manufacturingInfrastructureMainOfficeBuilt: true }
+        : { manufacturingInfrastructureProductionBuilt: true };
+
+    const nextState = {
+      manufacturingLegalNewsDone: company.manufacturingLegalNewsDone,
+      manufacturingInfrastructureMainOfficeBuilt:
+        item === 'mainOffice' ? true : company.manufacturingInfrastructureMainOfficeBuilt,
+      manufacturingInfrastructureProductionBuilt:
+        item === 'productionInfrastructure' ? true : company.manufacturingInfrastructureProductionBuilt,
+      manufacturingEquipmentMainPurchased: company.manufacturingEquipmentMainPurchased,
+      manufacturingEquipmentSupportPurchased: company.manufacturingEquipmentSupportPurchased
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isManufacturingOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        ...updates,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function purchaseManufacturingEquipment(
+  guildId: string,
+  userId: string,
+  item: ManufacturingEquipmentKey
+): Promise<PaymentSystemPurchaseResult> {
+  const price = MANUFACTURING_ONBOARDING_PRICES[item];
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'manufacturing') {
+      return { status: 'notAllowed', price };
+    }
+
+    const isPurchased =
+      item === 'mainEquipment' ? company.manufacturingEquipmentMainPurchased : company.manufacturingEquipmentSupportPurchased;
+
+    if (isPurchased) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const updates =
+      item === 'mainEquipment'
+        ? { manufacturingEquipmentMainPurchased: true }
+        : { manufacturingEquipmentSupportPurchased: true };
+
+    const nextState = {
+      manufacturingLegalNewsDone: company.manufacturingLegalNewsDone,
+      manufacturingInfrastructureMainOfficeBuilt: company.manufacturingInfrastructureMainOfficeBuilt,
+      manufacturingInfrastructureProductionBuilt: company.manufacturingInfrastructureProductionBuilt,
+      manufacturingEquipmentMainPurchased:
+        item === 'mainEquipment' ? true : company.manufacturingEquipmentMainPurchased,
+      manufacturingEquipmentSupportPurchased:
+        item === 'supportEquipment' ? true : company.manufacturingEquipmentSupportPurchased
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isManufacturingOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        ...updates,
         branchCount: shouldOpenBranch ? 1 : company.branchCount
       }
     });

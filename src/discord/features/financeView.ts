@@ -1195,7 +1195,6 @@ export async function buildCryptoExchangeOnboardingView(options: {
     buildSeparator(),
     { type: ComponentType.TextDisplay, content: introContent },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: '**1. Криптобиржа:**' },
     {
       type: ComponentType.Section,
       components: [

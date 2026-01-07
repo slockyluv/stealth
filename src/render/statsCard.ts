@@ -67,7 +67,7 @@ type CanvasContext = {
   textAlign: string;
 };
 
-const assetsRoot = path.join(process.cwd(), 'assets');
+const assetsRoot = path.join(process.cwd(), 'src', 'assets');
 const templatePath = path.join(assetsRoot, 'images', 'profile_template.png');
 const lightOnPath = path.join(assetsRoot, 'icons', 'lighton.png');
 const lightOffPath = path.join(assetsRoot, 'icons', 'lightoff.png');

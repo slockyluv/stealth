@@ -1,17 +1,23 @@
 import {
   AttachmentBuilder,
+  ComponentType,
   MessageFlags,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
+  type ContainerComponentData,
   type Message,
+  type SeparatorComponentData,
+  type TopLevelComponentData,
   type User
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
-import { buildTextContainer, buildWarningView } from '../responses/messageBuilders.js';
+import { buildWarningView } from '../responses/messageBuilders.js';
 import { getGuildUserStats, fetchImageBuffer } from '../../services/statsService.js';
 import { renderStatsCard } from '../../render/statsCard.js';
 import { logger } from '../../shared/logger.js';
+
+const MESSAGE_SEPARATOR_COMPONENT: SeparatorComponentData = { type: ComponentType.Separator };
 
 async function buildStatsAttachment(options: {
   guildId: string;
@@ -41,7 +47,28 @@ async function buildStatsAttachment(options: {
     partnerAvatar
   });
 
-  return new AttachmentBuilder(buffer, { name: `stats-${user.id}.png` });
+  const attachmentName = `stats-${user.id}.png`;
+
+  return {
+    attachment: new AttachmentBuilder(buffer, { name: attachmentName }),
+    attachmentName
+  };
+}
+
+function buildStatsView(displayName: string, attachmentName: string): TopLevelComponentData[] {
+  const container: ContainerComponentData = {
+    type: ComponentType.Container,
+    components: [
+      { type: ComponentType.TextDisplay, content: `Статистика пользователя **${displayName}**` },
+      MESSAGE_SEPARATOR_COMPONENT,
+      {
+        type: ComponentType.MediaGallery,
+        items: [{ media: { url: `attachment://${attachmentName}` } }]
+      }
+    ]
+  };
+
+  return [container];
 }
 
 export const stats: Command = {
@@ -54,7 +81,7 @@ export const stats: Command = {
       guildEmojis: interaction.guild?.emojis.cache.values()
     });
 
-    await interaction.deferReply();
+    await interaction.deferReply({ flags: MessageFlags.IsComponentsV2 });
 
     if (!interaction.inCachedGuild()) {
       await interaction.editReply({
@@ -67,14 +94,14 @@ export const stats: Command = {
     const displayName = interaction.member?.displayName ?? interaction.user.username;
 
     try {
-      const attachment = await buildStatsAttachment({
+      const { attachment, attachmentName } = await buildStatsAttachment({
         guildId: interaction.guildId,
         user: interaction.user,
         displayName
       });
 
       await interaction.editReply({
-        components: buildTextContainer(`Статистика пользователя **${displayName}**`),
+        components: buildStatsView(displayName, attachmentName),
         files: [attachment],
         flags: MessageFlags.IsComponentsV2
       });
@@ -106,7 +133,7 @@ export const stats: Command = {
 
     try {
       const displayName = message.member?.displayName ?? message.author.username;
-      const attachment = await buildStatsAttachment({
+      const { attachment, attachmentName } = await buildStatsAttachment({
         guildId: message.guildId,
         user: message.author,
         displayName
@@ -114,7 +141,7 @@ export const stats: Command = {
 
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildTextContainer(`Статистика пользователя **${displayName}**`),
+        components: buildStatsView(displayName, attachmentName),
         files: [attachment],
         flags: MessageFlags.IsComponentsV2
       });

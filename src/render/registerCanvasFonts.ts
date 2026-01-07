@@ -8,7 +8,7 @@ export function registerCanvasFonts() {
   if (fontsRegistered) return;
   fontsRegistered = true;
 
-  const basePath = path.join(process.cwd(), 'assets', 'fonts');
+  const basePath = path.join(process.cwd(), 'src', 'assets', 'fonts');
   const fonts = [
     { file: 'Montserrat-Bold.ttf', family: 'Montserrat' },
     { file: 'Inter-Bold.ttf', family: 'Inter' },

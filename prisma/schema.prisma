@@ -136,6 +136,16 @@ model PrivateCompany {
   paymentSystemInfrastructureMainOfficeBuilt Boolean @default(false)
   paymentSystemInfrastructureServerBuilt Boolean @default(false)
   paymentSystemWebDevelopmentOrdered Boolean @default(false)
+  investmentExchangeLegalNewsStarted Boolean @default(false)
+  investmentExchangeLegalNewsDone Boolean @default(false)
+  investmentExchangeInfrastructureMainOfficeBuilt Boolean @default(false)
+  investmentExchangeInfrastructureServerBuilt Boolean @default(false)
+  investmentExchangeWebDevelopmentOrdered Boolean @default(false)
+  cryptoExchangeLegalNewsStarted Boolean @default(false)
+  cryptoExchangeLegalNewsDone Boolean @default(false)
+  cryptoExchangeInfrastructureMainOfficeBuilt Boolean @default(false)
+  cryptoExchangeInfrastructureServerBuilt Boolean @default(false)
+  cryptoExchangeWebDevelopmentOrdered Boolean @default(false)
   paymentTransferFeeRate Int?
   investmentTradeFeeRate Int?
   cryptoTradeFeeRate Int?

@@ -30,8 +30,30 @@ export const PAYMENT_SYSTEM_ONBOARDING_PRICES = {
   webDevelopment: 200000n
 } as const;
 
+export const INVESTMENT_EXCHANGE_ONBOARDING_PRICES = {
+  mainOffice: 100000n,
+  serverInfrastructure: 150000n,
+  webDevelopment: 200000n
+} as const;
+
+export const CRYPTO_EXCHANGE_ONBOARDING_PRICES = {
+  mainOffice: 100000n,
+  serverInfrastructure: 150000n,
+  webDevelopment: 200000n
+} as const;
+
 export type PaymentSystemInfrastructureKey = keyof Pick<
   typeof PAYMENT_SYSTEM_ONBOARDING_PRICES,
+  'mainOffice' | 'serverInfrastructure'
+>;
+
+export type InvestmentExchangeInfrastructureKey = keyof Pick<
+  typeof INVESTMENT_EXCHANGE_ONBOARDING_PRICES,
+  'mainOffice' | 'serverInfrastructure'
+>;
+
+export type CryptoExchangeInfrastructureKey = keyof Pick<
+  typeof CRYPTO_EXCHANGE_ONBOARDING_PRICES,
   'mainOffice' | 'serverInfrastructure'
 >;
 
@@ -312,6 +334,24 @@ export function isPaymentSystemOnboardingComplete(company: PrivateCompanyRecord)
   );
 }
 
+export function isInvestmentExchangeOnboardingComplete(company: PrivateCompanyRecord): boolean {
+  return (
+    company.investmentExchangeLegalNewsDone &&
+    company.investmentExchangeInfrastructureMainOfficeBuilt &&
+    company.investmentExchangeInfrastructureServerBuilt &&
+    company.investmentExchangeWebDevelopmentOrdered
+  );
+}
+
+export function isCryptoExchangeOnboardingComplete(company: PrivateCompanyRecord): boolean {
+  return (
+    company.cryptoExchangeLegalNewsDone &&
+    company.cryptoExchangeInfrastructureMainOfficeBuilt &&
+    company.cryptoExchangeInfrastructureServerBuilt &&
+    company.cryptoExchangeWebDevelopmentOrdered
+  );
+}
+
 export async function markPaymentSystemLegalNewsStarted(
   guildId: string,
   userId: string
@@ -325,6 +365,28 @@ export async function markPaymentSystemLegalNewsStarted(
     },
     data: {
       paymentSystemLegalNewsStarted: true
+    }
+  }).then(async (result) => {
+    if (result.count === 0) {
+      return null;
+    }
+    return getUserActiveCompany(guildId, userId);
+  });
+}
+
+export async function markInvestmentExchangeLegalNewsStarted(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.privateCompany.updateMany({
+    where: {
+      guildId: BigInt(guildId),
+      ownerId: BigInt(userId),
+      isActive: true,
+      industryKey: 'investment_exchange'
+    },
+    data: {
+      investmentExchangeLegalNewsStarted: true
     }
   }).then(async (result) => {
     if (result.count === 0) {
@@ -369,6 +431,112 @@ export async function markPaymentSystemLegalNewsDone(
       data: {
         paymentSystemLegalNewsStarted: true,
         paymentSystemLegalNewsDone: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+  });
+}
+
+export async function markInvestmentExchangeLegalNewsDone(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true,
+        industryKey: 'investment_exchange'
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    const nextState = {
+      investmentExchangeLegalNewsDone: true,
+      investmentExchangeInfrastructureMainOfficeBuilt: company.investmentExchangeInfrastructureMainOfficeBuilt,
+      investmentExchangeInfrastructureServerBuilt: company.investmentExchangeInfrastructureServerBuilt,
+      investmentExchangeWebDevelopmentOrdered: company.investmentExchangeWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isInvestmentExchangeOnboardingComplete({ ...company, ...nextState });
+
+    return tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        investmentExchangeLegalNewsStarted: true,
+        investmentExchangeLegalNewsDone: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+  });
+}
+
+export async function markCryptoExchangeLegalNewsStarted(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.privateCompany.updateMany({
+    where: {
+      guildId: BigInt(guildId),
+      ownerId: BigInt(userId),
+      isActive: true,
+      industryKey: 'crypto_exchange'
+    },
+    data: {
+      cryptoExchangeLegalNewsStarted: true
+    }
+  }).then(async (result) => {
+    if (result.count === 0) {
+      return null;
+    }
+    return getUserActiveCompany(guildId, userId);
+  });
+}
+
+export async function markCryptoExchangeLegalNewsDone(
+  guildId: string,
+  userId: string
+): Promise<PrivateCompanyRecord | null> {
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true,
+        industryKey: 'crypto_exchange'
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    const nextState = {
+      cryptoExchangeLegalNewsDone: true,
+      cryptoExchangeInfrastructureMainOfficeBuilt: company.cryptoExchangeInfrastructureMainOfficeBuilt,
+      cryptoExchangeInfrastructureServerBuilt: company.cryptoExchangeInfrastructureServerBuilt,
+      cryptoExchangeWebDevelopmentOrdered: company.cryptoExchangeWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isCryptoExchangeOnboardingComplete({ ...company, ...nextState });
+
+    return tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        cryptoExchangeLegalNewsStarted: true,
+        cryptoExchangeLegalNewsDone: true,
         branchCount: shouldOpenBranch ? 1 : company.branchCount
       }
     });
@@ -451,6 +619,148 @@ export async function buildPaymentSystemInfrastructure(
   });
 }
 
+export async function buildInvestmentExchangeInfrastructure(
+  guildId: string,
+  userId: string,
+  item: InvestmentExchangeInfrastructureKey
+): Promise<PaymentSystemPurchaseResult> {
+  const price = INVESTMENT_EXCHANGE_ONBOARDING_PRICES[item];
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'investment_exchange') {
+      return { status: 'notAllowed', price };
+    }
+
+    const isBuilt =
+      item === 'mainOffice'
+        ? company.investmentExchangeInfrastructureMainOfficeBuilt
+        : company.investmentExchangeInfrastructureServerBuilt;
+
+    if (isBuilt) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const updates =
+      item === 'mainOffice'
+        ? { investmentExchangeInfrastructureMainOfficeBuilt: true }
+        : { investmentExchangeInfrastructureServerBuilt: true };
+
+    const nextState = {
+      investmentExchangeLegalNewsDone: company.investmentExchangeLegalNewsDone,
+      investmentExchangeInfrastructureMainOfficeBuilt:
+        item === 'mainOffice' ? true : company.investmentExchangeInfrastructureMainOfficeBuilt,
+      investmentExchangeInfrastructureServerBuilt:
+        item === 'serverInfrastructure' ? true : company.investmentExchangeInfrastructureServerBuilt,
+      investmentExchangeWebDevelopmentOrdered: company.investmentExchangeWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isInvestmentExchangeOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        ...updates,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function buildCryptoExchangeInfrastructure(
+  guildId: string,
+  userId: string,
+  item: CryptoExchangeInfrastructureKey
+): Promise<PaymentSystemPurchaseResult> {
+  const price = CRYPTO_EXCHANGE_ONBOARDING_PRICES[item];
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'crypto_exchange') {
+      return { status: 'notAllowed', price };
+    }
+
+    const isBuilt =
+      item === 'mainOffice'
+        ? company.cryptoExchangeInfrastructureMainOfficeBuilt
+        : company.cryptoExchangeInfrastructureServerBuilt;
+
+    if (isBuilt) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const updates =
+      item === 'mainOffice'
+        ? { cryptoExchangeInfrastructureMainOfficeBuilt: true }
+        : { cryptoExchangeInfrastructureServerBuilt: true };
+
+    const nextState = {
+      cryptoExchangeLegalNewsDone: company.cryptoExchangeLegalNewsDone,
+      cryptoExchangeInfrastructureMainOfficeBuilt:
+        item === 'mainOffice' ? true : company.cryptoExchangeInfrastructureMainOfficeBuilt,
+      cryptoExchangeInfrastructureServerBuilt:
+        item === 'serverInfrastructure' ? true : company.cryptoExchangeInfrastructureServerBuilt,
+      cryptoExchangeWebDevelopmentOrdered: company.cryptoExchangeWebDevelopmentOrdered
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isCryptoExchangeOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        ...updates,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
 export async function orderPaymentSystemWebDevelopment(
   guildId: string,
   userId: string
@@ -500,6 +810,122 @@ export async function orderPaymentSystemWebDevelopment(
       data: {
         budget: currentBudget - price,
         paymentSystemWebDevelopmentOrdered: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function orderInvestmentExchangeWebDevelopment(
+  guildId: string,
+  userId: string
+): Promise<PaymentSystemPurchaseResult> {
+  const price = INVESTMENT_EXCHANGE_ONBOARDING_PRICES.webDevelopment;
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'investment_exchange') {
+      return { status: 'notAllowed', price };
+    }
+
+    if (company.investmentExchangeWebDevelopmentOrdered) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const nextState = {
+      investmentExchangeLegalNewsDone: company.investmentExchangeLegalNewsDone,
+      investmentExchangeInfrastructureMainOfficeBuilt: company.investmentExchangeInfrastructureMainOfficeBuilt,
+      investmentExchangeInfrastructureServerBuilt: company.investmentExchangeInfrastructureServerBuilt,
+      investmentExchangeWebDevelopmentOrdered: true
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isInvestmentExchangeOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        investmentExchangeWebDevelopmentOrdered: true,
+        branchCount: shouldOpenBranch ? 1 : company.branchCount
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
+
+export async function orderCryptoExchangeWebDevelopment(
+  guildId: string,
+  userId: string
+): Promise<PaymentSystemPurchaseResult> {
+  const price = CRYPTO_EXCHANGE_ONBOARDING_PRICES.webDevelopment;
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price };
+    }
+
+    if (company.industryKey !== 'crypto_exchange') {
+      return { status: 'notAllowed', price };
+    }
+
+    if (company.cryptoExchangeWebDevelopmentOrdered) {
+      return { status: 'alreadyCompleted', company, price };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const nextState = {
+      cryptoExchangeLegalNewsDone: company.cryptoExchangeLegalNewsDone,
+      cryptoExchangeInfrastructureMainOfficeBuilt: company.cryptoExchangeInfrastructureMainOfficeBuilt,
+      cryptoExchangeInfrastructureServerBuilt: company.cryptoExchangeInfrastructureServerBuilt,
+      cryptoExchangeWebDevelopmentOrdered: true
+    };
+
+    const shouldOpenBranch =
+      company.branchCount === 0 && isCryptoExchangeOnboardingComplete({ ...company, ...nextState });
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price,
+        cryptoExchangeWebDevelopmentOrdered: true,
         branchCount: shouldOpenBranch ? 1 : company.branchCount
       }
     });

@@ -5,9 +5,11 @@ export type GuildUserStats = {
   level: number;
   xp: number;
   xpToNext: number;
+  xpRemaining: number;
   streakDays: number;
   totalMessageCount: number;
   totalVoiceMinutes: number;
+  messageRank: number;
 };
 
 export async function getGuildUserStats(guildId: string, userId: string): Promise<GuildUserStats> {
@@ -24,14 +26,26 @@ export async function getGuildUserStats(guildId: string, userId: string): Promis
   });
 
   const xp = Number(guildUser.xp);
+  const xpToNext = getXpToNextLevel(guildUser.level);
+  const xpRemaining = Math.max(0, Math.ceil(xpToNext - xp));
+
+  const messageRank =
+    (await prisma.guildUserLevel.count({
+      where: {
+        guildId: guildIdBig,
+        totalMessageCount: { gt: guildUser.totalMessageCount }
+      }
+    })) + 1;
 
   return {
     level: guildUser.level,
     xp,
-    xpToNext: getXpToNextLevel(guildUser.level),
+    xpToNext,
+    xpRemaining,
     streakDays: guildUser.streakDays,
     totalMessageCount: guildUser.totalMessageCount,
-    totalVoiceMinutes: guildUser.totalVoiceMinutes
+    totalVoiceMinutes: guildUser.totalVoiceMinutes,
+    messageRank
   };
 }
 

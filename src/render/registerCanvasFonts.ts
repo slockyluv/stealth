@@ -11,16 +11,16 @@ export function registerCanvasFonts() {
   const basePath = path.join(process.cwd(), 'src', 'assets', 'fonts');
   const fonts = [
     { file: 'Montserrat-Bold.ttf', family: 'Montserrat' },
-    { file: 'Inter-Bold.ttf', family: 'Inter' },
-    { file: 'Inter-Medium.ttf', family: 'Inter' },
-    { file: 'Inter-SemiBold.ttf', family: 'Inter' }
+    { file: 'Inter-Bold.otf', family: 'Inter' },
+    { file: 'Inter-Medium.otf', family: 'Inter' },
+    { file: 'Inter-SemiBold.otf', family: 'Inter' }
   ];
 
   for (const font of fonts) {
     const fullPath = path.join(basePath, font.file);
-    const registered = GlobalFonts.registerFromPath(fullPath, font.family);
-    if (!registered) {
-      logger.info(`Failed to register font: ${font.file}`);
+    const ok = GlobalFonts.registerFromPath(fullPath, font.family);
+    if (!ok) {
+      logger.error(`Failed to register font: ${font.file} (${fullPath})`);
     }
   }
 

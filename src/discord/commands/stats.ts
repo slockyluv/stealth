@@ -6,7 +6,6 @@ import {
   type ChatInputCommandInteraction,
   type ContainerComponentData,
   type Message,
-  type SeparatorComponentData,
   type TopLevelComponentData,
   type User
 } from 'discord.js';
@@ -17,32 +16,35 @@ import { getGuildUserStats, fetchImageBuffer } from '../../services/statsService
 import { renderStatsCard } from '../../render/statsCard.js';
 import { logger } from '../../shared/logger.js';
 
-const MESSAGE_SEPARATOR_COMPONENT: SeparatorComponentData = { type: ComponentType.Separator };
-
 async function buildStatsAttachment(options: {
   guildId: string;
   user: User;
   displayName: string;
 }) {
   const { guildId, user, displayName } = options;
+
   const stats = await getGuildUserStats(guildId, user.id);
 
   const avatarUrl = user.displayAvatarURL({ extension: 'png', size: 256 });
-  const partnerAvatarUrl = avatarUrl;
+  const userAvatar = await fetchImageBuffer(avatarUrl);
 
-  const [userAvatar, partnerAvatar] = await Promise.all([
-    fetchImageBuffer(avatarUrl),
-    fetchImageBuffer(partnerAvatarUrl)
-  ]);
+  // Marriage system not implemented yet:
+  // keep "Холост" and do NOT draw partner avatar.
+  const partnerName = 'Холост';
+  const partnerAvatar = null;
 
   const buffer = await renderStatsCard({
     displayName,
     level: stats.level,
     xp: stats.xp,
     xpToNext: stats.xpToNext,
+    xpRemaining: stats.xpRemaining,
     messageCount: stats.totalMessageCount,
-    voiceMinutes: stats.totalVoiceMinutes,
+    voiceHours: Math.floor(stats.totalVoiceMinutes / 60),
+    messageRank: stats.messageRank,
+    donationAmount: 0,
     streakDays: stats.streakDays,
+    partnerName,
     userAvatar,
     partnerAvatar
   });
@@ -55,12 +57,10 @@ async function buildStatsAttachment(options: {
   };
 }
 
-function buildStatsView(displayName: string, attachmentName: string): TopLevelComponentData[] {
+function buildStatsView(attachmentName: string): TopLevelComponentData[] {
   const container: ContainerComponentData = {
     type: ComponentType.Container,
     components: [
-      { type: ComponentType.TextDisplay, content: `Статистика пользователя **${displayName}**` },
-      MESSAGE_SEPARATOR_COMPONENT,
       {
         type: ComponentType.MediaGallery,
         items: [{ media: { url: `attachment://${attachmentName}` } }]
@@ -81,7 +81,7 @@ export const stats: Command = {
       guildEmojis: interaction.guild?.emojis.cache.values()
     });
 
-    await interaction.deferReply({ flags: MessageFlags.IsComponentsV2 });
+    await interaction.deferReply();
 
     if (!interaction.inCachedGuild()) {
       await interaction.editReply({
@@ -101,7 +101,7 @@ export const stats: Command = {
       });
 
       await interaction.editReply({
-        components: buildStatsView(displayName, attachmentName),
+        components: buildStatsView(attachmentName),
         files: [attachment],
         flags: MessageFlags.IsComponentsV2
       });
@@ -114,7 +114,7 @@ export const stats: Command = {
     }
   },
 
-  async executeMessage(message: Message) {
+  async executeMessage(message: Message, _args: string[]) {
     const formatEmoji = await createEmojiFormatter({
       client: message.client,
       guildId: message.guildId ?? message.client.application?.id ?? 'global',
@@ -133,6 +133,7 @@ export const stats: Command = {
 
     try {
       const displayName = message.member?.displayName ?? message.author.username;
+
       const { attachment, attachmentName } = await buildStatsAttachment({
         guildId: message.guildId,
         user: message.author,
@@ -141,7 +142,7 @@ export const stats: Command = {
 
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
-        components: buildStatsView(displayName, attachmentName),
+        components: buildStatsView(attachmentName),
         files: [attachment],
         flags: MessageFlags.IsComponentsV2
       });

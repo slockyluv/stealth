@@ -11,6 +11,7 @@ import { guildMemberRemove } from './guildMemberRemove.js';
 import { guildMemberUpdate } from './guildMemberUpdate.js';
 import { inviteCreate } from './inviteCreate.js';
 import { inviteDelete } from './inviteDelete.js';
+import { voiceStateUpdate } from './voiceStateUpdate.js';
 
 export function registerEvents(client: Client) {
   client.once(Events.ClientReady, ready);
@@ -25,4 +26,5 @@ export function registerEvents(client: Client) {
   client.on(Events.GuildMemberUpdate, guildMemberUpdate);
   client.on(Events.InviteCreate, inviteCreate);
   client.on(Events.InviteDelete, inviteDelete);
+  client.on(Events.VoiceStateUpdate, voiceStateUpdate);
 }

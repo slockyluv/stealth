@@ -170,3 +170,50 @@ model PrivateCompany {
   @@index([guildId, countryKey])
   @@index([guildId, ownerId])
 }
+
+model GuildUserLevel {
+  guildId          BigInt
+  userId           BigInt
+  level            Int      @default(0)
+  xp               Decimal  @default(0)
+  streakDays       Int      @default(0)
+  totalMessageCount Int     @default(0)
+  totalVoiceMinutes Int     @default(0)
+  lastMessageContent String?
+  lastMessageAt     DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@id([guildId, userId])
+  @@index([guildId])
+  @@index([level])
+  @@index([totalMessageCount])
+  @@index([totalVoiceMinutes])
+}
+
+model GuildUserDailyStat {
+  id            BigInt   @id @default(autoincrement())
+  guildId       BigInt
+  userId        BigInt
+  date          DateTime
+  messageCount  Int      @default(0)
+  voiceMinutes  Int      @default(0)
+  qualified     Boolean  @default(false)
+  bonusGranted  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([guildId, userId, date])
+  @@index([guildId, date])
+}
+
+model GuildUserVoiceSession {
+  guildId       BigInt
+  userId        BigInt
+  channelId     BigInt
+  joinedAt      DateTime
+  eligibleSince DateTime?
+
+  @@id([guildId, userId])
+  @@index([guildId, channelId])
+}

@@ -1,6 +1,7 @@
 import { MessageFlags, type Message } from 'discord.js';
 import { logger } from '../../shared/logger.js';
 import { upsertUser } from '../../services/userService.js';
+import { recordMessageActivity } from '../../services/levelService.js';
 import { COMMAND_PREFIX } from '../../config/bot.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildWarningView } from '../responses/messageBuilders.js';
@@ -26,7 +27,14 @@ export async function messageCreate(message: Message) {
   if (message.author.bot) return;
 
   const content = message.content.trim();
-  if (!content.startsWith(COMMAND_PREFIX)) return;
+  const isCommand = content.startsWith(COMMAND_PREFIX);
+  if (message.guildId && !isCommand) {
+    void recordMessageActivity(message.guildId, message.author.id, content).catch((err) =>
+      logger.error(err)
+    );
+  }
+
+  if (!isCommand) return;
 
   const withoutPrefix = content.slice(COMMAND_PREFIX.length).trim();
   if (!withoutPrefix) return;

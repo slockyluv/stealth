@@ -1,6 +1,6 @@
 import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 export type StatsCardInput = {
   displayName: string;
@@ -72,10 +72,6 @@ const templatePath = path.join(assetsRoot, 'images', 'profile_template.png');
 const lightOnPath = path.join(assetsRoot, 'icons', 'lighton.png');
 const lightOffPath = path.join(assetsRoot, 'icons', 'lightoff.png');
 
-const templateUrl = pathToFileURL(templatePath).href;
-const lightOnUrl = pathToFileURL(lightOnPath).href;
-const lightOffUrl = pathToFileURL(lightOffPath).href;
-
 let templateImagePromise: ReturnType<typeof loadImage> | null = null;
 let lightOnPromise: ReturnType<typeof loadImage> | null = null;
 let lightOffPromise: ReturnType<typeof loadImage> | null = null;
@@ -117,21 +113,21 @@ function drawCircularImage(
 
 async function getTemplateImage() {
   if (!templateImagePromise) {
-    templateImagePromise = loadImage(templateUrl);
+    templateImagePromise = readFile(templatePath).then((buffer) => loadImage(buffer));
   }
   return templateImagePromise;
 }
 
 async function getLightOn() {
   if (!lightOnPromise) {
-    lightOnPromise = loadImage(lightOnUrl);
+    lightOnPromise = readFile(lightOnPath).then((buffer) => loadImage(buffer));
   }
   return lightOnPromise;
 }
 
 async function getLightOff() {
   if (!lightOffPromise) {
-    lightOffPromise = loadImage(lightOffUrl);
+    lightOffPromise = readFile(lightOffPath).then((buffer) => loadImage(buffer));
   }
   return lightOffPromise;
 }

@@ -58,7 +58,8 @@ export const stats: Command = {
 
     if (!interaction.inCachedGuild()) {
       await interaction.editReply({
-        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.')
+        components: buildWarningView(formatEmoji, 'Команда доступна только внутри сервера.'),
+        flags: MessageFlags.IsComponentsV2
       });
       return;
     }
@@ -74,12 +75,14 @@ export const stats: Command = {
 
       await interaction.editReply({
         components: buildTextContainer(`Статистика пользователя **${displayName}**`),
-        files: [attachment]
+        files: [attachment],
+        flags: MessageFlags.IsComponentsV2
       });
     } catch (error) {
       logger.error(error);
       await interaction.editReply({
-        components: buildWarningView(formatEmoji, 'Не удалось сформировать статистику. Попробуйте позже.')
+        components: buildWarningView(formatEmoji, 'Не удалось сформировать статистику. Попробуйте позже.'),
+        flags: MessageFlags.IsComponentsV2
       });
     }
   },

@@ -5,24 +5,21 @@ import {
   type ComponentInContainerData,
   type ContainerComponentData,
   type Guild,
-  type SeparatorComponentData,
   type TextDisplayComponentData,
   type TopLevelComponentData
 } from 'discord.js';
 import { buildCustomId } from '../../shared/customId.js';
-import { resolveComponentEmoji } from './applications/config.js';
+import { MESSAGE_SEPARATOR_COMPONENT } from './applications/config.js';
 
 export const MARRY_SCOPE = 'marry';
 export const MARRY_ACCEPT_ACTION = 'accept';
 export const MARRY_REJECT_ACTION = 'reject';
+export const MARRY_DIVORCE_ACTION = 'divorce';
 
-const spacer = ' ';
+const spacer = '\u200b';
 
-function buildSeparator(): SeparatorComponentData {
-  return {
-    type: ComponentType.Separator,
-    divider: true
-  };
+function buildSeparator() {
+  return MESSAGE_SEPARATOR_COMPONENT;
 }
 
 function buildTextLine(content: string): TextDisplayComponentData {
@@ -54,7 +51,7 @@ export function buildMarryProposalView(options: {
     type: ComponentType.Button,
     customId: buildCustomId(MARRY_SCOPE, MARRY_ACCEPT_ACTION, proposerId, targetId),
     label: 'Принять',
-    emoji: resolveComponentEmoji({ name: 'slide_d' }, guild ?? null),
+    emoji: { name: '✅' },
     style: ButtonStyle.Secondary
   };
 
@@ -62,7 +59,7 @@ export function buildMarryProposalView(options: {
     type: ComponentType.Button,
     customId: buildCustomId(MARRY_SCOPE, MARRY_REJECT_ACTION, proposerId, targetId),
     label: 'Отклонить',
-    emoji: resolveComponentEmoji({ name: 'action_basket' }, guild ?? null),
+    emoji: { name: '❌' },
     style: ButtonStyle.Secondary
   };
 
@@ -76,6 +73,66 @@ export function buildMarryProposalView(options: {
     buildTextLine(`*и предлагает союз пользователю ${targetMention}.*`),
     buildSeparator(),
     { type: ComponentType.ActionRow, components: [acceptButton, rejectButton] }
+  ]);
+}
+
+export function buildMarryUnionView(options: {
+  user1: string;
+  user2: string;
+  date: string;
+  daysTogether: number;
+  user1Id: string;
+  user2Id: string;
+}): TopLevelComponentData[] {
+  const { user1, user2, date, daysTogether, user1Id, user2Id } = options;
+
+  const divorceButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    customId: buildCustomId(MARRY_SCOPE, MARRY_DIVORCE_ACTION, user1Id, user2Id),
+    label: 'Развестись',
+    emoji: { name: '💔' },
+    style: ButtonStyle.Secondary
+  };
+
+  return buildContainer([
+    buildTextLine('**💍 Брачный союз**'),
+    buildSeparator(),
+    buildTextLine('*История, начавшаяся с одного шага.*'),
+    buildTextLine(spacer),
+    buildTextLine('**Партнёры:**'),
+    buildTextLine(`*${user1} ✦ ${user2}*`),
+    buildTextLine(`**Дата союза:** \`${date}\``),
+    buildTextLine(`**Дней вместе:** \`${daysTogether}\``),
+    buildTextLine(spacer),
+    buildTextLine('*Каждый день — ещё одна страница*'),
+    buildTextLine('*вашей общей истории.*'),
+    buildSeparator(),
+    { type: ComponentType.ActionRow, components: [divorceButton] }
+  ]);
+}
+
+export function buildMarrySingleView(): TopLevelComponentData[] {
+  return buildContainer([
+    buildTextLine('**💍 Вы холост**'),
+    buildSeparator(),
+    buildTextLine('*Твой путь пока свободен.*'),
+    buildTextLine(spacer),
+    buildTextLine('*Для заключения брачного союза используйте:*'),
+    buildTextLine('*> !marry @Пользователь*')
+  ]);
+}
+
+export function buildMarryDivorcedView(options: { user1: string; user2: string }): TopLevelComponentData[] {
+  const { user1, user2 } = options;
+
+  return buildContainer([
+    buildTextLine('**💔 Союз расторгнут**'),
+    buildSeparator(),
+    buildTextLine('*Каждая история имеет своё время.*'),
+    buildTextLine(spacer),
+    buildTextLine(`*${user1} и ${user2} больше не связаны союзом,*`),
+    buildTextLine('*но каждый продолжает путь дальше*'),
+    buildTextLine('*своим направлением.*')
   ]);
 }
 

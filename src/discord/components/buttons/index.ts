@@ -83,7 +83,7 @@ import {
   companyExistingPageButton
 } from './companyRegistration.js';
 import { ownerPanelResetCompaniesButton, ownerPanelResetCountriesButton } from './ownerPanel.js';
-import { marryAcceptButton, marryRejectButton } from './marry.js';
+import { marryAcceptButton, marryDivorceButton, marryRejectButton } from './marry.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
@@ -166,5 +166,6 @@ export const buttonHandlers: ButtonHandler[] = [
   ownerPanelResetCountriesButton,
   ownerPanelResetCompaniesButton,
   marryAcceptButton,
-  marryRejectButton
+  marryRejectButton,
+  marryDivorceButton
 ];

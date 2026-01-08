@@ -285,7 +285,9 @@ export async function renderStatsCard(input: StatsCardInput): Promise<Buffer> {
   drawTextTop(ctx, fitText(ctx, input.partnerName, PARTNER_NAME_WIDTH), PARTNER_NAME_X, PARTNER_NAME_Y);
 
   ctx.font = '600 16px "Inter"';
-  drawTextTopColored(ctx, input.partnerDurationLabel, PARTNER_DURATION_X, PARTNER_DURATION_Y, '#6E706B');
+  if (input.partnerDurationLabel.trim().length > 0) {
+    drawTextTopColored(ctx, input.partnerDurationLabel, PARTNER_DURATION_X, PARTNER_DURATION_Y, '#6E706B');
+  }
 
   ctx.font = '600 32px "Inter"';
   drawTextTop(ctx, `${formatIntRu(input.voiceHours)} ч.`, VOICE_HOURS_X, VOICE_HOURS_Y);

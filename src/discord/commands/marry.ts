@@ -13,6 +13,8 @@ import {
   buildMarryAlreadyExistsView,
   buildMarryExpiredView,
   buildMarryProposalView,
+  buildMarrySingleView,
+  buildMarryUnionView,
   buildMarrySelfErrorView,
   buildMarryTargetTakenView
 } from '../features/marryView.js';
@@ -23,6 +25,14 @@ import { logger } from '../../shared/logger.js';
 const PROPOSAL_TTL_MS = 5 * 60 * 1000;
 const COMPONENTS_FLAG = MessageFlags.IsComponentsV2;
 type ComponentsFlag = typeof COMPONENTS_FLAG;
+
+function formatMarriageDate(date: Date) {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date);
+}
 
 const marryCommand = new SlashCommandBuilder()
   .setName('marry')
@@ -167,10 +177,25 @@ export const marry: Command = {
     const target = message.mentions.users.first();
     if (!target) {
       if (message.channel?.isSendable()) {
-        await message.channel.send({
-          components: buildWarningView(formatEmoji, 'Укажите пользователя для предложения союза.'),
-          flags: COMPONENTS_FLAG
-        });
+        const marriage = await getMarriageForUser(message.guildId, message.author.id);
+        if (marriage) {
+          await message.channel.send({
+            components: buildMarryUnionView({
+              user1: message.author.toString(),
+              user2: `<@${marriage.partnerId}>`,
+              date: formatMarriageDate(marriage.startedAt),
+              daysTogether: marriage.daysTogether,
+              user1Id: message.author.id,
+              user2Id: marriage.partnerId
+            }),
+            flags: COMPONENTS_FLAG
+          });
+        } else {
+          await message.channel.send({
+            components: buildMarrySingleView(),
+            flags: COMPONENTS_FLAG
+          });
+        }
       }
       return;
     }

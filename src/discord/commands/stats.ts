@@ -85,7 +85,7 @@ async function buildStatsAttachment(options: {
 
   let partnerName = 'Холост';
   let partnerAvatar: Buffer | null = null;
-  let partnerDurationLabel = 'Вместе: —';
+  let partnerDurationLabel = '';
 
   if (marriage) {
     partnerDurationLabel = formatMarriageDuration(marriage);

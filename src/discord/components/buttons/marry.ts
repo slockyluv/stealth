@@ -4,15 +4,17 @@ import { customIdKey } from '../../../shared/customId.js';
 import {
   buildMarryAcceptedView,
   buildMarryAlreadyExistsView,
+  buildMarryDivorcedView,
   buildMarryNotForYouView,
   buildMarryRejectedView,
   buildMarryTargetTakenView,
   MARRY_ACCEPT_ACTION,
+  MARRY_DIVORCE_ACTION,
   MARRY_REJECT_ACTION,
   MARRY_SCOPE
 } from '../../features/marryView.js';
 import { clearMarryProposal } from '../../features/marryState.js';
-import { createMarriage } from '../../../services/marriageService.js';
+import { createMarriage, deleteMarriage } from '../../../services/marriageService.js';
 import { logger } from '../../../shared/logger.js';
 import { buildWarningView } from '../../responses/messageBuilders.js';
 import { createEmojiFormatter } from '../../emoji.js';
@@ -109,6 +111,62 @@ export const marryRejectButton: ButtonHandler = {
       logger.error(error);
       await interaction.followUp({
         components: await buildWarningComponents(interaction, 'Не удалось отклонить предложение. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const marryDivorceButton: ButtonHandler = {
+  key: customIdKey({ scope: MARRY_SCOPE, action: MARRY_DIVORCE_ACTION }),
+
+  async execute(interaction, ctx) {
+    const [userIdA, userIdB] = ctx.customId.args;
+    if (!userIdA || !userIdB) return;
+
+    if (interaction.user.id !== userIdA && interaction.user.id !== userIdB) {
+      await interaction.reply({
+        components: await buildWarningComponents(interaction, 'Доступно только участникам союза.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    if (!interaction.guildId) {
+      await interaction.followUp({
+        components: await buildWarningComponents(interaction, 'Команда доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    try {
+      const deleted = await deleteMarriage({
+        guildId: interaction.guildId,
+        userIdA,
+        userIdB
+      });
+
+      if (!deleted) {
+        await interaction.followUp({
+          components: await buildWarningComponents(interaction, 'Союз уже был расторгнут.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      await interaction.message.edit({
+        components: buildMarryDivorcedView({
+          user1: `<@${userIdA}>`,
+          user2: `<@${userIdB}>`
+        })
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: await buildWarningComponents(interaction, 'Не удалось расторгнуть союз. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }

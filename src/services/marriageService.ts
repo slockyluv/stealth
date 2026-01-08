@@ -89,3 +89,24 @@ export async function createMarriage(options: {
     return { status: 'created' };
   });
 }
+
+export async function deleteMarriage(options: {
+  guildId: string;
+  userIdA: string;
+  userIdB: string;
+}): Promise<boolean> {
+  const guildIdBig = BigInt(options.guildId);
+  const userIdABig = BigInt(options.userIdA);
+  const userIdBBig = BigInt(options.userIdB);
+  const [userIdA, userIdB] = userIdABig < userIdBBig ? [userIdABig, userIdBBig] : [userIdBBig, userIdABig];
+
+  const result = await prisma.marriage.deleteMany({
+    where: {
+      guildId: guildIdBig,
+      userIdA,
+      userIdB
+    }
+  });
+
+  return result.count > 0;
+}

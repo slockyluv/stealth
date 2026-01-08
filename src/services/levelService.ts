@@ -1,13 +1,15 @@
-import type { VoiceState } from 'discord.js';
+import type { Client, VoiceState } from 'discord.js';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../database/prisma.js';
 import { logger } from '../shared/logger.js';
 
 const MIN_MESSAGE_LENGTH = 4;
 const VOICE_XP_PER_MINUTE = 6;
+const VOICE_XP_TICK_MS = 60_000;
 const MESSAGE_XP_MIN = 2.8;
 const MESSAGE_XP_MAX = 3.2;
 const MESSAGE_XP_DECAY = 0.0004;
+let voiceXpTicker: NodeJS.Timeout | null = null;
 
 function getDayStart(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -221,6 +223,29 @@ async function applyVoiceMinutes(guildId: bigint, userId: bigint, minutes: numbe
   });
 }
 
+async function processEligibleVoiceSessions(now = new Date()) {
+  const sessions = await prisma.guildUserVoiceSession.findMany({
+    where: { eligibleSince: { not: null } }
+  });
+
+  const updates = sessions.map(async (session) => {
+    if (!session.eligibleSince) return;
+    const elapsedMs = now.getTime() - session.eligibleSince.getTime();
+    const minutes = Math.floor(elapsedMs / 60000);
+    if (minutes <= 0) return;
+
+    await applyVoiceMinutes(session.guildId, session.userId, minutes, now);
+
+    const updatedEligibleSince = new Date(session.eligibleSince.getTime() + minutes * 60000);
+    await prisma.guildUserVoiceSession.update({
+      where: { guildId_userId: { guildId: session.guildId, userId: session.userId } },
+      data: { eligibleSince: updatedEligibleSince }
+    });
+  });
+
+  await Promise.allSettled(updates);
+}
+
 function getEligibleVoiceChannel(state: VoiceState) {
   const channel = state.channel;
   if (!channel || !channel.isVoiceBased()) return null;
@@ -254,10 +279,17 @@ async function updateChannelEligibility(channel: ReturnType<typeof getEligibleVo
 
   const updates = Array.from(nonBotMembers.values()).map(async (member) => {
     const userId = BigInt(member.id);
-    const session = await prisma.guildUserVoiceSession.findUnique({
-      where: { guildId_userId: { guildId, userId } }
+    const session = await prisma.guildUserVoiceSession.upsert({
+      where: { guildId_userId: { guildId, userId } },
+      update: {},
+      create: {
+        guildId,
+        userId,
+        channelId: BigInt(channel.id),
+        joinedAt: now,
+        eligibleSince: null
+      }
     });
-    if (!session) return;
 
     if (isEligible && !session.eligibleSince) {
       await prisma.guildUserVoiceSession.update({
@@ -279,6 +311,25 @@ async function updateChannelEligibility(channel: ReturnType<typeof getEligibleVo
   });
 
   await Promise.allSettled(updates);
+}
+
+export async function syncActiveVoiceSessions(client: Client) {
+  const now = new Date();
+  for (const guild of client.guilds.cache.values()) {
+    for (const channel of guild.channels.cache.values()) {
+      if (!channel.isVoiceBased()) continue;
+      if (guild.afkChannelId && channel.id === guild.afkChannelId) continue;
+      if (channel.members.size === 0) continue;
+      await updateChannelEligibility(channel, now);
+    }
+  }
+}
+
+export function startVoiceXpTicker() {
+  if (voiceXpTicker) return;
+  voiceXpTicker = setInterval(() => {
+    processEligibleVoiceSessions().catch((error) => logger.error(error));
+  }, VOICE_XP_TICK_MS);
 }
 
 export async function handleVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {

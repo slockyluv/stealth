@@ -21,7 +21,8 @@ export function createClient() {
       GatewayIntentBits.GuildModeration,
       GatewayIntentBits.GuildInvites,
       GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent
+      GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildVoiceStates
     ]
   });
 

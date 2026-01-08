@@ -110,7 +110,7 @@ async function buildStatsAttachment(options: {
     xpToNext: stats.xpToNext,
     xpRemaining: stats.xpRemaining,
     messageCount: stats.totalMessageCount,
-    voiceHours: Math.floor(stats.totalVoiceMinutes / 60),
+    voiceMinutes: stats.totalVoiceMinutes,
     messageRank: stats.messageRank,
     donationAmount: 0,
     streakDays: stats.streakDays,

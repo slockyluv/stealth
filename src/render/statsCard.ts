@@ -9,7 +9,7 @@ export type StatsCardInput = {
   xpToNext: number;
   xpRemaining: number;
   messageCount: number;
-  voiceHours: number;
+  voiceMinutes: number;
   messageRank: number;
   donationAmount: number;
   streakDays: number;
@@ -130,6 +130,16 @@ function clamp(value: number, min = 0, max = 1) {
 
 function formatIntRu(value: number) {
   return Math.floor(value).toLocaleString('ru-RU');
+}
+
+function formatVoiceHoursFromMinutes(totalMinutes: number) {
+  if (totalMinutes <= 0) return '0';
+  const hours = totalMinutes / 60;
+  const hasFraction = Math.abs(hours % 1) > 0.001;
+  return hours.toLocaleString('ru-RU', {
+    maximumFractionDigits: hasFraction ? 1 : 0,
+    minimumFractionDigits: hasFraction ? 1 : 0
+  });
 }
 
 function formatMoneyRu(value: number) {
@@ -290,7 +300,12 @@ export async function renderStatsCard(input: StatsCardInput): Promise<Buffer> {
   }
 
   ctx.font = '600 32px "Inter"';
-  drawTextTop(ctx, `${formatIntRu(input.voiceHours)} ч.`, VOICE_HOURS_X, VOICE_HOURS_Y);
+  drawTextTop(
+    ctx,
+    `${formatVoiceHoursFromMinutes(input.voiceMinutes)} ч.`,
+    VOICE_HOURS_X,
+    VOICE_HOURS_Y
+  );
   drawTextTop(ctx, formatIntRu(input.messageCount), MESSAGE_COUNT_X, MESSAGE_COUNT_Y);
   drawTextTop(ctx, input.messageRank > 0 ? `#${formatIntRu(input.messageRank)}` : '#—', MESSAGE_RANK_X, MESSAGE_RANK_Y);
 

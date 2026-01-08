@@ -24,7 +24,7 @@ const CANVAS_HEIGHT = 1080;
 
 // Global micro-shift to match your final visual alignment vs Figma.
 const TEXT_TOP_Y_SHIFT = 5;
-const TEXT_LEFT_X_SHIFT = 4;
+const TEXT_LEFT_X_SHIFT = 2;
 
 const AVATAR_X = 846;
 const AVATAR_Y = 146;
@@ -52,7 +52,7 @@ const XP_REMAINING_Y = 347;
 
 const PARTNER_NAME_X = 1512;
 const PARTNER_NAME_Y = 213;
-const PARTNER_NAME_WIDTH = 147;
+const PARTNER_NAME_WIDTH = 231;
 
 const PARTNER_DURATION_X = 1512;
 const PARTNER_DURATION_Y = 261;
@@ -291,7 +291,7 @@ export async function renderStatsCard(input: StatsCardInput): Promise<Buffer> {
   ctx.font = '500 24px "Inter"';
   drawTextTop(ctx, formatIntRu(input.xpRemaining), XP_REMAINING_X, XP_REMAINING_Y);
 
-  ctx.font = '700 40px "Inter"';
+  ctx.font = '700 32px "Inter"';
   drawTextTop(ctx, fitText(ctx, input.partnerName, PARTNER_NAME_WIDTH), PARTNER_NAME_X, PARTNER_NAME_Y);
 
   ctx.font = '600 16px "Inter"';

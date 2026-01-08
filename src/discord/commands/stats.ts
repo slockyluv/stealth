@@ -20,7 +20,6 @@ import { logger } from '../../shared/logger.js';
 import { getMarriageForUser, type MarriageInfo } from '../../services/marriageService.js';
 
 type PartnerResolveResult = {
-  displayName?: string;
   user?: User;
 };
 
@@ -52,7 +51,7 @@ async function resolvePartnerUser(options: {
   const { guild, client, partnerId } = options;
   try {
     const member = await guild.members.fetch(partnerId);
-    return { displayName: member.displayName, user: member.user };
+    return { user: member.user };
   } catch (error) {
     logger.error(error);
   }
@@ -70,13 +69,13 @@ async function resolvePartnerUser(options: {
 async function buildStatsAttachment(options: {
   guildId: string;
   user: User;
-  displayName: string;
   guild: Guild;
   client: Client;
 }) {
-  const { guildId, user, displayName, guild, client } = options;
+  const { guildId, user, guild, client } = options;
 
   const stats = await getGuildUserStats(guildId, user.id);
+  const displayName = user.username
 
   const avatarUrl = user.displayAvatarURL({ extension: 'png', size: 256 });
   const userAvatar = await fetchImageBuffer(avatarUrl);
@@ -90,9 +89,7 @@ async function buildStatsAttachment(options: {
   if (marriage) {
     partnerDurationLabel = formatMarriageDuration(marriage);
     const partner = await resolvePartnerUser({ guild, client, partnerId: marriage.partnerId });
-    if (partner?.displayName) {
-      partnerName = partner.displayName;
-    } else if (partner?.user) {
+    if (partner?.user) {
       partnerName = partner.user.username;
     }
 
@@ -165,13 +162,10 @@ export const stats: Command = {
       return;
     }
 
-    const displayName = interaction.member?.displayName ?? interaction.user.username;
-
     try {
       const { attachment, attachmentName } = await buildStatsAttachment({
         guildId: interaction.guildId,
         user: interaction.user,
-        displayName,
         guild: interaction.guild,
         client: interaction.client
       });
@@ -208,12 +202,9 @@ export const stats: Command = {
     }
 
     try {
-      const displayName = message.member?.displayName ?? message.author.username;
-
       const { attachment, attachmentName } = await buildStatsAttachment({
         guildId: message.guildId,
         user: message.author,
-        displayName,
         guild: message.guild,
         client: message.client
       });

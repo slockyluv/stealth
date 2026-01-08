@@ -30,8 +30,8 @@ const AVATAR_X = 846;
 const AVATAR_Y = 146;
 const AVATAR_SIZE = 228;
 
-const PARTNER_AVATAR_X = 1325;
-const PARTNER_AVATAR_Y = 147;
+const PARTNER_AVATAR_X = 1328;
+const PARTNER_AVATAR_Y = 150;
 const PARTNER_AVATAR_SIZE = 143;
 
 const NAME_X = 860;

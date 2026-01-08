@@ -22,8 +22,8 @@ const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
 
 // Global micro-shift to match your final visual alignment vs Figma.
-const TEXT_TOP_Y_SHIFT = 6;
-const TEXT_LEFT_X_SHIFT = 6;
+const TEXT_TOP_Y_SHIFT = 5;
+const TEXT_LEFT_X_SHIFT = 4;
 
 const AVATAR_X = 846;
 const AVATAR_Y = 146;
@@ -33,7 +33,7 @@ const PARTNER_AVATAR_X = 1325;
 const PARTNER_AVATAR_Y = 147;
 const PARTNER_AVATAR_SIZE = 143;
 
-const NAME_X = 831;
+const NAME_X = 860;
 const NAME_Y = 440;
 const NAME_WIDTH = 257;
 
@@ -63,10 +63,10 @@ const MESSAGE_RANK_X = 1445;
 const MESSAGE_RANK_Y = 776;
 
 const DONATION_X = 1026;
-const DONATION_Y = 630;
+const DONATION_Y = 635;
 
 const STREAK_DAYS_X = 830;
-const STREAK_DAYS_Y = 925;
+const STREAK_DAYS_Y = 930;
 
 // Your figma: X=142 Y=118 W=298 H=9
 // Bar must be vertical => interpret W as height and H as width.
@@ -223,11 +223,20 @@ function getFontAscent(ctx: CanvasContext) {
 
 function drawTextTop(ctx: CanvasContext, text: string, x: number, topY: number) {
   const ascent = getFontAscent(ctx);
-  ctx.fillText(
-    text,
-    x + TEXT_LEFT_X_SHIFT,
-    topY + ascent + TEXT_TOP_Y_SHIFT
-  );
+  ctx.fillText(text, x + TEXT_LEFT_X_SHIFT, topY + ascent + TEXT_TOP_Y_SHIFT);
+}
+
+function drawTextTopColored(
+  ctx: CanvasContext,
+  text: string,
+  x: number,
+  topY: number,
+  color: string
+) {
+  const prev = ctx.fillStyle;
+  ctx.fillStyle = color;
+  drawTextTop(ctx, text, x, topY);
+  ctx.fillStyle = prev;
 }
 
 export async function renderStatsCard(input: StatsCardInput): Promise<Buffer> {
@@ -276,11 +285,13 @@ export async function renderStatsCard(input: StatsCardInput): Promise<Buffer> {
   drawTextTop(ctx, formatIntRu(input.messageCount), MESSAGE_COUNT_X, MESSAGE_COUNT_Y);
   drawTextTop(ctx, input.messageRank > 0 ? `#${formatIntRu(input.messageRank)}` : '#—', MESSAGE_RANK_X, MESSAGE_RANK_Y);
 
+  // Donation amount color: #00BBFF
   ctx.font = '700 36px "Montserrat"';
-  drawTextTop(ctx, formatMoneyRu(input.donationAmount), DONATION_X, DONATION_Y);
+  drawTextTopColored(ctx, formatMoneyRu(input.donationAmount), DONATION_X, DONATION_Y, '#00BBFF');
 
+  // Streak days color: #6E706B
   ctx.font = '700 64px "Inter"';
-  drawTextTop(ctx, formatIntRu(input.streakDays), STREAK_DAYS_X, STREAK_DAYS_Y);
+  drawTextTopColored(ctx, formatIntRu(input.streakDays), STREAK_DAYS_X, STREAK_DAYS_Y, '#6E706B');
 
   const ratio = clamp(input.xpToNext > 0 ? input.xp / input.xpToNext : 0);
   drawVerticalProgressBar(ctx, PROGRESS_X, PROGRESS_Y, PROGRESS_WIDTH, PROGRESS_HEIGHT, ratio);

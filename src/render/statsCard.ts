@@ -14,6 +14,7 @@ export type StatsCardInput = {
   donationAmount: number;
   streakDays: number;
   partnerName: string;
+  partnerDurationLabel: string;
   userAvatar: Buffer;
   partnerAvatar: Buffer | null; // null => do not draw (leave template placeholder)
 };
@@ -52,6 +53,9 @@ const XP_REMAINING_Y = 347;
 const PARTNER_NAME_X = 1512;
 const PARTNER_NAME_Y = 213;
 const PARTNER_NAME_WIDTH = 147;
+
+const PARTNER_DURATION_X = 1512;
+const PARTNER_DURATION_Y = 261;
 
 const VOICE_HOURS_X = 1445;
 const VOICE_HOURS_Y = 442;
@@ -279,6 +283,9 @@ export async function renderStatsCard(input: StatsCardInput): Promise<Buffer> {
 
   ctx.font = '700 40px "Inter"';
   drawTextTop(ctx, fitText(ctx, input.partnerName, PARTNER_NAME_WIDTH), PARTNER_NAME_X, PARTNER_NAME_Y);
+
+  ctx.font = '600 16px "Inter"';
+  drawTextTopColored(ctx, input.partnerDurationLabel, PARTNER_DURATION_X, PARTNER_DURATION_Y, '#6E706B');
 
   ctx.font = '600 32px "Inter"';
   drawTextTop(ctx, `${formatIntRu(input.voiceHours)} ч.`, VOICE_HOURS_X, VOICE_HOURS_Y);

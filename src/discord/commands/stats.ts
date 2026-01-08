@@ -4,7 +4,9 @@ import {
   MessageFlags,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
+  type Client,
   type ContainerComponentData,
+  type Guild,
   type Message,
   type TopLevelComponentData,
   type User
@@ -15,23 +17,94 @@ import { buildWarningView } from '../responses/messageBuilders.js';
 import { getGuildUserStats, fetchImageBuffer } from '../../services/statsService.js';
 import { renderStatsCard } from '../../render/statsCard.js';
 import { logger } from '../../shared/logger.js';
+import { getMarriageForUser, type MarriageInfo } from '../../services/marriageService.js';
+
+type PartnerResolveResult = {
+  displayName?: string;
+  user?: User;
+};
+
+function pluralizeRussian(value: number, forms: [string, string, string]) {
+  const absValue = Math.abs(value) % 100;
+  const lastDigit = absValue % 10;
+  if (absValue >= 11 && absValue <= 19) return forms[2];
+  if (lastDigit === 1) return forms[0];
+  if (lastDigit >= 2 && lastDigit <= 4) return forms[1];
+  return forms[2];
+}
+
+function formatMarriageDuration(marriage: MarriageInfo) {
+  if (marriage.daysTogether < 1) {
+    const hours = Math.max(0, marriage.hoursTogether);
+    const label = pluralizeRussian(hours, ['час', 'часа', 'часов']);
+    return `Вместе: ${hours} ${label}`;
+  }
+
+  const label = pluralizeRussian(marriage.daysTogether, ['день', 'дня', 'дней']);
+  return `Вместе: ${marriage.daysTogether} ${label}`;
+}
+
+async function resolvePartnerUser(options: {
+  guild: Guild;
+  client: Client;
+  partnerId: string;
+}): Promise<PartnerResolveResult | null> {
+  const { guild, client, partnerId } = options;
+  try {
+    const member = await guild.members.fetch(partnerId);
+    return { displayName: member.displayName, user: member.user };
+  } catch (error) {
+    logger.error(error);
+  }
+
+  try {
+    const user = await client.users.fetch(partnerId);
+    return { user };
+  } catch (error) {
+    logger.error(error);
+  }
+
+  return null;
+}
 
 async function buildStatsAttachment(options: {
   guildId: string;
   user: User;
   displayName: string;
+  guild: Guild;
+  client: Client;
 }) {
-  const { guildId, user, displayName } = options;
+  const { guildId, user, displayName, guild, client } = options;
 
   const stats = await getGuildUserStats(guildId, user.id);
 
   const avatarUrl = user.displayAvatarURL({ extension: 'png', size: 256 });
   const userAvatar = await fetchImageBuffer(avatarUrl);
 
-  // Marriage system not implemented yet:
-  // keep "Холост" and do NOT draw partner avatar.
-  const partnerName = 'Холост';
-  const partnerAvatar = null;
+  const marriage = await getMarriageForUser(guildId, user.id);
+
+  let partnerName = 'Холост';
+  let partnerAvatar: Buffer | null = null;
+  let partnerDurationLabel = 'Вместе: —';
+
+  if (marriage) {
+    partnerDurationLabel = formatMarriageDuration(marriage);
+    const partner = await resolvePartnerUser({ guild, client, partnerId: marriage.partnerId });
+    if (partner?.displayName) {
+      partnerName = partner.displayName;
+    } else if (partner?.user) {
+      partnerName = partner.user.username;
+    }
+
+    if (partner?.user) {
+      const partnerAvatarUrl = partner.user.displayAvatarURL({ extension: 'png', size: 256 });
+      try {
+        partnerAvatar = await fetchImageBuffer(partnerAvatarUrl);
+      } catch (error) {
+        logger.error(error);
+      }
+    }
+  }
 
   const buffer = await renderStatsCard({
     displayName,
@@ -45,6 +118,7 @@ async function buildStatsAttachment(options: {
     donationAmount: 0,
     streakDays: stats.streakDays,
     partnerName,
+    partnerDurationLabel,
     userAvatar,
     partnerAvatar
   });
@@ -97,7 +171,9 @@ export const stats: Command = {
       const { attachment, attachmentName } = await buildStatsAttachment({
         guildId: interaction.guildId,
         user: interaction.user,
-        displayName
+        displayName,
+        guild: interaction.guild,
+        client: interaction.client
       });
 
       await interaction.editReply({
@@ -137,7 +213,9 @@ export const stats: Command = {
       const { attachment, attachmentName } = await buildStatsAttachment({
         guildId: message.guildId,
         user: message.author,
-        displayName
+        displayName,
+        guild: message.guild,
+        client: message.client
       });
 
       if (!message.channel?.isSendable()) return;

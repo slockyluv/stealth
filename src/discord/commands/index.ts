@@ -17,6 +17,7 @@ import { finance } from './finance.js';
 import { giveMoney, takeMoney, resetMoney } from './money.js';
 import { ownerpanel } from './ownerpanel.js';
 import { stats } from './stats.js';
+import { marry } from './marry.js';
 
 export const commands = [
   ping,
@@ -44,5 +45,6 @@ export const commands = [
   takeMoney,
   resetMoney,
   ownerpanel,
-  stats
+  stats,
+  marry
 ];

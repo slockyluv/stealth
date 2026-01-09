@@ -10,8 +10,21 @@ const MESSAGE_XP_MIN = 2.8;
 const MESSAGE_XP_MAX = 3.2;
 const MESSAGE_XP_DECAY = 0.0004;
 const RECENT_MESSAGE_TTL_MS = 30_000;
+const MESSAGE_FLUSH_INTERVAL_MS = 5_000;
+const MESSAGE_BATCH_LIMIT = 20;
 let voiceXpTicker: NodeJS.Timeout | null = null;
+let messageFlushTicker: NodeJS.Timeout | null = null;
 const recentMessageCache = new Map<string, { content: string; at: number }>();
+const pendingMessageBatches = new Map<string, PendingMessageBatch>();
+
+type PendingMessageBatch = {
+  guildId: string;
+  userId: string;
+  count: number;
+  firstContent: string;
+  lastContent: string;
+  lastAt: number;
+};
 
 function buildMessageCacheKey(guildId: string, userId: string) {
   return `${guildId}:${userId}`;
@@ -41,6 +54,138 @@ function applyLevelProgress(currentXp: number, currentLevel: number, earnedXp: n
     level += 1;
   }
   return { xp, level };
+}
+
+function buildMessageBatchKey(guildId: string, userId: string) {
+  return `${guildId}:${userId}`;
+}
+
+function ensureMessageFlushTicker() {
+  if (messageFlushTicker) return;
+  messageFlushTicker = setInterval(() => {
+    const now = Date.now();
+    for (const [key, batch] of pendingMessageBatches.entries()) {
+      if (now - batch.lastAt >= MESSAGE_FLUSH_INTERVAL_MS) {
+        void flushMessageBatch(key, batch);
+      }
+    }
+    if (pendingMessageBatches.size === 0 && messageFlushTicker) {
+      clearInterval(messageFlushTicker);
+      messageFlushTicker = null;
+    }
+  }, MESSAGE_FLUSH_INTERVAL_MS);
+}
+
+async function flushMessageBatch(key: string, batch: PendingMessageBatch) {
+  const existing = pendingMessageBatches.get(key);
+  if (existing !== batch) return;
+  pendingMessageBatches.delete(key);
+
+  try {
+    const now = new Date(batch.lastAt);
+    const guildIdBig = BigInt(batch.guildId);
+    const userIdBig = BigInt(batch.userId);
+
+    await prisma.$transaction(async (tx) => {
+      const guildUser = await tx.guildUserLevel.upsert({
+        where: { guildId_userId: { guildId: guildIdBig, userId: userIdBig } },
+        update: {},
+        create: {
+          guildId: guildIdBig,
+          userId: userIdBig
+        }
+      });
+
+      let count = batch.count;
+      if (guildUser.lastMessageContent && guildUser.lastMessageContent === batch.firstContent) {
+        count -= 1;
+      }
+
+      if (count <= 0) {
+        return;
+      }
+
+      const { daily, streakReset } = await ensureDailyStats(tx, guildIdBig, userIdBig, now);
+
+      let streakDays = guildUser.streakDays;
+      const maxStreakDays = guildUser.maxStreakDays;
+      if (streakReset) {
+        streakDays = 0;
+        await tx.guildUserLevel.update({
+          where: { guildId_userId: { guildId: guildIdBig, userId: userIdBig } },
+          data: { streakDays }
+        });
+      }
+
+      let earnedMessageXp = 0;
+      let messageCount = daily.messageCount;
+      for (let index = 0; index < count; index += 1) {
+        earnedMessageXp += computeMessageXp(messageCount);
+        messageCount += 1;
+      }
+
+      const updatedDaily = await tx.guildUserDailyStat.update({
+        where: { id: daily.id },
+        data: {
+          messageCount: { increment: count }
+        }
+      });
+
+      const streakResult = await applyStreakIfQualified(
+        tx,
+        guildIdBig,
+        userIdBig,
+        updatedDaily,
+        streakDays,
+        maxStreakDays
+      );
+
+      const currentXp = new Prisma.Decimal(guildUser.xp).toNumber();
+      const currentLevel = guildUser.level;
+      const progress = applyLevelProgress(currentXp, currentLevel, earnedMessageXp + streakResult.bonusXp);
+
+      await tx.guildUserLevel.update({
+        where: { guildId_userId: { guildId: guildIdBig, userId: userIdBig } },
+        data: {
+          xp: new Prisma.Decimal(progress.xp),
+          level: progress.level,
+          totalMessageCount: { increment: count },
+          lastMessageContent: batch.lastContent,
+          lastMessageAt: now
+        }
+      });
+    });
+  } catch (error) {
+    logger.error(error);
+    batch.lastAt = Date.now();
+    pendingMessageBatches.set(key, batch);
+    ensureMessageFlushTicker();
+  }
+}
+
+function enqueueMessageBatch(guildId: string, userId: string, content: string, nowMs: number) {
+  const key = buildMessageBatchKey(guildId, userId);
+  const existing = pendingMessageBatches.get(key);
+
+  if (existing) {
+    existing.count += 1;
+    existing.lastContent = content;
+    existing.lastAt = nowMs;
+    if (existing.count >= MESSAGE_BATCH_LIMIT) {
+      void flushMessageBatch(key, existing);
+    }
+    return;
+  }
+
+  pendingMessageBatches.set(key, {
+    guildId,
+    userId,
+    count: 1,
+    firstContent: content,
+    lastContent: content,
+    lastAt: nowMs
+  });
+  ensureMessageFlushTicker();
 }
 
 async function ensureDailyStats(tx: Prisma.TransactionClient, guildId: bigint, userId: bigint, now: Date) {
@@ -131,8 +276,6 @@ export async function recordMessageActivity(guildId: string, userId: string, con
   const trimmed = content.trim();
   if (trimmed.length < MIN_MESSAGE_LENGTH) return;
 
-  const guildIdBig = BigInt(guildId);
-  const userIdBig = BigInt(userId);
   const cacheKey = buildMessageCacheKey(guildId, userId);
   const cached = recentMessageCache.get(cacheKey);
   const nowMs = Date.now();
@@ -141,70 +284,8 @@ export async function recordMessageActivity(guildId: string, userId: string, con
     return;
   }
 
-  const now = new Date(nowMs);
-
-  await prisma.$transaction(async (tx) => {
-    const guildUser = await tx.guildUserLevel.upsert({
-      where: { guildId_userId: { guildId: guildIdBig, userId: userIdBig } },
-      update: {},
-      create: {
-        guildId: guildIdBig,
-        userId: userIdBig
-      }
-    });
-
-    if (guildUser.lastMessageContent && guildUser.lastMessageContent === trimmed) {
-      return;
-    }
-
-    const { daily, streakReset } = await ensureDailyStats(tx, guildIdBig, userIdBig, now);
-
-    let streakDays = guildUser.streakDays;
-    const maxStreakDays = guildUser.maxStreakDays;
-    if (streakReset) {
-      streakDays = 0;
-      await tx.guildUserLevel.update({
-        where: { guildId_userId: { guildId: guildIdBig, userId: userIdBig } },
-        data: { streakDays }
-      });
-    }
-
-    const messageXp = computeMessageXp(daily.messageCount);
-
-    const updatedDaily = await tx.guildUserDailyStat.update({
-      where: { id: daily.id },
-      data: {
-        messageCount: { increment: 1 }
-      }
-    });
-
-    const streakResult = await applyStreakIfQualified(
-      tx,
-      guildIdBig,
-      userIdBig,
-      updatedDaily,
-      streakDays,
-      maxStreakDays
-    );
-
-    const currentXp = new Prisma.Decimal(guildUser.xp).toNumber();
-    const currentLevel = guildUser.level;
-    const earnedXp = messageXp + streakResult.bonusXp;
-    const progress = applyLevelProgress(currentXp, currentLevel, earnedXp);
-
-    await tx.guildUserLevel.update({
-      where: { guildId_userId: { guildId: guildIdBig, userId: userIdBig } },
-      data: {
-        xp: new Prisma.Decimal(progress.xp),
-        level: progress.level,
-        totalMessageCount: { increment: 1 },
-        lastMessageContent: trimmed,
-        lastMessageAt: now
-      }
-    });
-  });
-
   recentMessageCache.set(cacheKey, { content: trimmed, at: nowMs });
+  enqueueMessageBatch(guildId, userId, trimmed, nowMs);
 }
 
 async function applyVoiceMinutes(guildId: bigint, userId: bigint, minutes: number, now: Date) {
@@ -318,22 +399,49 @@ async function updateChannelEligibility(channel: ReturnType<typeof getEligibleVo
   const guildId = BigInt(channel.guild.id);
   const nonBotMembers = channel.members.filter((member) => !member.user.bot);
   const isEligible = nonBotMembers.size >= 2;
+  if (nonBotMembers.size === 0) return;
+
+  const channelId = BigInt(channel.id);
+  const userIds = Array.from(nonBotMembers.values(), (member) => BigInt(member.id));
+  const sessions = await prisma.guildUserVoiceSession.findMany({
+    where: {
+      guildId,
+      userId: { in: userIds }
+    }
+  });
+  const sessionMap = new Map(sessions.map((session) => [session.userId.toString(), session]));
 
   const updates = Array.from(nonBotMembers.values()).map(async (member) => {
     const userId = BigInt(member.id);
-    const session = await prisma.guildUserVoiceSession.upsert({
-      where: { guildId_userId: { guildId, userId } },
-      update: {},
-      create: {
-        guildId,
-        userId,
-        channelId: BigInt(channel.id),
-        joinedAt: now,
-        eligibleSince: null
-      }
-    });
+    const session = sessionMap.get(member.id);
 
-    if (isEligible && !session.eligibleSince) {
+    if (!session) {
+      await prisma.guildUserVoiceSession.create({
+        data: {
+          guildId,
+          userId,
+          channelId,
+          joinedAt: now,
+          eligibleSince: isEligible ? now : null
+        }
+      });
+      return;
+    }
+
+    let eligibleSince = session.eligibleSince;
+    if (session.channelId !== channelId) {
+      eligibleSince = isEligible ? now : null;
+      await prisma.guildUserVoiceSession.update({
+        where: { guildId_userId: { guildId, userId } },
+        data: {
+          channelId,
+          joinedAt: now,
+          eligibleSince
+        }
+      });
+    }
+
+    if (isEligible && !eligibleSince) {
       await prisma.guildUserVoiceSession.update({
         where: { guildId_userId: { guildId, userId } },
         data: { eligibleSince: now }
@@ -341,8 +449,8 @@ async function updateChannelEligibility(channel: ReturnType<typeof getEligibleVo
       return;
     }
 
-    if (!isEligible && session.eligibleSince) {
-      const elapsedMs = now.getTime() - session.eligibleSince.getTime();
+    if (!isEligible && eligibleSince) {
+      const elapsedMs = now.getTime() - eligibleSince.getTime();
       const minutes = Math.floor(elapsedMs / 60000);
       await applyVoiceMinutes(guildId, userId, minutes, now);
       await prisma.guildUserVoiceSession.update({

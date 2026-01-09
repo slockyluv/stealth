@@ -234,4 +234,5 @@ model GuildUserVoiceSession {
 
   @@id([guildId, userId])
   @@index([guildId, channelId])
+  @@index([eligibleSince])
 }

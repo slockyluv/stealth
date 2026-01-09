@@ -149,7 +149,8 @@ export async function interactionCreate(interaction: Interaction) {
     if (!command) return;
 
     try {
-      if (interaction.commandName !== 'ping' && !interaction.deferred && !interaction.replied) {
+      const shouldDefer = command.defer ?? true;
+      if (shouldDefer && !interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ ephemeral: false });
       }
 

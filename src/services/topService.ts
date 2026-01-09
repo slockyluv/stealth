@@ -36,27 +36,37 @@ export async function getTopPage(options: {
   const { guildId, section, page, pageSize = 10 } = options;
   const guildIdBig = BigInt(guildId);
 
-  const totalCount = await prisma.guildUserLevel.count({
-    where: { guildId: guildIdBig }
-  });
+  const { totalCount, totalPages, safePage, records } =
+    await prisma.$transaction(async (transaction) => {
+      const totalCount = await transaction.guildUserLevel.count({
+        where: { guildId: guildIdBig }
+      });
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const safePage = Math.min(Math.max(1, page), totalPages);
+      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+      const safePage = Math.min(Math.max(1, page), totalPages);
 
-  const records = await prisma.guildUserLevel.findMany({
-    where: { guildId: guildIdBig },
-    orderBy: resolveOrderBy(section),
-    skip: (safePage - 1) * pageSize,
-    take: pageSize,
-    select: {
-      userId: true,
-      level: true,
-      xp: true,
-      totalMessageCount: true,
-      totalVoiceMinutes: true,
-      maxStreakDays: true
-    }
-  });
+      const records = await transaction.guildUserLevel.findMany({
+        where: { guildId: guildIdBig },
+        orderBy: resolveOrderBy(section),
+        skip: (safePage - 1) * pageSize,
+        take: pageSize,
+        select: {
+          userId: true,
+          level: true,
+          xp: true,
+          totalMessageCount: true,
+          totalVoiceMinutes: true,
+          maxStreakDays: true
+        }
+      });
+
+      return {
+        totalCount,
+        totalPages,
+        safePage,
+        records
+      };
+    });
 
   const entries = records.map((record) => ({
     userId: record.userId.toString(),

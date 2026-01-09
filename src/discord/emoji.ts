@@ -19,6 +19,12 @@ let cachedApplicationEmojis: EmojiLike[] = [];
 let cachedAt = 0;
 let inFlightFetch: Promise<void> | null = null;
 
+const FORMATTER_TTL = 10 * 60 * 1000;
+const formatterCache = new Map<
+  string,
+  { formatter: (name: string) => string; cachedAt: number }
+>();
+
 async function loadApplicationEmojis(client: Client): Promise<EmojiLike[]> {
   const application = client.application;
   if (!application) return [];
@@ -55,7 +61,12 @@ export async function createEmojiFormatter(options: {
   guildId: string;
   guildEmojis?: Iterable<EmojiLike>;
 }): Promise<(name: string) => string> {
-  const { client, guildEmojis } = options;
+  const { client, guildEmojis, guildId } = options;
+  const now = Date.now();
+  const cachedFormatter = formatterCache.get(guildId);
+  if (cachedFormatter && now - cachedFormatter.cachedAt < FORMATTER_TTL) {
+    return cachedFormatter.formatter;
+  }
 
   let emojiMap = new Map<string, EmojiLike>();
 
@@ -74,7 +85,7 @@ export async function createEmojiFormatter(options: {
     logger.error(error);
   }
 
-  return (name: string) => {
+  const formatter = (name: string) => {
     const baseKey = name.toLowerCase();
 
     const base = emojiMap.get(baseKey) ?? emojiMap.get(name);
@@ -82,4 +93,8 @@ export async function createEmojiFormatter(options: {
 
     return `:${name}:`;
   };
+
+  formatterCache.set(guildId, { formatter, cachedAt: now });
+
+  return formatter;
 }

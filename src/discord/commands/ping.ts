@@ -5,6 +5,7 @@ import { createEmojiFormatter } from '../emoji.js';
 import { buildTextContainer } from '../responses/messageBuilders.js';
 
 export const ping: Command = {
+  defer: false,
   data: new SlashCommandBuilder()
     .setName('ping')
     .setDescription('Ping command'),

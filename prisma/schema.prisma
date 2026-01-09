@@ -204,6 +204,7 @@ model GuildUserLevel {
   @@index([level])
   @@index([maxStreakDays])
   @@index([totalMessageCount])
+  @@index([guildId, totalMessageCount])
   @@index([totalVoiceMinutes])
 }
 

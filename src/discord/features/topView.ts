@@ -56,7 +56,7 @@ function pluralizeDays(value: number): string {
   return 'дней';
 }
 
-function buildEntryLines(section: TopSection, entry: TopEntry, position: number): ComponentInContainerData[] {
+function buildEntryLine(section: TopSection, entry: TopEntry, position: number): ComponentInContainerData {
   const userLine = `${formatRank(position)} <@${entry.userId}>`;
   let detailLine = '';
 
@@ -73,11 +73,7 @@ function buildEntryLines(section: TopSection, entry: TopEntry, position: number)
     detailLine = `**Непрерывность активности:** *${entry.maxStreakDays}* ${daysLabel}`;
   }
 
-  return [
-    { type: ComponentType.TextDisplay, content: userLine },
-    { type: ComponentType.TextDisplay, content: detailLine },
-    buildSeparator()
-  ];
+  return { type: ComponentType.TextDisplay, content: `${userLine}\n${detailLine}` };
 }
 
 function resolveSectionEmoji(section: TopSection): string {
@@ -113,7 +109,7 @@ export async function buildTopView(options: {
     '```Общайтесь в текстовых и голосовых каналах, участвуйте в обсуждениях и становитесь частью жизни сервера. Активные пользователи будут получать поощрения.```';
 
   components.push(
-    { type: ComponentType.TextDisplay, content: `**${trophyEmoji} Список лидеров**` },
+    { type: ComponentType.TextDisplay, content: `# ${trophyEmoji} Список лидеров` },
     { type: ComponentType.TextDisplay, content: '\u200b' },
     { type: ComponentType.TextDisplay, content: introText },
     buildSeparator()
@@ -123,7 +119,10 @@ export async function buildTopView(options: {
     components.push({ type: ComponentType.TextDisplay, content: 'Нет данных для отображения.' });
   } else {
     pageData.entries.forEach((entry, index) => {
-      components.push(...buildEntryLines(section, entry, (pageData.page - 1) * PAGE_SIZE + index + 1));
+      components.push(buildEntryLine(section, entry, (pageData.page - 1) * PAGE_SIZE + index + 1));
+      if (index < pageData.entries.length - 1) {
+        components.push(buildSeparator());
+      }
     });
   }
 

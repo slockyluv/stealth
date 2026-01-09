@@ -43,7 +43,8 @@ export const top: Command = {
 
       await interaction.editReply({
         components: view,
-        flags: MessageFlags.IsComponentsV2
+        flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { users: [] }
       });
     } catch (error) {
       logger.error(error);
@@ -73,7 +74,8 @@ export const top: Command = {
 
       await message.channel.send({
         components: view,
-        flags: MessageFlags.IsComponentsV2
+        flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { users: [] }
       });
     } catch (error) {
       logger.error(error);

@@ -4,7 +4,6 @@ import {
   type ButtonComponentData,
   type ComponentInContainerData,
   type ContainerComponentData,
-  type Guild,
   type TextDisplayComponentData,
   type TopLevelComponentData
 } from 'discord.js';
@@ -43,15 +42,16 @@ export function buildMarryProposalView(options: {
   targetMention: string;
   proposerId: string;
   targetId: string;
-  guild?: Guild | null;
+  acceptEmoji?: string;
+  rejectEmoji?: string;
 }): TopLevelComponentData[] {
-  const { authorMention, targetMention, proposerId, targetId, guild } = options;
+  const { authorMention, targetMention, proposerId, targetId, acceptEmoji, rejectEmoji } = options;
 
   const acceptButton: ButtonComponentData = {
     type: ComponentType.Button,
     customId: buildCustomId(MARRY_SCOPE, MARRY_ACCEPT_ACTION, proposerId, targetId),
     label: 'Принять',
-    emoji: { name: '✅' },
+    ...(acceptEmoji ? { emoji: acceptEmoji } : {}),
     style: ButtonStyle.Secondary
   };
 
@@ -59,7 +59,7 @@ export function buildMarryProposalView(options: {
     type: ComponentType.Button,
     customId: buildCustomId(MARRY_SCOPE, MARRY_REJECT_ACTION, proposerId, targetId),
     label: 'Отклонить',
-    emoji: { name: '❌' },
+    ...(rejectEmoji ? { emoji: rejectEmoji } : {}),
     style: ButtonStyle.Secondary
   };
 
@@ -117,7 +117,7 @@ export function buildMarrySingleView(): TopLevelComponentData[] {
     buildSeparator(),
     buildTextLine('*Твой путь пока свободен.*'),
     buildTextLine(spacer),
-    buildTextLine('*Для заключения брачного союза используйте:*'),
+    buildTextLine('**Для заключения брачного союза используйте:**'),
     buildTextLine('*> !marry @Пользователь*')
   ]);
 }

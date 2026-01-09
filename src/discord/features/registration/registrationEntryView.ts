@@ -9,6 +9,7 @@ import {
 } from 'discord.js';
 import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
+import { MESSAGE_SEPARATOR_COMPONENT } from '../applications/config.js';
 
 export async function buildRegistrationEntryView(options: {
   guild: Guild;
@@ -43,11 +44,32 @@ export async function buildRegistrationEntryView(options: {
   const containerComponents: ContainerComponentData['components'] = [
     {
       type: ComponentType.TextDisplay,
-      content: `**${formatEmoji('worldpulse')} Регистрация**`
+      content: `**${formatEmoji('apps')} Регистрация**`
+    },
+    MESSAGE_SEPARATOR_COMPONENT,
+    {
+      type: ComponentType.TextDisplay,
+      content: `**${formatEmoji('worldpulse')} Государство:**`
     },
     {
       type: ComponentType.TextDisplay,
-      content: '*Выберите тип регистрации в меню ниже.*'
+      content:
+        '```Территория, имеющая определённые границы, население и систему органов власти, осуществляющих управление обществом на основе права.```'
+    },
+    MESSAGE_SEPARATOR_COMPONENT,
+    {
+      type: ComponentType.TextDisplay,
+      content: `**${formatEmoji('filialscomp')} Частная компания:**`
+    },
+    {
+      type: ComponentType.TextDisplay,
+      content:
+        '```Предприятие, принадлежащее частным лицам или негосударственным структурам и осуществляющее деятельность с целью извлечения прибыли. ```'
+    },
+    MESSAGE_SEPARATOR_COMPONENT,
+    {
+      type: ComponentType.TextDisplay,
+      content: 'Выберите тип регистрации в меню ниже.'
     },
     menuRow.toJSON()
   ];

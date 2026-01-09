@@ -26,6 +26,16 @@ const PROPOSAL_TTL_MS = 5 * 60 * 1000;
 const COMPONENTS_FLAG = MessageFlags.IsComponentsV2;
 type ComponentsFlag = typeof COMPONENTS_FLAG;
 
+function resolveButtonEmoji(formatEmoji: (name: string) => string, name: string) {
+  const token = formatEmoji(name);
+
+  if (token === `:${name}:`) {
+    return undefined;
+  }
+
+  return token;
+}
+
 function formatMarriageDate(date: Date) {
   return new Intl.DateTimeFormat('ru-RU', {
     day: '2-digit',
@@ -85,10 +95,10 @@ async function sendProposalMessage(options: {
   guildId: string;
   proposer: User;
   target: User;
-  guild: Message['guild'] | ChatInputCommandInteraction['guild'];
+  formatEmoji: (name: string) => string
   send: (payload: MessageCreateOptions & { flags: ComponentsFlag }) => Promise<Message>;
 }) {
-  const { guildId, proposer, target, guild, send } = options;
+  const { guildId, proposer, target, formatEmoji, send } = options;
 
   const errorView = await buildProposalErrorView({
     guildId,
@@ -105,7 +115,8 @@ async function sendProposalMessage(options: {
     targetMention: target.toString(),
     proposerId: proposer.id,
     targetId: target.id,
-    guild: guild ?? null
+    acceptEmoji: resolveButtonEmoji(formatEmoji, 'slide_d'),
+    rejectEmoji: resolveButtonEmoji(formatEmoji, 'action_basket')
   });
 
   const message = await send({ components: view, flags: COMPONENTS_FLAG });
@@ -141,7 +152,7 @@ export const marry: Command = {
         guildId: interaction.guildId,
         proposer: interaction.user,
         target,
-        guild: interaction.guild,
+        formatEmoji,
         send: async (payload) =>
           (await interaction.editReply({
             components: payload.components,
@@ -207,7 +218,7 @@ export const marry: Command = {
         guildId: message.guildId,
         proposer: message.author,
         target,
-        guild: message.guild,
+        formatEmoji,
         send: (payload) => message.channel.send(payload)
       });
     } catch (error) {

@@ -249,8 +249,9 @@ async function applyVoiceMinutes(guildId: bigint, userId: bigint, minutes: numbe
 }
 
 async function processEligibleVoiceSessions(now = new Date()) {
+  const cutoff = new Date(now.getTime() - VOICE_XP_TICK_MS);
   const sessions = await prisma.guildUserVoiceSession.findMany({
-    where: { eligibleSince: { not: null } }
+    where: { eligibleSince: { not: null, lte: cutoff } }
   });
 
   const updates = sessions.map(async (session) => {

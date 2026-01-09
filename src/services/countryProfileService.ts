@@ -435,10 +435,12 @@ function buildDefaultProfile(country: Country): CountryProfile {
 export async function getCountryProfile(
   guildId: string,
   country: Country,
-  db?: PrismaClientOrTransaction
+  db?: PrismaClientOrTransaction,
+  options?: { bypassCache?: boolean }
 ): Promise<CountryProfile> {
   const cacheKey = buildKey(guildId, country.name);
-  const cached = profiles.get(cacheKey);
+  const bypassCache = options?.bypassCache ?? Boolean(db);
+  const cached = bypassCache ? undefined : profiles.get(cacheKey);
 
   if (cached) return cached;
 
@@ -455,7 +457,9 @@ export async function getCountryProfile(
   });
 
   const profile = stored ? mapRecordToProfile(stored) : buildDefaultProfile(country);
-  profiles.set(cacheKey, profile);
+  if (!bypassCache) {
+    profiles.set(cacheKey, profile);
+  }
   return profile;
 }
 
@@ -661,15 +665,45 @@ export async function applyPopulationTaxCollection(
   },
   db?: PrismaClientOrTransaction
 ): Promise<CountryProfile> {
-  const current = await getCountryProfile(guildId, country, db);
-  const currentBudget = current.budget ?? DEFAULT_BUDGET;
-  const nextProfile: CountryProfile = {
-    ...current,
-    budget: currentBudget + options.taxAmount,
-    lastPopulationTaxAt: options.collectedAt
-  };
+  const dbClient = getDbClient(db);
+  const normalizedName = normalizeCountryKey(country.name);
+  const defaults = buildDefaultProfile(country);
+  const stored = await dbClient.countryProfile.upsert({
+    where: {
+      guildId_countryName: {
+        guildId: BigInt(guildId),
+        countryName: normalizedName
+      }
+    },
+    update: {
+      budget: {
+        increment: options.taxAmount
+      },
+      lastPopulationTaxAt: options.collectedAt
+    },
+    create: {
+      guildId: BigInt(guildId),
+      countryName: normalizedName,
+      ruler: defaults.ruler,
+      territory: defaults.territory,
+      population: defaults.population,
+      ideology: defaults.ideology ?? DEFAULT_POLITICS.ideology,
+      governmentForm: defaults.governmentForm ?? DEFAULT_POLITICS.governmentForm,
+      stateStructure: defaults.stateStructure ?? DEFAULT_POLITICS.stateStructure,
+      religion: defaults.religion ?? DEFAULT_POLITICS.religion,
+      budget: DEFAULT_BUDGET + options.taxAmount,
+      populationTaxRate: defaults.populationTaxRate ?? DEFAULT_POPULATION_TAX_RATE,
+      residentCompanyTaxRate: defaults.residentCompanyTaxRate ?? DEFAULT_RESIDENT_COMPANY_TAX_RATE,
+      foreignCompanyTaxRate: defaults.foreignCompanyTaxRate ?? DEFAULT_FOREIGN_COMPANY_TAX_RATE,
+      lastPopulationTaxAt: options.collectedAt,
+      registeredUserId: null,
+      registeredAt: null
+    }
+  });
 
-  return saveCountryProfile(guildId, country, nextProfile, db);
+  const profile = mapRecordToProfile(stored);
+  profiles.set(buildKey(guildId, country.name), profile);
+  return profile;
 }
 
 export async function updateCountryBudget(
@@ -681,19 +715,67 @@ export async function updateCountryBudget(
   }
 ): Promise<CountryBudgetUpdateResult> {
   return prisma.$transaction(async (tx) => {
-    const current = await getCountryProfile(guildId, country, tx);
-    const currentBudget = current.budget ?? DEFAULT_BUDGET;
-    let nextBudget = currentBudget;
+    const normalizedName = normalizeCountryKey(country.name);
+    const storedCurrent = await tx.countryProfile.findUnique({
+      where: {
+        guildId_countryName: {
+          guildId: BigInt(guildId),
+          countryName: normalizedName
+        }
+      }
+    });
+    const currentBudget = storedCurrent?.budget ?? DEFAULT_BUDGET;
+    let updateData:
+      | { budget: bigint }
+      | { budget: { increment: bigint } }
+      | { budget: { decrement: bigint } };
 
     if (options.type === 'increase') {
-      nextBudget = currentBudget + options.amount;
+      updateData = { budget: { increment: options.amount } };
     } else if (options.type === 'decrease') {
-      nextBudget = currentBudget - options.amount;
-    } else if (options.type === 'reset') {
-      nextBudget = DEFAULT_BUDGET;
+      updateData = { budget: { decrement: options.amount } };
+    } else {
+      updateData = { budget: DEFAULT_BUDGET };
     }
 
-    const profile = await updateCountryDevelopment(guildId, country, { budget: nextBudget }, tx);
+    const defaults = buildDefaultProfile(country);
+    const initialBudget =
+      options.type === 'increase'
+        ? DEFAULT_BUDGET + options.amount
+        : options.type === 'decrease'
+          ? DEFAULT_BUDGET - options.amount
+          : DEFAULT_BUDGET;
+
+    const stored = await tx.countryProfile.upsert({
+      where: {
+        guildId_countryName: {
+          guildId: BigInt(guildId),
+          countryName: normalizedName
+        }
+      },
+      update: updateData,
+      create: {
+        guildId: BigInt(guildId),
+        countryName: normalizedName,
+        ruler: defaults.ruler,
+        territory: defaults.territory,
+        population: defaults.population,
+        ideology: defaults.ideology ?? DEFAULT_POLITICS.ideology,
+        governmentForm: defaults.governmentForm ?? DEFAULT_POLITICS.governmentForm,
+        stateStructure: defaults.stateStructure ?? DEFAULT_POLITICS.stateStructure,
+        religion: defaults.religion ?? DEFAULT_POLITICS.religion,
+        budget: initialBudget,
+        populationTaxRate: defaults.populationTaxRate ?? DEFAULT_POPULATION_TAX_RATE,
+        residentCompanyTaxRate: defaults.residentCompanyTaxRate ?? DEFAULT_RESIDENT_COMPANY_TAX_RATE,
+        foreignCompanyTaxRate: defaults.foreignCompanyTaxRate ?? DEFAULT_FOREIGN_COMPANY_TAX_RATE,
+        lastPopulationTaxAt: null,
+        registeredUserId: null,
+        registeredAt: null
+      }
+    });
+
+    const profile = mapRecordToProfile(stored);
+    profiles.set(buildKey(guildId, country.name), profile);
     return { profile, previousBudget: currentBudget };
   });
 }

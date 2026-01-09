@@ -432,21 +432,16 @@ export const financeTaxationCollectButton: ButtonHandler = {
         return;
       }
 
-      const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
       const result = await collectPopulationTaxForCountry({
         guildId: interaction.guildId,
-        country: countryLookup.country,
-        population: profile.population,
-        taxRate: profile.populationTaxRate ?? 10,
-        lastCollectedAt: profile.lastPopulationTaxAt
+        country: countryLookup.country
       });
 
-      const updatedProfile = await getCountryProfile(interaction.guildId, countryLookup.country);
       const view = await buildGovernmentBudgetView({
         guild: interaction.guild,
         user: interaction.user,
         registration,
-        profile: updatedProfile
+        profile: result.profile
       });
 
       await interaction.editReply({ components: view });

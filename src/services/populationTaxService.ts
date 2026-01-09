@@ -1,5 +1,10 @@
 import { prisma } from '../database/prisma.js';
-import { applyPopulationTaxCollection, resolveCountryPopulation } from './countryProfileService.js';
+import {
+  applyPopulationTaxCollection,
+  getCountryProfile,
+  resolveCountryPopulation,
+  type CountryProfile
+} from './countryProfileService.js';
 import type { Country } from '../discord/features/settings/countriesView.js';
 
 export const POPULATION_TAX_INTERVAL_MS = 60_000;
@@ -85,36 +90,38 @@ export function canCollectPopulationTax(lastCollectedAt: Date | null | undefined
 }
 
 export type PopulationTaxCollectionResult =
-  | { status: 'collected'; taxAmount: bigint }
-  | { status: 'cooldown'; availableAt: Date };
+  | { status: 'collected'; taxAmount: bigint; profile: CountryProfile }
+  | { status: 'cooldown'; availableAt: Date; profile: CountryProfile };
 
 export async function collectPopulationTaxForCountry(options: {
   guildId: string;
   country: Country;
-  population: string;
-  taxRate: number;
-  lastCollectedAt?: Date;
 }): Promise<PopulationTaxCollectionResult> {
   return prisma.$transaction(async (tx) => {
     const now = new Date();
-    const cooldownMs = getPopulationTaxCooldownMs(options.lastCollectedAt, now.getTime());
+    const profile = await getCountryProfile(options.guildId, options.country, tx);
+    const cooldownMs = getPopulationTaxCooldownMs(profile.lastPopulationTaxAt, now.getTime());
     if (cooldownMs > 0) {
-      return { status: 'cooldown', availableAt: new Date(now.getTime() + cooldownMs) };
+      return {
+        status: 'cooldown',
+        availableAt: new Date(now.getTime() + cooldownMs),
+        profile
+      };
     }
 
-    const resolvedPopulation = resolveCountryPopulation(options.country.name, options.population);
+    const resolvedPopulation = resolveCountryPopulation(options.country.name, profile.population);
     const taxAmount = calculatePopulationTax({
       population: resolvedPopulation,
-      taxRate: options.taxRate
+      taxRate: profile.populationTaxRate ?? 10
     });
 
-    await applyPopulationTaxCollection(
+    const updatedProfile = await applyPopulationTaxCollection(
       options.guildId,
       options.country,
       { taxAmount, collectedAt: now },
       tx
     );
 
-    return { status: 'collected', taxAmount };
+    return { status: 'collected', taxAmount, profile: updatedProfile };
   });
 }

@@ -1,7 +1,8 @@
 import {
   MessageFlags,
   SlashCommandBuilder,
-  type ChatInputCommandInteraction
+  type ChatInputCommandInteraction,
+  type Message
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
@@ -27,7 +28,6 @@ export const top: Command = {
       return;
     }
 
-    await interaction.deferReply();
     const formatEmoji = await createEmojiFormatter({
       client: interaction.client,
       guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
@@ -48,6 +48,36 @@ export const top: Command = {
     } catch (error) {
       logger.error(error);
       await interaction.editReply({
+        components: buildWarningView(formatEmoji, 'Не удалось загрузить список лидеров.'),
+        flags: MessageFlags.IsComponentsV2
+      });
+    }
+  },
+  async executeMessage(message: Message) {
+    if (!message.guild || !message.channel?.isSendable()) {
+      return;
+    }
+
+    const formatEmoji = await createEmojiFormatter({
+      client: message.client,
+      guildId: message.guildId ?? message.client.application?.id ?? 'global',
+      guildEmojis: message.guild?.emojis.cache.values()
+    });
+
+    try {
+      const view = await buildTopView({
+        guild: message.guild,
+        section: 'levels',
+        page: 1
+      });
+
+      await message.channel.send({
+        components: view,
+        flags: MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await message.channel.send({
         components: buildWarningView(formatEmoji, 'Не удалось загрузить список лидеров.'),
         flags: MessageFlags.IsComponentsV2
       });

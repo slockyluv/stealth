@@ -13,6 +13,7 @@ import { companyContinentSelect } from './companyContinent.js';
 import { companyCountrySelect } from './companyCountry.js';
 import { companyProfileTabSelect } from './companyProfile.js';
 import { companyExistingSelect } from './companyExisting.js';
+import { topSectionSelect } from './top.js';
 
 export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsSectionSelect,
@@ -31,5 +32,6 @@ export const selectMenuHandlers: SelectMenuHandler[] = [
   applicationSelectMenu,
   applicationReviewSelect,
   profileTabSelect,
-  companyProfileTabSelect
+  companyProfileTabSelect,
+  topSectionSelect
 ];

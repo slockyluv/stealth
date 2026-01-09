@@ -68,19 +68,33 @@ async function applyStreakIfQualified(
   guildId: bigint,
   userId: bigint,
   daily: { id: bigint; messageCount: number; voiceMinutes: number; qualified: boolean; bonusGranted: boolean },
-  streakDays: number
+  streakDays: number,
+  maxStreakDays: number
 ) {
   if (daily.bonusGranted) {
-    return { bonusXp: 0, updatedStreakDays: streakDays, qualified: daily.qualified, bonusGranted: true };
+    return {
+      bonusXp: 0,
+      updatedStreakDays: streakDays,
+      updatedMaxStreakDays: maxStreakDays,
+      qualified: daily.qualified,
+      bonusGranted: true
+    };
   }
 
   const qualifies = daily.qualified || daily.messageCount >= 150 || daily.voiceMinutes >= 120;
   if (!qualifies) {
-    return { bonusXp: 0, updatedStreakDays: streakDays, qualified: daily.qualified, bonusGranted: false };
+    return {
+      bonusXp: 0,
+      updatedStreakDays: streakDays,
+      updatedMaxStreakDays: maxStreakDays,
+      qualified: daily.qualified,
+      bonusGranted: false
+    };
   }
 
   const bonusXp = computeStreakBonus(streakDays);
   const updatedStreakDays = streakDays + 1;
+  const updatedMaxStreakDays = Math.max(maxStreakDays, updatedStreakDays);
 
   await tx.guildUserDailyStat.update({
     where: { id: daily.id },
@@ -93,11 +107,18 @@ async function applyStreakIfQualified(
   await tx.guildUserLevel.update({
     where: { guildId_userId: { guildId, userId } },
     data: {
-      streakDays: updatedStreakDays
+      streakDays: updatedStreakDays,
+      maxStreakDays: updatedMaxStreakDays
     }
   });
 
-  return { bonusXp, updatedStreakDays, qualified: true, bonusGranted: true };
+  return {
+    bonusXp,
+    updatedStreakDays,
+    updatedMaxStreakDays,
+    qualified: true,
+    bonusGranted: true
+  };
 }
 
 export async function recordMessageActivity(guildId: string, userId: string, content: string) {
@@ -125,6 +146,7 @@ export async function recordMessageActivity(guildId: string, userId: string, con
     const { daily, streakReset } = await ensureDailyStats(tx, guildIdBig, userIdBig, now);
 
     let streakDays = guildUser.streakDays;
+    const maxStreakDays = guildUser.maxStreakDays;
     if (streakReset) {
       streakDays = 0;
       await tx.guildUserLevel.update({
@@ -147,7 +169,8 @@ export async function recordMessageActivity(guildId: string, userId: string, con
       guildIdBig,
       userIdBig,
       updatedDaily,
-      streakDays
+      streakDays,
+      maxStreakDays
     );
 
     const currentXp = new Prisma.Decimal(guildUser.xp).toNumber();
@@ -184,6 +207,7 @@ async function applyVoiceMinutes(guildId: bigint, userId: bigint, minutes: numbe
     const { daily, streakReset } = await ensureDailyStats(tx, guildId, userId, now);
 
     let streakDays = guildUser.streakDays;
+    const maxStreakDays = guildUser.maxStreakDays;
     if (streakReset) {
       streakDays = 0;
       await tx.guildUserLevel.update({
@@ -204,7 +228,8 @@ async function applyVoiceMinutes(guildId: bigint, userId: bigint, minutes: numbe
       guildId,
       userId,
       updatedDaily,
-      streakDays
+      streakDays,
+      maxStreakDays
     );
 
     const earnedXp = minutes * VOICE_XP_PER_MINUTE + streakResult.bonusXp;

@@ -191,6 +191,7 @@ model GuildUserLevel {
   level            Int      @default(0)
   xp               Decimal  @default(0)
   streakDays       Int      @default(0)
+  maxStreakDays    Int      @default(0)
   totalMessageCount Int     @default(0)
   totalVoiceMinutes Int     @default(0)
   lastMessageContent String?
@@ -201,6 +202,7 @@ model GuildUserLevel {
   @@id([guildId, userId])
   @@index([guildId])
   @@index([level])
+  @@index([maxStreakDays])
   @@index([totalMessageCount])
   @@index([totalVoiceMinutes])
 }

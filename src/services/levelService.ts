@@ -9,7 +9,13 @@ const VOICE_XP_TICK_MS = 60_000;
 const MESSAGE_XP_MIN = 2.8;
 const MESSAGE_XP_MAX = 3.2;
 const MESSAGE_XP_DECAY = 0.0004;
+const RECENT_MESSAGE_TTL_MS = 30_000;
 let voiceXpTicker: NodeJS.Timeout | null = null;
+const recentMessageCache = new Map<string, { content: string; at: number }>();
+
+function buildMessageCacheKey(guildId: string, userId: string) {
+  return `${guildId}:${userId}`;
+}
 
 function getDayStart(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -127,7 +133,15 @@ export async function recordMessageActivity(guildId: string, userId: string, con
 
   const guildIdBig = BigInt(guildId);
   const userIdBig = BigInt(userId);
-  const now = new Date();
+  const cacheKey = buildMessageCacheKey(guildId, userId);
+  const cached = recentMessageCache.get(cacheKey);
+  const nowMs = Date.now();
+
+  if (cached && cached.content === trimmed && nowMs - cached.at < RECENT_MESSAGE_TTL_MS) {
+    return;
+  }
+
+  const now = new Date(nowMs);
 
   await prisma.$transaction(async (tx) => {
     const guildUser = await tx.guildUserLevel.upsert({
@@ -189,6 +203,8 @@ export async function recordMessageActivity(guildId: string, userId: string, con
       }
     });
   });
+
+  recentMessageCache.set(cacheKey, { content: trimmed, at: nowMs });
 }
 
 async function applyVoiceMinutes(guildId: bigint, userId: bigint, minutes: number, now: Date) {

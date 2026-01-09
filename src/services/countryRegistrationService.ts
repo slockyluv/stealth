@@ -111,37 +111,20 @@ export async function getAvailableCountries(
   const continent = getContinent(continentId);
   if (!continent) return [];
 
-  const [registrations, profiles] = await prisma.$transaction([
-    prisma.countryRegistration.findMany({
-      where: {
-        guildId: BigInt(guildId),
-        continent: continentId
-      },
-      select: {
-        countryKey: true
-      }
-    }),
-    prisma.countryProfile.findMany({
-      where: {
-        guildId: BigInt(guildId),
-        registeredUserId: {
-          not: null
-        }
-      },
-      select: {
-        countryName: true
-      }
-    })
-  ]);
+  const rows = await prisma.$queryRaw<{ country_key: string }[]>`
+    SELECT "countryKey" as country_key
+    FROM "CountryRegistration"
+    WHERE "guildId" = ${BigInt(guildId)} AND "continent" = ${continentId}
+    UNION
+    SELECT "countryName" as country_key
+    FROM "CountryProfile"
+    WHERE "guildId" = ${BigInt(guildId)} AND "registeredUserId" IS NOT NULL
+  `;
 
   const taken = new Set<string>();
 
-  for (const record of registrations) {
-    taken.add(record.countryKey);
-  }
-
-  for (const profile of profiles) {
-    taken.add(normalizeCountryKey(profile.countryName));
+  for (const record of rows) {
+    taken.add(record.country_key);
   }
 
   return continent.countries.filter((country) => !taken.has(normalizeCountryKey(country.name)));

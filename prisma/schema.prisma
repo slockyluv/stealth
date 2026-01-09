@@ -98,6 +98,7 @@ model CountryProfile {
 
   @@unique([guildId, countryName])
   @@index([guildId])
+  @@index([guildId, registeredUserId])
 }
 
 model CountryRegistration {

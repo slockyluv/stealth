@@ -114,7 +114,7 @@ export async function getAvailableCountries(
   const rows = await prisma.$queryRaw<{ country_key: string }[]>`
     SELECT "countryKey" as country_key
     FROM "CountryRegistration"
-    WHERE "guildId" = ${BigInt(guildId)} AND "continent" = ${continentId}
+    WHERE "guildId" = ${BigInt(guildId)} AND "continent" = ${continentId}::"ContinentId"
     UNION
     SELECT "countryName" as country_key
     FROM "CountryProfile"

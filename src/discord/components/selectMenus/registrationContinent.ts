@@ -36,7 +36,7 @@ export const registrationContinentSelect: SelectMenuHandler = {
         selectedContinentId: selectedContinent,
         page: 1
       });
-      await interaction.editReply({ components: view.components, flags: MessageFlags.IsComponentsV2 });
+      await interaction.editReply({ components: view.components });
     } catch (error) {
       logger.error(error);
       if (interaction.deferred || interaction.replied) {

@@ -22,6 +22,7 @@ import { ALLOW_ADD_ROLE, ALLOW_TAKE_ROLE, ALLOW_TEMP_ROLE, enforceInteractionAll
 import { addTempRole, setPendingActionModerator } from '../../services/actionLogState.js';
 import { pluralize } from '../../shared/time.js';
 import { buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
+import { getGuildMember, getGuildRole, getGuildRoles } from '../utils/guildFetch.js';
 
 const ROLE_PROMPT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 90 * 24 * 60 * 60 * 1000;
@@ -124,23 +125,12 @@ function parseDuration(input: string): { ms: number; label: string } | null {
 }
 
 async function ensureGuildMember(options: { guildMembers: GuildMember['guild']['members']; userId: string }) {
-  const { guildMembers, userId } = options;
-  try {
-    return await guildMembers.fetch(userId);
-  } catch (error) {
-    logger.error(error);
-    return null;
-  }
+  return getGuildMember(options);
 }
 
 async function ensureRole(options: { guildRoles: Guild['roles']; roleId: string }) {
   const { guildRoles, roleId } = options;
-  try {
-    return await guildRoles.fetch(roleId);
-  } catch (error) {
-    logger.error(error);
-    return null;
-  }
+  return getGuildRole({ guild: guildRoles.guild, roleId });
 }
 
 function parseUserId(raw: string): string | null {
@@ -171,10 +161,10 @@ async function findRoleCandidates(guild: Guild, query: string): Promise<Role[]> 
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) return [];
 
-  await guild.roles.fetch();
   const roles: Role[] = [];
+  const roleCollection = await getGuildRoles(guild);
 
-  for (const role of guild.roles.cache.values()) {
+  for (const role of roleCollection.values()) {
     if (role.id === guild.id) continue;
     if (role.name.toLowerCase().includes(normalizedQuery)) {
       roles.push(role);

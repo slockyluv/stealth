@@ -20,6 +20,7 @@ import { ALLOW_MUTE, ALLOW_UNMUTE, enforceInteractionAllow, enforceMessageAllow 
 import { setPendingActionModerator } from '../../services/actionLogState.js';
 import { pluralize } from '../../shared/time.js';
 import { buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
+import { getGuildMember } from '../utils/guildFetch.js';
 
 const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
 
@@ -145,19 +146,6 @@ function hasModerateMembersMessage(message: Message) {
   return message.member?.permissions.has(PermissionsBitField.Flags.ModerateMembers) ?? false;
 }
 
-async function resolveTargetMember(options: {
-  guildMembers: GuildMember['guild']['members'];
-  userId: string;
-}): Promise<GuildMember | null> {
-  const { guildMembers, userId } = options;
-  try {
-    return await guildMembers.fetch(userId);
-  } catch (error) {
-    logger.error(error);
-    return null;
-  }
-}
-
 async function applyMute(options: {
   targetMember: GuildMember;
   durationMs: number;
@@ -233,7 +221,7 @@ export const mute: Command = {
       return;
     }
 
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       guildMembers: interaction.guild.members,
       userId: targetUser.id
     });
@@ -362,7 +350,7 @@ export const mute: Command = {
     const match = targetRaw.match(/^<@!?(\d+)>$/);
     const targetId = match?.[1] ?? targetRaw;
 
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       guildMembers: message.guild.members,
       userId: targetId
     });
@@ -491,7 +479,7 @@ export const unmute: Command = {
     }
 
     const targetUser = interaction.options.getUser('user', true);
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       guildMembers: interaction.guild.members,
       userId: targetUser.id
     });
@@ -596,7 +584,7 @@ export const unmute: Command = {
     const match = targetRaw.match(/^<@!?(\d+)>$/);
     const targetId = match?.[1] ?? targetRaw;
 
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       guildMembers: message.guild.members,
       userId: targetId
     });

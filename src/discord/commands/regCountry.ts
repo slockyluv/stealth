@@ -10,6 +10,7 @@ import { logger } from '../../shared/logger.js';
 import { createEmojiFormatter } from '../emoji.js';
 import { buildSuccessView, buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
 import { formatNicknameResetNotice, formatNicknameUpdateNotice, resetCountryNickname, updateCountryNickname } from '../nickname.js';
+import { getGuildMember } from '../utils/guildFetch.js';
 
 function extractUserId(raw: string): string | null {
   const mentionMatch = raw.match(/^<@!?([0-9]+)>$/);
@@ -108,9 +109,9 @@ export const regCountry: Command = {
       );
 
       if (result.status === 'registered') {
-        const targetMember = await interaction.guild.members.fetch(targetUser.id).catch((error) => {
-          logger.error(error);
-          return null;
+        const targetMember = await getGuildMember({
+          guildMembers: interaction.guild.members,
+          userId: targetUser.id
         });
         const nicknameResult = await updateCountryNickname({
           member: targetMember,
@@ -207,9 +208,9 @@ export const regCountry: Command = {
       );
 
       if (result.status === 'registered') {
-        const targetMember = await message.guild.members.fetch(userId).catch((error) => {
-          logger.error(error);
-          return null;
+        const targetMember = await getGuildMember({
+          guildMembers: message.guild.members,
+          userId
         });
         const nicknameResult = await updateCountryNickname({
           member: targetMember,
@@ -296,7 +297,10 @@ export const unreg: Command = {
 
       let nicknameNotice = '';
       if (countryResult.status === 'unregistered' || companyResult.status === 'unregistered') {
-        const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        const member = await getGuildMember({
+          guildMembers: interaction.guild.members,
+          userId: targetUser.id
+        });
         const nicknameResult = await resetCountryNickname({ member });
         nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
       }
@@ -370,7 +374,10 @@ export const unreg: Command = {
 
       let nicknameNotice = '';
       if (countryResult.status === 'unregistered' || companyResult.status === 'unregistered') {
-        const member = await message.guild.members.fetch(userId).catch(() => null);
+        const member = await getGuildMember({
+          guildMembers: message.guild.members,
+          userId
+        });
         const nicknameResult = await resetCountryNickname({ member });
         nicknameNotice = formatNicknameResetNotice(formatEmoji, nicknameResult);
       }

@@ -18,6 +18,7 @@ import { logger } from '../../shared/logger.js';
 import { ALLOW_SETNICK, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { setPendingActionModerator } from '../../services/actionLogState.js';
 import { buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
+import { getGuildMember } from '../utils/guildFetch.js';
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -76,17 +77,6 @@ function hasManageNicknames(interaction: ChatInputCommandInteraction) {
 
 function hasManageNicknamesMessage(message: Message) {
   return message.member?.permissions.has(PermissionsBitField.Flags.ManageNicknames) ?? false;
-}
-
-async function resolveGuildMember(options: { guildMembers: GuildMember['guild']['members']; userId: string }) {
-  const { guildMembers, userId } = options;
-
-  try {
-    return await guildMembers.fetch(userId);
-  } catch (error) {
-    logger.error(error);
-    return null;
-  }
 }
 
 function validateNickname(nickname: string): 'ok' | 'empty' | 'tooLong' {
@@ -163,7 +153,7 @@ export const setnick: Command = {
       return;
     }
 
-    const targetMember = await resolveGuildMember({ guildMembers: interaction.guild.members, userId: user.id });
+    const targetMember = await getGuildMember({ guildMembers: interaction.guild.members, userId: user.id });
 
     if (!targetMember) {
       await interaction.reply({
@@ -276,7 +266,7 @@ export const setnick: Command = {
     const match = targetRaw.match(/^<@!?(\d+)>$/);
     const targetId = match?.[1] ?? targetRaw;
 
-    const targetMember = await resolveGuildMember({
+    const targetMember = await getGuildMember({
       guildMembers: message.guild.members,
       userId: targetId
     });

@@ -16,6 +16,7 @@ import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { type ActionLogCategory, getActionLogSettings } from '../../../services/actionLogSettingsService.js';
 import { MESSAGE_SEPARATOR_COMPONENT } from '../applications/config.js';
+import { getGuildChannels } from '../../utils/guildFetch.js';
 
 const CHANNEL_PAGE_SIZE = 10;
 
@@ -75,7 +76,7 @@ export async function buildActionLogsOverview(guild: Guild): Promise<ActionLogsV
     createEmojiFormatter({ client: guild.client, guildId: guild.id, guildEmojis: guild.emojis.cache.values() })
   ]);
 
-  const fetchedChannels = await guild.channels.fetch();
+  const fetchedChannels = await getGuildChannels(guild);
   const channelMap = new Map<string, NonThreadGuildBasedChannel | null>();
   for (const channel of fetchedChannels.values()) {
     if (!channel || channel.isThread()) continue;
@@ -159,7 +160,7 @@ export async function buildActionLogCategoryView(options: {
     createEmojiFormatter({ client: guild.client, guildId: guild.id, guildEmojis: guild.emojis.cache.values() })
   ]);
 
-  const fetchedChannels = await guild.channels.fetch();
+  const fetchedChannels = await getGuildChannels(guild);
 
   const eligible: NonThreadGuildBasedChannel[] = [];
   for (const channel of fetchedChannels.values()) {

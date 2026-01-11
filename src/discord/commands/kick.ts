@@ -9,8 +9,7 @@ import {
   type ComponentInContainerData,
   type SeparatorComponentData,
   type TextDisplayComponentData,
-  type TopLevelComponentData,
-  type GuildMemberManager
+  type TopLevelComponentData
 } from 'discord.js';
 import type { Command } from '../../types/command.js';
 import { createEmojiFormatter } from '../emoji.js';
@@ -18,6 +17,7 @@ import { logger } from '../../shared/logger.js';
 import { ALLOW_KICK, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { setPendingActionModerator } from '../../services/actionLogState.js';
 import { buildUsageView, buildWarningView } from '../responses/messageBuilders.js';
+import { getGuildMember } from '../utils/guildFetch.js';
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -76,16 +76,6 @@ function hasKickMembers(interaction: ChatInputCommandInteraction) {
 
 function hasKickMembersMessage(message: Message) {
   return message.member?.permissions.has(PermissionsBitField.Flags.KickMembers) ?? false;
-}
-
-async function resolveTargetMember(options: { userId: string; guildMembers: GuildMemberManager }) {
-  const { guildMembers, userId } = options;
-  try {
-    return await guildMembers.fetch(userId);
-  } catch (error) {
-    logger.error(error);
-    return null;
-  }
 }
 
 const kickCommand = new SlashCommandBuilder()
@@ -150,7 +140,7 @@ export const kick: Command = {
       return;
     }
 
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       userId: targetUser.id,
       guildMembers: interaction.guild.members
     });
@@ -271,7 +261,7 @@ export const kick: Command = {
       return;
     }
 
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       userId: targetId,
       guildMembers: message.guild.members
     });

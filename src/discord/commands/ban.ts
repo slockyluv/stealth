@@ -7,7 +7,6 @@ import {
   ComponentType,
   type ContainerComponentData,
   type ComponentInContainerData,
-  type GuildMemberManager,
   type SeparatorComponentData,
   type TextDisplayComponentData,
   type TopLevelComponentData
@@ -17,6 +16,7 @@ import { createEmojiFormatter } from '../emoji.js';
 import { logger } from '../../shared/logger.js';
 import { ALLOW_BAN, ALLOW_UNBAN, enforceInteractionAllow, enforceMessageAllow } from './allow.js';
 import { setPendingActionModerator } from '../../services/actionLogState.js';
+import { getGuildMember } from '../utils/guildFetch.js';
 
 function buildSeparator(): SeparatorComponentData {
   return {
@@ -92,16 +92,6 @@ function hasBanMembersMessage(message: Message) {
   return message.member?.permissions.has(PermissionsBitField.Flags.BanMembers) ?? false;
 }
 
-async function resolveTargetMember(options: { userId: string; guildMembers: GuildMemberManager }) {
-  const { guildMembers, userId } = options;
-  try {
-    return await guildMembers.fetch(userId);
-  } catch (error) {
-    logger.error(error);
-    return null;
-  }
-}
-
 async function fetchUser(options: { userId: string; fetcher: ChatInputCommandInteraction['client']['users'] }) {
   const { userId, fetcher } = options;
   try {
@@ -174,7 +164,7 @@ export const ban: Command = {
       return;
     }
 
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       userId: targetUser.id,
       guildMembers: interaction.guild.members
     });
@@ -297,7 +287,7 @@ export const ban: Command = {
       return;
     }
 
-    const targetMember = await resolveTargetMember({
+    const targetMember = await getGuildMember({
       userId: targetUser.id,
       guildMembers: message.guild.members
     });

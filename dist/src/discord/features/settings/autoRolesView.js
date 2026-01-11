@@ -1,6 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, roleMention, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
+import { getGuildRoles } from '../../utils/guildFetch.js';
 const PAGE_SIZE = 15;
 function resolveColorEmoji(role) {
     if (role.color === 0)
@@ -46,7 +47,7 @@ export async function buildAutoRolesView(options) {
         guildId: guild.id,
         guildEmojis: guild.emojis.cache.values()
     });
-    const roles = await guild.roles.fetch();
+    const roles = await getGuildRoles(guild);
     const botMember = guild.members.me;
     const manageableRoles = Array.from(roles.values())
         .filter((role) => role.id !== guild.id)

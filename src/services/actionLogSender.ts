@@ -1,18 +1,10 @@
 import { MessageFlags, type Guild, ComponentType, type TopLevelComponentData } from 'discord.js';
 import { getActionLogSettings, type ActionLogCategory } from './actionLogSettingsService.js';
 import { logger } from '../shared/logger.js';
+import { getSendableChannelById } from '../discord/utils/guildFetch.js';
 
 async function resolveChannel(guild: Guild, channelId: string | null) {
-  if (!channelId) return null;
-
-  try {
-    const channel = await guild.channels.fetch(channelId);
-    if (!channel || !channel.isSendable()) return null;
-    return channel;
-  } catch (error) {
-    logger.error(error);
-    return null;
-  }
+  return getSendableChannelById(guild, channelId);
 }
 
 export async function sendActionLog(options: {

@@ -14,6 +14,7 @@ import {
 } from 'discord.js';
 import { buildCustomId } from '../../../shared/customId.js';
 import { createEmojiFormatter } from '../../emoji.js';
+import { getGuildRoles } from '../../utils/guildFetch.js';
 
 const PAGE_SIZE = 15;
 export type SettingsView = {
@@ -77,7 +78,7 @@ export async function buildAutoRolesView(options: {
     guildEmojis: guild.emojis.cache.values()
   });
 
-  const roles = await guild.roles.fetch();
+  const roles = await getGuildRoles(guild);
   const botMember = guild.members.me;
 
   const manageableRoles = Array.from(roles.values())

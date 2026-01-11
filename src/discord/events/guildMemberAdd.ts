@@ -4,6 +4,7 @@ import { logger } from '../../shared/logger.js';
 import { resolveInviteUsage } from '../../services/inviteTracker.js';
 import { setTrafficInviter } from '../../services/actionLogState.js';
 import { logTrafficJoin } from '../../services/actionLogger.js';
+import { recordMemberJoin } from '../../services/memberStatsService.js';
 
 export async function guildMemberAdd(member: GuildMember) {
   try {
@@ -39,4 +40,14 @@ export async function guildMemberAdd(member: GuildMember) {
     inviterId,
     joinedAt: member.joinedAt ?? new Date()
   });
+
+  try {
+    await recordMemberJoin({
+      guildId: member.guild.id,
+      memberCount: member.guild.memberCount,
+      joinedAt: member.joinedAt ?? new Date()
+    });
+  } catch (error) {
+    logger.error(error);
+  }
 }

@@ -236,3 +236,17 @@ model GuildUserVoiceSession {
   @@index([guildId, channelId])
   @@index([eligibleSince])
 }
+
+model GuildMemberDailyStat {
+  id          BigInt   @id @default(autoincrement())
+  guildId     BigInt
+  date        DateTime
+  joins       Int      @default(0)
+  leaves      Int      @default(0)
+  memberCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([guildId, date])
+  @@index([guildId, date])
+}

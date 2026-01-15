@@ -2243,6 +2243,7 @@ export async function buildCompanyRedomiciliationView(options: {
   infrastructureTitle: string;
   infrastructureDescription: string;
   taskState: RedomiciliationTaskState;
+  infrastructureCompleted: boolean;
   confirmDisabled: boolean;
 }): Promise<TopLevelComponentData[]> {
   const {
@@ -2253,6 +2254,7 @@ export async function buildCompanyRedomiciliationView(options: {
     infrastructureTitle,
     infrastructureDescription,
     taskState,
+    infrastructureCompleted,
     confirmDisabled
   } = options;
 
@@ -2304,19 +2306,16 @@ export async function buildCompanyRedomiciliationView(options: {
     disabled: jurisdictionCompleted
   };
 
-  const infrastructureCompleted = taskState.infrastructureDone;
-  const infrastructureStarted = taskState.infrastructureStarted && !infrastructureCompleted;
-
   const infrastructureButton: ButtonComponentData = {
     type: ComponentType.Button,
     style: ButtonStyle.Secondary,
     customId: buildCustomId(
       'companyFinance',
-      infrastructureCompleted || infrastructureStarted ? 'redomicileInfrastructureDone' : 'redomicileInfrastructureStart',
+      infrastructureCompleted ? 'redomicileInfrastructureDone' : 'redomicileInfrastructureStart',
       user.id
     ),
-    label: infrastructureCompleted || infrastructureStarted ? 'Выполнено' : 'Выполнить',
-    emoji: formatEmoji(infrastructureCompleted || infrastructureStarted ? 'slide_d' : 'bolt'),
+    label: infrastructureCompleted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(infrastructureCompleted ? 'slide_d' : 'bolt'),
     disabled: infrastructureCompleted
   };
 
@@ -2351,11 +2350,6 @@ export async function buildCompanyRedomiciliationView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const interactionButton = new ButtonBuilder()
-    .setCustomId(buildCustomId('companyFinance', 'redomicileInteractionOpen', user.id))
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji(formatEmoji('linkalt'));
-
   const confirmButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'redomicileConfirm', user.id))
     .setLabel('Подтвердить')
@@ -2372,7 +2366,7 @@ export async function buildCompanyRedomiciliationView(options: {
     buildSeparator(),
     infrastructureSection,
     buildSeparator(),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, confirmButton, interactionButton).toJSON()
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, confirmButton).toJSON()
   ]);
 
   return [container];
@@ -2419,8 +2413,16 @@ export async function buildRedomiciliationInfrastructureActionView(options: {
   guild: Guild;
   user: User;
   infrastructureTitle: string;
+  actionHeader: string;
+  items: Array<{
+    key: string;
+    label: string;
+    actionLabel: string;
+    doneLabel: string;
+  }>;
+  completedItems: Set<string>;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, infrastructureTitle } = options;
+  const { guild, user, infrastructureTitle, actionHeader, items, completedItems } = options;
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
@@ -2429,10 +2431,35 @@ export async function buildRedomiciliationInfrastructureActionView(options: {
   });
 
   const title = `# ${formatEmoji('filialscomp')} ${infrastructureTitle.replaceAll('**', '')}`;
-  const content =
-    '```Вы приступили к выполнению действия. Вам необходимо подготовить инфраструктуру вашей компании для запуска деятельности в новой юрисдикции. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
-  const note =
-    '> *После успешного выполнения действия вам необходимо вернуться в меню интерфейса "Редомициляция" и нажать кнопку Выполнено.*';
+  const subHeader = `**${formatEmoji('filialscomp')} ${actionHeader}:**`;
+  const itemComponents: ComponentInContainerData[] = [];
+
+  items.forEach((item, index) => {
+    const completed = completedItems.has(item.key);
+    const itemButton: ButtonComponentData = {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      customId: buildCustomId('companyFinance', 'redomicileInfrastructureBuild', item.key, user.id),
+      label: completed ? item.doneLabel : item.actionLabel,
+      emoji: formatEmoji(completed ? 'slide_d' : 'buybutton'),
+      disabled: completed
+    };
+
+    itemComponents.push({
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `**${item.label}**`
+        }
+      ],
+      accessory: itemButton
+    });
+
+    if (index < items.length - 1) {
+      itemComponents.push(buildSeparator());
+    }
+  });
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'redomicileOpen', user.id))
@@ -2443,9 +2470,9 @@ export async function buildRedomiciliationInfrastructureActionView(options: {
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: title },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content },
+    { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: note },
+    ...itemComponents,
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);

@@ -24,7 +24,13 @@ import { buildCompanyFinanceView, buildCompanyRedomiciliationView, buildGovernme
 import { getRedomiciliationInfrastructureContent } from '../../features/financeRedomiciliation.js';
 import { resolveEmojiIdentifier } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
-import { getRedomiciliationTaskState, setRedomiciliationSelection } from '../../../services/redomiciliationService.js';
+import {
+  clearRedomiciliationTasks,
+  getRedomiciliationInfrastructureState,
+  getRedomiciliationSelection,
+  getRedomiciliationTaskState,
+  setRedomiciliationSelection
+} from '../../../services/redomiciliationService.js';
 
 function parseTaxRate(input: string): number | null {
   const trimmed = input.trim();
@@ -406,11 +412,21 @@ export const companyFinanceRedomicileEditModal: ModalHandler = {
       return;
     }
 
-    setRedomiciliationSelection(interaction.guildId, userId, {
+    const nextSelection = {
       countryName: lookup.country.name,
       countryKey: normalizeCountryKey(lookup.country.name),
       continentId: lookup.continentId
-    });
+    };
+
+    const previousSelection = getRedomiciliationSelection(interaction.guildId, userId);
+    if (
+      previousSelection &&
+      (previousSelection.countryKey !== nextSelection.countryKey || previousSelection.continentId !== nextSelection.continentId)
+    ) {
+      clearRedomiciliationTasks(interaction.guildId, userId);
+    }
+
+    setRedomiciliationSelection(interaction.guildId, userId, nextSelection);
 
     await interaction.deferUpdate();
 
@@ -419,6 +435,8 @@ export const companyFinanceRedomicileEditModal: ModalHandler = {
       const selectedCountryLabel = `${resolveEmojiIdentifier(lookup.country.emoji, formatEmoji)} | ${lookup.country.name}`;
       const selectedTaxRateLabel = `${profile.foreignCompanyTaxRate}%`;
       const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
+      const infrastructureState = getRedomiciliationInfrastructureState(interaction.guildId, userId);
+      const infrastructureCompleted = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
       const taskState = getRedomiciliationTaskState(interaction.guildId, userId);
 
       const view = await buildCompanyRedomiciliationView({
@@ -429,6 +447,7 @@ export const companyFinanceRedomicileEditModal: ModalHandler = {
         infrastructureTitle: infrastructureContent.title,
         infrastructureDescription: infrastructureContent.description,
         taskState,
+        infrastructureCompleted,
         confirmDisabled: false
       });
 

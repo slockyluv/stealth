@@ -82,8 +82,10 @@ import { formatDateTime } from '../../../shared/time.js';
 import {
   clearRedomiciliationTasks,
   clearRedomiciliationSelection,
+  getRedomiciliationInfrastructureState,
   getRedomiciliationSelection,
   getRedomiciliationTaskState,
+  markRedomiciliationInfrastructureItemDone,
   markRedomiciliationTaskDone,
   markRedomiciliationTaskStarted,
   type RedomiciliationSelection
@@ -735,6 +737,8 @@ export const companyFinanceRedomicileOpenButton: ButtonHandler = {
       });
 
       const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
+      const infrastructureState = getRedomiciliationInfrastructureState(interaction.guildId, userId);
+      const infrastructureCompleted = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
       const taskState = getRedomiciliationTaskState(interaction.guildId, userId);
       const view = await buildCompanyRedomiciliationView({
         guild: interaction.guild,
@@ -744,6 +748,7 @@ export const companyFinanceRedomicileOpenButton: ButtonHandler = {
         infrastructureTitle: infrastructureContent.title,
         infrastructureDescription: infrastructureContent.description,
         taskState,
+        infrastructureCompleted,
         confirmDisabled: !selection
       });
 
@@ -973,6 +978,8 @@ export const companyFinanceRedomicileJurisdictionDoneButton: ButtonHandler = {
         selection
       });
       const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
+      const infrastructureState = getRedomiciliationInfrastructureState(interaction.guildId, userId);
+      const infrastructureCompleted = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
       const taskState = getRedomiciliationTaskState(interaction.guildId, userId);
 
       const view = await buildCompanyRedomiciliationView({
@@ -983,6 +990,7 @@ export const companyFinanceRedomicileJurisdictionDoneButton: ButtonHandler = {
         infrastructureTitle: infrastructureContent.title,
         infrastructureDescription: infrastructureContent.description,
         taskState,
+        infrastructureCompleted,
         confirmDisabled: !selection
       });
 
@@ -1046,10 +1054,14 @@ export const companyFinanceRedomicileInfrastructureStartButton: ButtonHandler = 
 
       markRedomiciliationTaskStarted(interaction.guildId, userId, 'infrastructure');
       const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
+      const infrastructureState = getRedomiciliationInfrastructureState(interaction.guildId, userId);
       const view = await buildRedomiciliationInfrastructureActionView({
         guild: interaction.guild,
         user: interaction.user,
-        infrastructureTitle: infrastructureContent.title
+        infrastructureTitle: infrastructureContent.title,
+        actionHeader: infrastructureContent.actionHeader,
+        items: infrastructureContent.items,
+        completedItems: infrastructureState
       });
 
       await interaction.editReply({ components: view });
@@ -1057,6 +1069,90 @@ export const companyFinanceRedomicileInfrastructureStartButton: ButtonHandler = 
       logger.error(error);
       await interaction.followUp({
         components: buildWarningView(formatEmoji, 'Не удалось открыть действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceRedomicileInfrastructureBuildButton: ButtonHandler = {
+  key: 'companyFinance:redomicileInfrastructureBuild',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const itemKey = ctx.customId.args[0];
+    const userId = ctx.customId.args[1];
+    if (!itemKey || !userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
+      const item = infrastructureContent.items.find((entry) => entry.key === itemKey);
+      if (!item) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const infrastructureState = markRedomiciliationInfrastructureItemDone(interaction.guildId, userId, item.key);
+      const infrastructureCompleted = infrastructureContent.items.every((entry) => infrastructureState.has(entry.key));
+      if (infrastructureCompleted) {
+        markRedomiciliationTaskDone(interaction.guildId, userId, 'infrastructure');
+      }
+
+      const view = await buildRedomiciliationInfrastructureActionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        infrastructureTitle: infrastructureContent.title,
+        actionHeader: infrastructureContent.actionHeader,
+        items: infrastructureContent.items,
+        completedItems: infrastructureState
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить действие. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }
@@ -1101,7 +1197,6 @@ export const companyFinanceRedomicileInfrastructureDoneButton: ButtonHandler = {
     await interaction.deferUpdate();
 
     try {
-      markRedomiciliationTaskDone(interaction.guildId, userId, 'infrastructure');
       const company = await getUserActiveCompany(interaction.guildId, userId);
       if (!company) {
         await interaction.followUp({
@@ -1111,13 +1206,24 @@ export const companyFinanceRedomicileInfrastructureDoneButton: ButtonHandler = {
         return;
       }
 
+      const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
+      const infrastructureState = getRedomiciliationInfrastructureState(interaction.guildId, userId);
+      const infrastructureCompleted = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
+      if (!infrastructureCompleted) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Сначала завершите строительство инфраструктуры.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      markRedomiciliationTaskDone(interaction.guildId, userId, 'infrastructure');
       const selection = getRedomiciliationSelection(interaction.guildId, userId);
       const { selectedCountryLabel, selectedTaxRateLabel } = await resolveRedomiciliationSelectionLabels({
         guildId: interaction.guildId,
         formatEmoji,
         selection
       });
-      const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
       const taskState = getRedomiciliationTaskState(interaction.guildId, userId);
 
       const view = await buildCompanyRedomiciliationView({
@@ -1128,6 +1234,7 @@ export const companyFinanceRedomicileInfrastructureDoneButton: ButtonHandler = {
         infrastructureTitle: infrastructureContent.title,
         infrastructureDescription: infrastructureContent.description,
         taskState,
+        infrastructureCompleted,
         confirmDisabled: !selection
       });
 

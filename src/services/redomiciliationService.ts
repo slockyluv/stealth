@@ -15,8 +15,16 @@ export type RedomiciliationTaskState = {
   infrastructureDone: boolean;
 };
 
+export type RedomiciliationInfrastructureItemKey =
+  | 'mainOffice'
+  | 'serverInfrastructure'
+  | 'productionInfrastructure'
+  | 'mainEquipment'
+  | 'supportEquipment';
+
 const selections = new Map<string, RedomiciliationSelection>();
 const taskStates = new Map<string, RedomiciliationTaskState>();
+const infrastructureItems = new Map<string, Set<RedomiciliationInfrastructureItemKey>>();
 
 function buildKey(guildId: string, userId: string): string {
   return `${guildId}:${userId}`;
@@ -36,6 +44,29 @@ export function getRedomiciliationSelection(guildId: string, userId: string): Re
 
 export function clearRedomiciliationSelection(guildId: string, userId: string): void {
   selections.delete(buildKey(guildId, userId));
+}
+
+export function getRedomiciliationInfrastructureState(
+  guildId: string,
+  userId: string
+): Set<RedomiciliationInfrastructureItemKey> {
+  return new Set(infrastructureItems.get(buildKey(guildId, userId)) ?? []);
+}
+
+export function markRedomiciliationInfrastructureItemDone(
+  guildId: string,
+  userId: string,
+  item: RedomiciliationInfrastructureItemKey
+): Set<RedomiciliationInfrastructureItemKey> {
+  const key = buildKey(guildId, userId);
+  const current = infrastructureItems.get(key) ?? new Set<RedomiciliationInfrastructureItemKey>();
+  current.add(item);
+  infrastructureItems.set(key, current);
+  return new Set(current);
+}
+
+export function clearRedomiciliationInfrastructureState(guildId: string, userId: string): void {
+  infrastructureItems.delete(buildKey(guildId, userId));
 }
 
 function buildDefaultTaskState(): RedomiciliationTaskState {
@@ -92,4 +123,5 @@ export function markRedomiciliationTaskDone(
 
 export function clearRedomiciliationTasks(guildId: string, userId: string): void {
   taskStates.delete(buildKey(guildId, userId));
+  clearRedomiciliationInfrastructureState(guildId, userId);
 }

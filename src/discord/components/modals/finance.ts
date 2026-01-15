@@ -2,16 +2,29 @@ import { MessageFlags } from 'discord.js';
 import type { ModalHandler } from '../../../types/component.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { buildWarningView, buildSuccessView } from '../../responses/messageBuilders.js';
-import { getUserRegistration, findCountryByKey } from '../../../services/countryRegistrationService.js';
-import { getCountryProfile, updateCountryCompanyTaxRates, updateCountryPopulationTaxRate } from '../../../services/countryProfileService.js';
+import {
+  findCountryByKey,
+  findCountryByPartialQuery,
+  findCountryByQuery,
+  getUserRegistration
+} from '../../../services/countryRegistrationService.js';
+import {
+  getCountryProfile,
+  normalizeCountryKey,
+  updateCountryCompanyTaxRates,
+  updateCountryPopulationTaxRate
+} from '../../../services/countryProfileService.js';
 import {
   findIndustryByKey,
   getUserActiveCompany,
   updateCompanyFeeRateForUser,
   type CompanyFeeKey
 } from '../../../services/privateCompanyService.js';
-import { buildCompanyFinanceView, buildGovernmentBudgetView } from '../../features/financeView.js';
+import { buildCompanyFinanceView, buildCompanyRedomiciliationView, buildGovernmentBudgetView } from '../../features/financeView.js';
+import { buildRedomiciliationJurisdictionContent } from '../../features/financeRedomiciliation.js';
+import { resolveEmojiIdentifier } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
+import { setRedomiciliationSelection } from '../../../services/redomiciliationService.js';
 
 function parseTaxRate(input: string): number | null {
   const trimmed = input.trim();
@@ -325,6 +338,105 @@ export const financeForeignTaxEditModal: ModalHandler = {
       logger.error(error);
       await interaction.followUp({
         components: buildWarningView(formatEmoji, 'Не удалось сохранить налог. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceRedomicileEditModal: ModalHandler = {
+  key: 'companyFinance:redomicileEditModal',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Форма доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная форма.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта форма доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const countryInput = interaction.fields.getTextInputValue('redomicile-country').trim();
+    if (!countryInput) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Введите название страны.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const lookup = findCountryByQuery(countryInput) ?? findCountryByPartialQuery(countryInput);
+    if (!lookup) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Страна не найдена. Попробуйте другое название.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const company = await getUserActiveCompany(interaction.guildId, userId);
+    if (!company) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    setRedomiciliationSelection(interaction.guildId, userId, {
+      countryName: lookup.country.name,
+      countryKey: normalizeCountryKey(lookup.country.name),
+      continentId: lookup.continentId
+    });
+
+    await interaction.deferUpdate();
+
+    try {
+      const profile = await getCountryProfile(interaction.guildId, lookup.country);
+      const selectedCountryLabel = `${resolveEmojiIdentifier(lookup.country.emoji, formatEmoji)} | ${lookup.country.name}`;
+      const selectedTaxRateLabel = `${profile.foreignCompanyTaxRate}%`;
+      const jurisdictionContent = buildRedomiciliationJurisdictionContent(company.industryKey);
+
+      const view = await buildCompanyRedomiciliationView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        selectedTaxRateLabel,
+        jurisdictionContent,
+        confirmDisabled: false
+      });
+
+      await interaction.editReply({
+        components: view,
+        flags: MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить редомициляцию. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }

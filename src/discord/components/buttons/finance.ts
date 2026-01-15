@@ -28,6 +28,7 @@ import {
   markManufacturingLegalNewsStarted,
   markPaymentSystemLegalNewsDone,
   markPaymentSystemLegalNewsStarted,
+  redomiciliateCompany,
   orderCryptoExchangeWebDevelopment,
   orderConstructionWebDevelopment,
   orderInvestmentExchangeWebDevelopment,
@@ -43,8 +44,9 @@ import {
   type PaymentSystemInfrastructureKey
 } from '../../../services/privateCompanyService.js';
 import {
-  buildCompanyBranchesView,
+  buildCompanyActivityView,
   buildCompanyFinanceView,
+  buildCompanyRedomiciliationView,
   buildFinanceView,
   buildGovernmentBudgetView,
   buildCryptoExchangeInfrastructureView,
@@ -69,9 +71,15 @@ import {
   buildPaymentSystemWebDevelopmentView
 } from '../../features/financeView.js';
 import { buildCompanyProfileView } from '../../features/companyProfileView.js';
+import { buildRedomiciliationJurisdictionContent } from '../../features/financeRedomiciliation.js';
+import { resolveEmojiIdentifier, type Country } from '../../features/settings/countriesView.js';
 import { collectPopulationTaxForCountry } from '../../../services/populationTaxService.js';
 import { logger } from '../../../shared/logger.js';
 import { formatDateTime } from '../../../shared/time.js';
+import {
+  clearRedomiciliationSelection,
+  getRedomiciliationSelection
+} from '../../../services/redomiciliationService.js';
 
 export const financeBudgetButton: ButtonHandler = {
   key: 'finance:budget',
@@ -523,20 +531,16 @@ export const companyFinanceBranchesButton: ButtonHandler = {
         return;
       }
 
-      const { entries, totalPages, page: resolvedPage } = await resolveBranchEntries({ page });
-      const view = await buildCompanyBranchesView({
-        guild: interaction.guild,
-        user: interaction.user,
-        entries,
-        page: resolvedPage,
-        totalPages
+      await renderCompanyActivityView({
+        interaction,
+        formatEmoji,
+        userId,
+        page
       });
-
-      await interaction.editReply({ components: view });
     } catch (error) {
       logger.error(error);
       await interaction.followUp({
-        components: buildWarningView(formatEmoji, 'Не удалось открыть список филиалов. Попробуйте позже.'),
+        components: buildWarningView(formatEmoji, 'Не удалось открыть географию деятельности. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }
@@ -578,10 +582,383 @@ export const companyFinanceBranchesInfoButton: ButtonHandler = {
       return;
     }
 
+    const page = 1;
+
+    await interaction.deferUpdate();
+
+    try {
+      await renderCompanyActivityView({
+        interaction,
+        formatEmoji,
+        userId,
+        page
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть географию деятельности. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceBranchesStartButton: ButtonHandler = {
+  key: 'companyFinance:branchesStart',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
     await interaction.reply({
-      components: buildWarningView(formatEmoji, 'Список филиалов пока недоступен.'),
+      components: buildWarningView(formatEmoji, 'Функция запуска деятельности в новой стране будет добавлена позже.'),
       flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
     });
+  }
+};
+
+export const companyFinanceRedomicileOpenButton: ButtonHandler = {
+  key: 'companyFinance:redomicileOpen',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const selection = getRedomiciliationSelection(interaction.guildId, userId);
+      let selectedCountryLabel = 'Не выбрано';
+      let selectedTaxRateLabel = 'Не выбрано';
+
+      if (selection) {
+        const selectedCountryLookup = findCountryByKey(selection.countryName);
+        if (selectedCountryLookup) {
+          selectedCountryLabel = `${resolveEmojiIdentifier(selectedCountryLookup.country.emoji, formatEmoji)} | ${selectedCountryLookup.country.name}`;
+          const profile = await getCountryProfile(interaction.guildId, selectedCountryLookup.country);
+          selectedTaxRateLabel = `${profile.foreignCompanyTaxRate}%`;
+        } else {
+          selectedCountryLabel = selection.countryName;
+        }
+      }
+
+      const jurisdictionContent = buildRedomiciliationJurisdictionContent(company.industryKey);
+      const view = await buildCompanyRedomiciliationView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        selectedTaxRateLabel,
+        jurisdictionContent,
+        confirmDisabled: !selection
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть редомициляцию. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceRedomicileBackButton: ButtonHandler = {
+  key: 'companyFinance:redomicileBack',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      await renderCompanyActivityView({
+        interaction,
+        formatEmoji,
+        userId,
+        page: 1
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось вернуться назад. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceRedomicileEditButton: ButtonHandler = {
+  key: 'companyFinance:redomicileEdit',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId(buildCustomId('companyFinance', 'redomicileEditModal', userId))
+      .setTitle('Редомициляция');
+
+    const input = new TextInputBuilder()
+      .setCustomId('redomicile-country')
+      .setLabel('Страна переезда')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+
+    await interaction.showModal(modal);
+  }
+};
+
+export const companyFinanceRedomicileConfirmButton: ButtonHandler = {
+  key: 'companyFinance:redomicileConfirm',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getRedomiciliationSelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну переезда.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selectedCountryLookup = findCountryByKey(selection.countryName);
+    if (!selectedCountryLookup) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Выбранная страна не найдена.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const result = await redomiciliateCompany({
+        guildId: interaction.guildId,
+        userId,
+        country: selectedCountryLookup.country,
+        continentId: selection.continentId
+      });
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'sameCountry') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Компания уже зарегистрирована в этой стране.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'tasksIncomplete') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Сначала завершите все обязательные задания компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'insufficientFunds') {
+        await interaction.followUp({
+          components: buildWarningView(
+            formatEmoji,
+            `Недостаточно средств для редомициляции. Нужно: ${result.price.toLocaleString('ru-RU')} ${formatEmoji('stackmoney')}.`
+          ),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'countryLimit') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'В выбранной стране уже достигнут лимит компаний.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      clearRedomiciliationSelection(interaction.guildId, userId);
+
+      await renderCompanyActivityView({
+        interaction,
+        formatEmoji,
+        userId,
+        page: 1
+      });
+
+      await interaction.followUp({
+        components: buildSuccessView(formatEmoji, 'Страна регистрации компании обновлена.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось выполнить редомициляцию. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
   }
 };
 
@@ -3665,6 +4042,58 @@ export const companyFinanceBranchesNextButton: ButtonHandler = {
   }
 };
 
+async function renderCompanyActivityView(options: {
+  interaction: Parameters<ButtonHandler['execute']>[0];
+  formatEmoji: (name: string) => string;
+  userId: string;
+  page: number;
+}): Promise<void> {
+  const { interaction, formatEmoji, userId, page } = options;
+
+  const company = await getUserActiveCompany(interaction.guildId, userId);
+  if (!company) {
+    await interaction.followUp({
+      components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+    return;
+  }
+
+  const countryLookup = findCountryByKey(company.countryName);
+  if (!countryLookup) {
+    await interaction.followUp({
+      components: buildWarningView(formatEmoji, 'Страна компании не найдена.'),
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+    return;
+  }
+
+  const profile = await getCountryProfile(interaction.guildId, countryLookup.country);
+  const registrationLabel = `${resolveEmojiIdentifier(countryLookup.country.emoji, formatEmoji)} | ${countryLookup.country.name}`;
+
+  const { entries, totalPages, page: resolvedPage } = await resolveCompanyActivityEntries({
+    guildId: interaction.guildId,
+    company,
+    formatEmoji,
+    page,
+    registrationCountry: countryLookup.country,
+    registrationProfile: profile
+  });
+
+  const view = await buildCompanyActivityView({
+    guild: interaction.guild,
+    user: interaction.user,
+    registrationLabel,
+    registrationTaxRate: profile.residentCompanyTaxRate,
+    registrationDate: company.registeredAt,
+    entries,
+    page: resolvedPage,
+    totalPages
+  });
+
+  await interaction.editReply({ components: view });
+}
+
 async function handleBranchPagination(
   interaction: Parameters<ButtonHandler['execute']>[0],
   ctx: Parameters<ButtonHandler['execute']>[1],
@@ -3716,16 +4145,12 @@ async function handleBranchPagination(
       return;
     }
 
-    const { entries, totalPages, page: resolvedPage } = await resolveBranchEntries({ page: page + direction });
-    const view = await buildCompanyBranchesView({
-      guild: interaction.guild,
-      user: interaction.user,
-      entries,
-      page: resolvedPage,
-      totalPages
+    await renderCompanyActivityView({
+      interaction,
+      formatEmoji,
+      userId,
+      page: page + direction
     });
-
-    await interaction.editReply({ components: view });
   } catch (error) {
     logger.error(error);
     await interaction.followUp({
@@ -3735,18 +4160,43 @@ async function handleBranchPagination(
   }
 }
 
-async function resolveBranchEntries(options: {
+async function resolveCompanyActivityEntries(options: {
+  guildId: string;
+  company: Awaited<ReturnType<typeof getUserActiveCompany>>;
+  formatEmoji: (name: string) => string;
   page: number;
+  registrationCountry?: Country | null;
+  registrationProfile?: Awaited<ReturnType<typeof getCountryProfile>>;
 }): Promise<{
-  entries: Array<{ countryLabel: string; registeredUserId?: string; taxRate: number }>;
+  entries: Array<{ countryLabel: string; registeredUserId?: string; taxRate: number; startedAt: Date }>;
   page: number;
   totalPages: number;
 }> {
-  const branches: Array<{ countryLabel: string; registeredUserId?: string; taxRate: number }> = [];
-  const totalPages = Math.max(1, Math.ceil(branches.length / 5));
-  const page = Math.min(totalPages, Math.max(1, Math.trunc(options.page)));
-  const start = (page - 1) * 5;
-  const entries = branches.slice(start, start + 5);
+  const { guildId, company, formatEmoji, page: requestedPage, registrationCountry, registrationProfile } = options;
 
-  return { entries, page, totalPages };
+  if (!company) {
+    return { entries: [], page: 1, totalPages: 1 };
+  }
+
+  const entries: Array<{ countryLabel: string; registeredUserId?: string; taxRate: number; startedAt: Date }> = [];
+  const resolvedCountry = registrationCountry ?? findCountryByKey(company.countryName)?.country ?? null;
+  if (resolvedCountry) {
+    const profile = registrationProfile ?? (await getCountryProfile(guildId, resolvedCountry));
+    const countryLabel = `${resolveEmojiIdentifier(resolvedCountry.emoji, formatEmoji)} | ${resolvedCountry.name}`;
+    const registeredUserId = profile.registeredUserId ? profile.registeredUserId.toString() : undefined;
+
+    entries.push({
+      countryLabel,
+      registeredUserId,
+      taxRate: profile.foreignCompanyTaxRate,
+      startedAt: company.registeredAt
+    });
+  }
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / 5));
+  const page = Math.min(totalPages, Math.max(1, Math.trunc(requestedPage)));
+  const start = (page - 1) * 5;
+  const pagedEntries = entries.slice(start, start + 5);
+
+  return { entries: pagedEntries, page, totalPages };
 }

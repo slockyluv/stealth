@@ -5,6 +5,7 @@ import { settingsCountriesEditModal } from './settingsCountries.js';
 import { profileEditModal } from './profile.js';
 import {
   companyFinanceFeeEditModal,
+  companyFinanceRedomicileEditModal,
   financeForeignTaxEditModal,
   financeResidentTaxEditModal,
   financeTaxationEditModal
@@ -21,5 +22,6 @@ export const modalHandlers: ModalHandler[] = [
   financeResidentTaxEditModal,
   financeForeignTaxEditModal,
   companyFinanceFeeEditModal,
+  companyFinanceRedomicileEditModal,
   companyNameModal
 ];

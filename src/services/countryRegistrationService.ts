@@ -79,6 +79,13 @@ export function findCountryByKey(countryKey: string): CountryLookupResult | null
   return findCountryByPredicate(({ country }) => normalizeSearchValue(country.name) === normalizedKey);
 }
 
+export function findCountryByPartialQuery(query: string): CountryLookupResult | null {
+  const normalizedQuery = normalizeSearchValue(query);
+  if (!normalizedQuery) return null;
+
+  return findCountryByPredicate(({ country }) => normalizeSearchValue(country.name).includes(normalizedQuery));
+}
+
 export async function getUserRegistration(guildId: string, userId: string): Promise<CountryRegistrationRecord | null> {
   return prisma.countryRegistration.findUnique({
     where: {

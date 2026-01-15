@@ -399,6 +399,97 @@ export function isManufacturingOnboardingComplete(company: PrivateCompanyRecord)
   );
 }
 
+const REDOMICILIATION_COST = 0n;
+
+export type RedomiciliationResult =
+  | { status: 'notFound' }
+  | { status: 'sameCountry' }
+  | { status: 'tasksIncomplete' }
+  | { status: 'insufficientFunds'; price: bigint; budget: bigint }
+  | { status: 'countryLimit' }
+  | { status: 'success'; company: PrivateCompanyRecord; price: bigint };
+
+function isCompanyOnboardingComplete(company: PrivateCompanyRecord): boolean {
+  switch (company.industryKey) {
+    case 'payment_system':
+      return isPaymentSystemOnboardingComplete(company);
+    case 'investment_exchange':
+      return isInvestmentExchangeOnboardingComplete(company);
+    case 'crypto_exchange':
+      return isCryptoExchangeOnboardingComplete(company);
+    case 'construction':
+      return isConstructionOnboardingComplete(company);
+    case 'manufacturing':
+      return isManufacturingOnboardingComplete(company);
+    default:
+      return true;
+  }
+}
+
+export async function redomiciliateCompany(options: {
+  guildId: string;
+  userId: string;
+  country: Country;
+  continentId: ContinentId;
+  limit?: number;
+}): Promise<RedomiciliationResult> {
+  const normalizedKey = normalizeCountryKey(options.country.name);
+
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(options.guildId),
+        ownerId: BigInt(options.userId),
+        isActive: true
+      },
+      orderBy: { registeredAt: 'desc' }
+    });
+
+    if (!company) {
+      return { status: 'notFound' };
+    }
+
+    if (normalizeCountryKey(company.countryName) === normalizedKey) {
+      return { status: 'sameCountry' };
+    }
+
+    if (!isCompanyOnboardingComplete(company)) {
+      return { status: 'tasksIncomplete' };
+    }
+
+    const budget = company.budget ?? 0n;
+    if (budget < REDOMICILIATION_COST) {
+      return { status: 'insufficientFunds', price: REDOMICILIATION_COST, budget };
+    }
+
+    const limit = options.limit ?? COMPANY_PER_COUNTRY_LIMIT;
+    const count = await tx.privateCompany.count({
+      where: {
+        guildId: BigInt(options.guildId),
+        countryKey: normalizedKey,
+        NOT: { id: company.id }
+      }
+    });
+
+    if (count >= limit) {
+      return { status: 'countryLimit' };
+    }
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        countryName: options.country.name,
+        countryKey: normalizedKey,
+        continent: options.continentId,
+        registeredAt: new Date(),
+        budget: budget - REDOMICILIATION_COST
+      }
+    });
+
+    return { status: 'success', company: updated, price: REDOMICILIATION_COST };
+  });
+}
+
 export async function markPaymentSystemLegalNewsStarted(
   guildId: string,
   userId: string

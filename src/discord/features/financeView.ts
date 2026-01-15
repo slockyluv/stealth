@@ -27,6 +27,7 @@ import {
   type PrivateCompanyRecord
 } from '../../services/privateCompanyService.js';
 import { canCollectPopulationTax } from '../../services/populationTaxService.js';
+import { formatDateTime } from '../../shared/time.js';
 
 function buildSeparator(): ComponentInContainerData {
   return {
@@ -342,7 +343,7 @@ export async function buildCompanyFinanceView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: [`**${formatEmoji('filialscomp')} Филиалы компании:**`, `> ${branchCount}`].join('\n')
+        content: [`**${formatEmoji('filialscomp')} География деятельности:**`, `> ${branchCount}`].join('\n')
       }
     ],
     accessory: branchesButton
@@ -2121,18 +2122,22 @@ export async function buildManufacturingPurchaseResultView(options: {
   return [container];
 }
 
-export async function buildCompanyBranchesView(options: {
+export async function buildCompanyActivityView(options: {
   guild: Guild;
   user: User;
+  registrationLabel: string;
+  registrationTaxRate: number;
+  registrationDate: Date;
   entries: Array<{
     countryLabel: string;
     registeredUserId?: string;
     taxRate: number;
+    startedAt: Date;
   }>;
   page: number;
   totalPages: number;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, entries, page, totalPages } = options;
+  const { guild, user, registrationLabel, registrationTaxRate, registrationDate, entries, page, totalPages } = options;
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
@@ -2140,33 +2145,58 @@ export async function buildCompanyBranchesView(options: {
     guildEmojis: guild.emojis.cache.values()
   });
 
-  const header: SectionComponentData = {
+  const headerContent = [
+    `**${formatEmoji('filialscomp')} Деятельность компании**`,
+    '',
+    '```Расширяйте географию деятельности своей компании в различных странах мира чтобы масштабироваться и увеличить собственный заработок.```'
+  ].join('\n');
+
+  const registrationButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'redomicileOpen', user.id),
+    label: 'Редомициляция',
+    emoji: formatEmoji('bolt')
+  };
+
+  const registrationSection: SectionComponentData = {
     type: ComponentType.Section,
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: [`# ${formatEmoji('list')} Список филиалов:`, '', `**Пользователь:** <@${user.id}>`].join('\n')
+        content: [
+          `**${formatEmoji('documentgavel')} Страна регистрации**`,
+          '',
+          `**Государство:** *${registrationLabel}*`,
+          `**Налог на прибыль:** *${registrationTaxRate}%*`,
+          `**Дата регистрации:** *${formatDateTime(registrationDate)}*`
+        ].join('\n')
       }
     ],
-    accessory: {
-      type: ComponentType.Thumbnail,
-      media: { url: user.displayAvatarURL({ size: 256 }) },
-      description: `Аватар ${user.username}`
-    }
+    accessory: registrationButton
   };
 
-  const listContent = entries.length
-    ? entries
-        .map((entry) => {
-          const registeredUser = entry.registeredUserId ? `<@${entry.registeredUserId}>` : '*Не найден*';
-          return [
-            `**>・${entry.countryLabel}**`,
-            `**Пользователь:** ${registeredUser}`,
-            `**Налоговая ставка:** \`${entry.taxRate}%\``
-          ].join('\n');
-        })
-        .join('\n\n')
-    : '*Филиалы не найдены.*';
+  const activityHeaderContent = `**${formatEmoji('worldpulse')} География деятельности**`;
+
+  const activityComponents: ComponentInContainerData[] = [];
+
+  if (!entries.length) {
+    activityComponents.push({ type: ComponentType.TextDisplay, content: '*Страны не найдены.*' });
+    activityComponents.push(buildSeparator());
+  } else {
+    for (const entry of entries) {
+      const registeredUser = entry.registeredUserId ? `<@${entry.registeredUserId}>` : '*Не выбрано*';
+      const entryContent = [
+        `> **${entry.countryLabel}**`,
+        `**Пользователь:** *${registeredUser}*`,
+        `**Налог на прибыль:** *${entry.taxRate}%*`,
+        `**Начало деятельности:** *${formatDateTime(entry.startedAt)}*`
+      ].join('\n');
+
+      activityComponents.push({ type: ComponentType.TextDisplay, content: entryContent });
+      activityComponents.push(buildSeparator());
+    }
+  }
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'branchesBack', user.id))
@@ -2186,12 +2216,87 @@ export async function buildCompanyBranchesView(options: {
     .setEmoji(formatEmoji('anglesmallright'))
     .setDisabled(page >= totalPages);
 
+  const startButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'branchesStart', user.id))
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('linkalt'));
+
   const container = buildContainer([
-    header,
+    { type: ComponentType.TextDisplay, content: headerContent },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: listContent },
+    registrationSection,
     buildSeparator(),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, prevButton, nextButton).toJSON()
+    { type: ComponentType.TextDisplay, content: activityHeaderContent },
+    ...activityComponents,
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, prevButton, nextButton, startButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildCompanyRedomiciliationView(options: {
+  guild: Guild;
+  user: User;
+  selectedCountryLabel: string;
+  selectedTaxRateLabel: string;
+  jurisdictionContent: string;
+  confirmDisabled: boolean;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, selectedCountryLabel, selectedTaxRateLabel, jurisdictionContent, confirmDisabled } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const headerContent = `**${formatEmoji('bolt')} Редомициляция**`;
+
+  const editButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'redomicileEdit', user.id),
+    label: 'Изменить',
+    emoji: formatEmoji('edit')
+  };
+
+  const selectionSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          `**${formatEmoji('worldpulse')} Страна переезда:**`,
+          `> *${selectedCountryLabel}*`,
+          `**${formatEmoji('taxation')} Налог на прибыль:**`,
+          `> *${selectedTaxRateLabel}*`
+        ].join('\n')
+      }
+    ],
+    accessory: editButton
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'redomicileBack', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const confirmButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'redomicileConfirm', user.id))
+    .setLabel('Подтвердить')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('slide_d'))
+    .setDisabled(confirmDisabled);
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: headerContent },
+    buildSeparator(),
+    selectionSection,
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: jurisdictionContent },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, confirmButton).toJSON()
   ]);
 
   return [container];

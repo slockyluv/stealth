@@ -17,7 +17,6 @@ import { finance } from './finance.js';
 import { giveMoney, takeMoney, resetMoney } from './money.js';
 import { ownerpanel } from './ownerpanel.js';
 import { stats } from './stats.js';
-import { statsMembers } from './statsMember.js';
 import { marry } from './marry.js';
 import { top } from './top.js';
 
@@ -48,7 +47,6 @@ export const commands = [
   resetMoney,
   ownerpanel,
   stats,
-  statsMember,
   marry,
   top
 ];

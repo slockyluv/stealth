@@ -3,8 +3,6 @@ import { AuditLogEvent } from 'discord.js';
 import { fetchAuditEntry } from '../../services/auditLog.js';
 import { logKick, logTrafficLeave } from '../../services/actionLogger.js';
 import { consumePendingActionModerator, consumeTrafficInviter } from '../../services/actionLogState.js';
-import { logger } from '../../shared/logger.js';
-import { recordMemberLeave } from '../../services/memberStatsService.js';
 
 export async function guildMemberRemove(member: GuildMember | PartialGuildMember) {
   const guild = member.guild;
@@ -50,14 +48,4 @@ export async function guildMemberRemove(member: GuildMember | PartialGuildMember
     joinedAt: 'joinedAt' in member ? member.joinedAt : null,
     leftAt: new Date()
   });
-
-  try {
-    await recordMemberLeave({
-      guildId: guild.id,
-      memberCount: guild.memberCount,
-      leftAt: new Date()
-    });
-  } catch (error) {
-    logger.error(error);
-  }
 }

@@ -14,8 +14,15 @@ export type RedomiciliationInfrastructureContent = {
   items: RedomiciliationInfrastructureItem[];
 };
 
+type InfrastructureIndustryKey =
+  | 'payment_system'
+  | 'investment_exchange'
+  | 'crypto_exchange'
+  | 'construction'
+  | 'manufacturing';
+
 export function getRedomiciliationInfrastructureContent(industryKey: string): RedomiciliationInfrastructureContent {
-  const infrastructureByIndustry: Record<string, RedomiciliationInfrastructureContent> = {
+  const infrastructureByIndustry: Record<InfrastructureIndustryKey, RedomiciliationInfrastructureContent> = {
     payment_system: {
       title: '**Строительство инфраструктуры**',
       description: '> *Вам необходимо построить инфраструктуру, требуемую для старта деятельности вашей компании.*',
@@ -111,11 +118,12 @@ export function getRedomiciliationInfrastructureContent(industryKey: string): Re
         }
       ]
     }
-  } as const satisfies Record<string, RedomiciliationInfrastructureContent>;
+  };
 
   const fallbackInfrastructure = infrastructureByIndustry.payment_system;
-  const infrastructure =
-    infrastructureByIndustry[industryKey as keyof typeof infrastructureByIndustry] ?? fallbackInfrastructure;
+  const infrastructure = isInfrastructureIndustryKey(infrastructureByIndustry, industryKey)
+    ? infrastructureByIndustry[industryKey]
+    : fallbackInfrastructure;
 
   return {
     title: infrastructure.title,
@@ -123,4 +131,11 @@ export function getRedomiciliationInfrastructureContent(industryKey: string): Re
     actionHeader: infrastructure.actionHeader,
     items: infrastructure.items
   };
+}
+
+function isInfrastructureIndustryKey(
+  infrastructureByIndustry: Record<InfrastructureIndustryKey, RedomiciliationInfrastructureContent>,
+  value: string
+): value is InfrastructureIndustryKey {
+  return value in infrastructureByIndustry;
 }

@@ -22,12 +22,16 @@ export function buildRedomiciliationJurisdictionContent(industryKey: string): st
     }
   };
 
-  const infrastructure = infrastructureByIndustry[industryKey] ?? infrastructureByIndustry.payment_system;
+  const infrastructure =
+    infrastructureByIndustry[industryKey as keyof typeof infrastructureByIndustry] ?? infrastructureByIndustry.payment_system;
+  const infrastructureTitle = infrastructure.title;
+  const infrastructureDescription = infrastructure.description;
 
   return [
     '**Смена юрисдикции**',
     '> *Напишите подробную новость о редомициляции Вашей компании в другую страны и смене юрисдикции.*',
-    infrastructure.title,
-    infrastructure.description
+    '```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания переехала и сменила страну юрисдикции. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```',
+    infrastructureTitle,
+    infrastructureDescription
   ].join('\n');
 }

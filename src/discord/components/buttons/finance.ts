@@ -4050,6 +4050,14 @@ async function renderCompanyActivityView(options: {
 }): Promise<void> {
   const { interaction, formatEmoji, userId, page } = options;
 
+  if (!interaction.guildId || !interaction.guild) {
+    await interaction.followUp({
+      components: buildWarningView(formatEmoji, 'Интерфейс доступен только внутри сервера.'),
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+    return;
+  }
+
   const company = await getUserActiveCompany(interaction.guildId, userId);
   if (!company) {
     await interaction.followUp({

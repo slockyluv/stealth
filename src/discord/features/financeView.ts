@@ -594,11 +594,10 @@ export async function buildPaymentSystemLegalNewsActionView(options: {
     guildEmojis: guild.emojis.cache.values()
   });
 
-  const content = [
-    '*- Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.*',
-    '',
-    '*После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*'
-  ].join('\n');
+  const title = `# ${formatEmoji('documentgavel')} Юридическая регистрация`;
+  const content =
+    '*```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note = '> *После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*';
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'paymentSystemBack', 'finance', user.id))
@@ -607,7 +606,11 @@ export async function buildPaymentSystemLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -659,6 +662,7 @@ export async function buildPaymentSystemInfrastructureView(options: {
 
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -768,7 +772,7 @@ export async function buildPaymentSystemPurchaseResultView(options: {
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: title },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    { type: ComponentType.TextDisplay, content: `**Цена:** *${formatBudgetValue(price)}* ${formatEmoji('stackmoney')}` },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -922,11 +926,10 @@ export async function buildInvestmentExchangeLegalNewsActionView(options: {
     guildEmojis: guild.emojis.cache.values()
   });
 
-  const content = [
-    '*- Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.*',
-    '',
-    '*После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*'
-  ].join('\n');
+  const title = `# ${formatEmoji('documentgavel')} Юридическая регистрация`;
+  const content =
+    '*```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note = '> *После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*';
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'investmentExchangeBack', 'finance', user.id))
@@ -935,7 +938,11 @@ export async function buildInvestmentExchangeLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -987,6 +994,7 @@ export async function buildInvestmentExchangeInfrastructureView(options: {
 
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -1096,7 +1104,7 @@ export async function buildInvestmentExchangePurchaseResultView(options: {
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: title },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    { type: ComponentType.TextDisplay, content: `**Цена:** *${formatBudgetValue(price)}* ${formatEmoji('stackmoney')}` },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -1249,11 +1257,10 @@ export async function buildCryptoExchangeLegalNewsActionView(options: {
     guildEmojis: guild.emojis.cache.values()
   });
 
-  const content = [
-    '*- Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.*',
-    '',
-    '*После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*'
-  ].join('\n');
+  const title = `# ${formatEmoji('documentgavel')} Юридическая регистрация`;
+  const content =
+    '*```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note = '> *После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*';
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'cryptoExchangeBack', 'finance', user.id))
@@ -1262,7 +1269,11 @@ export async function buildCryptoExchangeLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -1314,6 +1325,7 @@ export async function buildCryptoExchangeInfrastructureView(options: {
 
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -1423,7 +1435,7 @@ export async function buildCryptoExchangePurchaseResultView(options: {
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: title },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    { type: ComponentType.TextDisplay, content: `**Цена:** *${formatBudgetValue(price)}* ${formatEmoji('stackmoney')}` },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -1571,11 +1583,10 @@ export async function buildConstructionLegalNewsActionView(options: {
     guildEmojis: guild.emojis.cache.values()
   });
 
-  const content = [
-    '*- Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.*',
-    '',
-    '*После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*'
-  ].join('\n');
+  const title = `# ${formatEmoji('documentgavel')} Юридическая регистрация`;
+  const content =
+    '*```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note = '> *После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*';
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'constructionBack', 'finance', user.id))
@@ -1584,7 +1595,11 @@ export async function buildConstructionLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -1636,6 +1651,7 @@ export async function buildConstructionEquipmentView(options: {
 
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -1742,7 +1758,7 @@ export async function buildConstructionPurchaseResultView(options: {
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: title },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    { type: ComponentType.TextDisplay, content: `**Цена:** *${formatBudgetValue(price)}* ${formatEmoji('stackmoney')}` },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -1891,11 +1907,10 @@ export async function buildManufacturingLegalNewsActionView(options: {
     guildEmojis: guild.emojis.cache.values()
   });
 
-  const content = [
-    '*- Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.*',
-    '',
-    '*После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*'
-  ].join('\n');
+  const title = `# ${formatEmoji('documentgavel')} Юридическая регистрация`;
+  const content =
+    '*```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания была успешна юридически зарегистрирована и ведёт подготовку к началу операционной деятельности. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note = '> *После успешного выполнения действия вам необходимо вам необходимо вернуть в меню интерфейса "Финансы" и вновь нажать кнопку Выполнено.*';
 
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'manufacturingBack', 'finance', user.id))
@@ -1904,7 +1919,11 @@ export async function buildManufacturingLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
@@ -1956,6 +1975,7 @@ export async function buildManufacturingInfrastructureView(options: {
 
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -2034,6 +2054,7 @@ export async function buildManufacturingEquipmentView(options: {
 
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
+    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -2092,7 +2113,7 @@ export async function buildManufacturingPurchaseResultView(options: {
   const container = buildContainer([
     { type: ComponentType.TextDisplay, content: title },
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: `*Цена: ${formatBudgetValue(price)}*` },
+    { type: ComponentType.TextDisplay, content: `**Цена:** *${formatBudgetValue(price)}* ${formatEmoji('stackmoney')}` },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);

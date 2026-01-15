@@ -607,8 +607,6 @@ export async function buildPaymentSystemLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
@@ -657,12 +655,9 @@ export async function buildPaymentSystemInfrastructureView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
   const subHeader = `**${formatEmoji('filialscomp')} Необходимая инфраструктура:**`;
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: contentHeader },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     {
       type: ComponentType.Section,
@@ -729,8 +724,6 @@ export async function buildPaymentSystemWebDevelopmentView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -942,8 +935,6 @@ export async function buildInvestmentExchangeLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
@@ -992,12 +983,9 @@ export async function buildInvestmentExchangeInfrastructureView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
   const subHeader = `**${formatEmoji('filialscomp')} Необходимая инфраструктура:**`;
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: contentHeader },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     {
       type: ComponentType.Section,
@@ -1064,8 +1052,6 @@ export async function buildInvestmentExchangeWebDevelopmentView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -1276,8 +1262,6 @@ export async function buildCryptoExchangeLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
@@ -1305,7 +1289,7 @@ export async function buildCryptoExchangeInfrastructureView(options: {
   const mainOfficeButton: ButtonComponentData = {
     type: ComponentType.Button,
     style: ButtonStyle.Secondary,
-    customId: buildCustomId('companyFinance', 'cryptoExchangeInfrastructureBuild', 'mainOffice', user.id),
+    customId: buildCustomId('companyFinance', 'crypto_exchange_infra_build', 'mainOffice', user.id),
     label: company.cryptoExchangeInfrastructureMainOfficeBuilt ? 'Построено' : 'Построить',
     emoji: formatEmoji(company.cryptoExchangeInfrastructureMainOfficeBuilt ? 'slide_d' : 'buybutton'),
     disabled: company.cryptoExchangeInfrastructureMainOfficeBuilt
@@ -1314,7 +1298,7 @@ export async function buildCryptoExchangeInfrastructureView(options: {
   const serverButton: ButtonComponentData = {
     type: ComponentType.Button,
     style: ButtonStyle.Secondary,
-    customId: buildCustomId('companyFinance', 'cryptoExchangeInfrastructureBuild', 'serverInfrastructure', user.id),
+    customId: buildCustomId('companyFinance', 'crypto_exchange_infra_build', 'serverInfrastructure', user.id),
     label: company.cryptoExchangeInfrastructureServerBuilt ? 'Построено' : 'Построить',
     emoji: formatEmoji(company.cryptoExchangeInfrastructureServerBuilt ? 'slide_d' : 'buybutton'),
     disabled: company.cryptoExchangeInfrastructureServerBuilt
@@ -1326,12 +1310,9 @@ export async function buildCryptoExchangeInfrastructureView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
   const subHeader = `**${formatEmoji('filialscomp')} Необходимая инфраструктура:**`;
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: contentHeader },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     {
       type: ComponentType.Section,
@@ -1398,8 +1379,6 @@ export async function buildCryptoExchangeWebDevelopmentView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -1605,8 +1584,6 @@ export async function buildConstructionLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
@@ -1655,12 +1632,9 @@ export async function buildConstructionEquipmentView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
   const subHeader = `**${formatEmoji('filialscomp')} Необходимая техника:**`;
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: contentHeader },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     {
       type: ComponentType.Section,
@@ -1727,8 +1701,6 @@ export async function buildConstructionWebDevelopmentView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     {
       type: ComponentType.Section,
       components: [
@@ -1932,8 +1904,6 @@ export async function buildManufacturingLegalNewsActionView(options: {
     .setEmoji(formatEmoji('undonew'));
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: `**${formatEmoji('staff_warn')} Выполните действие:**` },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
@@ -1982,12 +1952,9 @@ export async function buildManufacturingInfrastructureView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
   const subHeader = `**${formatEmoji('filialscomp')} Необходимая инфраструктура:**`;
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: contentHeader },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     {
       type: ComponentType.Section,
@@ -2063,12 +2030,9 @@ export async function buildManufacturingEquipmentView(options: {
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
 
-  const contentHeader = `**${formatEmoji('staff_warn')} Выполните действие:**`;
   const subHeader = `**${formatEmoji('filialscomp')} Необходимое оборудование:**`;
 
   const container = buildContainer([
-    { type: ComponentType.TextDisplay, content: contentHeader },
-    buildSeparator(),
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     {
       type: ComponentType.Section,

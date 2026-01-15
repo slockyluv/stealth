@@ -2054,7 +2054,7 @@ export const companyFinanceCryptoExchangeInfrastructureOpenButton: ButtonHandler
 };
 
 export const companyFinanceCryptoExchangeInfrastructureBuildButton: ButtonHandler = {
-  key: 'companyFinance:cryptoExchangeInfrastructureBuild',
+  key: 'companyFinance:crypto_exchange_infra_build',
 
   async execute(interaction, ctx) {
     const formatEmoji = await createEmojiFormatter({

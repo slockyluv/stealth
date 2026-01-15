@@ -27,6 +27,7 @@ import {
   type PrivateCompanyRecord
 } from '../../services/privateCompanyService.js';
 import { canCollectPopulationTax } from '../../services/populationTaxService.js';
+import type { RedomiciliationTaskState } from '../../services/redomiciliationService.js';
 import { formatDateTime } from '../../shared/time.js';
 
 function buildSeparator(): ComponentInContainerData {
@@ -2239,10 +2240,21 @@ export async function buildCompanyRedomiciliationView(options: {
   user: User;
   selectedCountryLabel: string;
   selectedTaxRateLabel: string;
-  jurisdictionContent: string;
+  infrastructureTitle: string;
+  infrastructureDescription: string;
+  taskState: RedomiciliationTaskState;
   confirmDisabled: boolean;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, selectedCountryLabel, selectedTaxRateLabel, jurisdictionContent, confirmDisabled } = options;
+  const {
+    guild,
+    user,
+    selectedCountryLabel,
+    selectedTaxRateLabel,
+    infrastructureTitle,
+    infrastructureDescription,
+    taskState,
+    confirmDisabled
+  } = options;
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
@@ -2276,11 +2288,73 @@ export async function buildCompanyRedomiciliationView(options: {
     accessory: editButton
   };
 
+  const jurisdictionCompleted = taskState.jurisdictionDone;
+  const jurisdictionStarted = taskState.jurisdictionStarted && !jurisdictionCompleted;
+
+  const jurisdictionButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId(
+      'companyFinance',
+      jurisdictionCompleted || jurisdictionStarted ? 'redomicileJurisdictionDone' : 'redomicileJurisdictionStart',
+      user.id
+    ),
+    label: jurisdictionCompleted || jurisdictionStarted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(jurisdictionCompleted || jurisdictionStarted ? 'slide_d' : 'bolt'),
+    disabled: jurisdictionCompleted
+  };
+
+  const infrastructureCompleted = taskState.infrastructureDone;
+  const infrastructureStarted = taskState.infrastructureStarted && !infrastructureCompleted;
+
+  const infrastructureButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId(
+      'companyFinance',
+      infrastructureCompleted || infrastructureStarted ? 'redomicileInfrastructureDone' : 'redomicileInfrastructureStart',
+      user.id
+    ),
+    label: infrastructureCompleted || infrastructureStarted ? 'Выполнено' : 'Выполнить',
+    emoji: formatEmoji(infrastructureCompleted || infrastructureStarted ? 'slide_d' : 'bolt'),
+    disabled: infrastructureCompleted
+  };
+
+  const jurisdictionSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          '**Смена юрисдикции**',
+          '> *Напишите подробную новость о редомициляции Вашей компании в другую страны и смене юрисдикции.*'
+        ].join('\n')
+      }
+    ],
+    accessory: jurisdictionButton
+  };
+
+  const infrastructureSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [infrastructureTitle, infrastructureDescription].join('\n')
+      }
+    ],
+    accessory: infrastructureButton
+  };
+
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'redomicileBack', user.id))
     .setLabel('Назад')
     .setStyle(ButtonStyle.Secondary)
     .setEmoji(formatEmoji('undonew'));
+
+  const interactionButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'redomicileInteractionOpen', user.id))
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('linkalt'));
 
   const confirmButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'redomicileConfirm', user.id))
@@ -2294,9 +2368,122 @@ export async function buildCompanyRedomiciliationView(options: {
     buildSeparator(),
     selectionSection,
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: jurisdictionContent },
+    jurisdictionSection,
     buildSeparator(),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, confirmButton).toJSON()
+    infrastructureSection,
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, confirmButton, interactionButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildRedomiciliationJurisdictionActionView(options: {
+  guild: Guild;
+  user: User;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const title = `# ${formatEmoji('documentgavel')} Смена юрисдикции`;
+  const content =
+    '```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что ваша компания переехала и сменила страну юрисдикции. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note =
+    '> *После успешного выполнения действия вам необходимо вернуться в меню интерфейса "Редомициляция" и нажать кнопку Выполнено.*';
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'redomicileOpen', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildRedomiciliationInfrastructureActionView(options: {
+  guild: Guild;
+  user: User;
+  infrastructureTitle: string;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, infrastructureTitle } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const title = `# ${formatEmoji('filialscomp')} ${infrastructureTitle.replaceAll('**', '')}`;
+  const content =
+    '```Вы приступили к выполнению действия. Вам необходимо подготовить инфраструктуру вашей компании для запуска деятельности в новой юрисдикции. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note =
+    '> *После успешного выполнения действия вам необходимо вернуться в меню интерфейса "Редомициляция" и нажать кнопку Выполнено.*';
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'redomicileOpen', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildRedomiciliationInteractionView(options: {
+  guild: Guild;
+  user: User;
+  selectedCountryLabel: string;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, selectedCountryLabel } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const headerContent = `**${formatEmoji('linkalt')} Взаимодействие:**`;
+  const countryContent = [
+    `**${formatEmoji('worldpulse')} Страна взаимодействия:**`,
+    `*${selectedCountryLabel || 'Не выбрано'}*`
+  ].join('\n');
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'redomicileOpen', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: headerContent },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: countryContent },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
 
   return [container];

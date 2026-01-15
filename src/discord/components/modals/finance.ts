@@ -21,10 +21,10 @@ import {
   type CompanyFeeKey
 } from '../../../services/privateCompanyService.js';
 import { buildCompanyFinanceView, buildCompanyRedomiciliationView, buildGovernmentBudgetView } from '../../features/financeView.js';
-import { buildRedomiciliationJurisdictionContent } from '../../features/financeRedomiciliation.js';
+import { getRedomiciliationInfrastructureContent } from '../../features/financeRedomiciliation.js';
 import { resolveEmojiIdentifier } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
-import { setRedomiciliationSelection } from '../../../services/redomiciliationService.js';
+import { getRedomiciliationTaskState, setRedomiciliationSelection } from '../../../services/redomiciliationService.js';
 
 function parseTaxRate(input: string): number | null {
   const trimmed = input.trim();
@@ -418,14 +418,17 @@ export const companyFinanceRedomicileEditModal: ModalHandler = {
       const profile = await getCountryProfile(interaction.guildId, lookup.country);
       const selectedCountryLabel = `${resolveEmojiIdentifier(lookup.country.emoji, formatEmoji)} | ${lookup.country.name}`;
       const selectedTaxRateLabel = `${profile.foreignCompanyTaxRate}%`;
-      const jurisdictionContent = buildRedomiciliationJurisdictionContent(company.industryKey);
+      const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
+      const taskState = getRedomiciliationTaskState(interaction.guildId, userId);
 
       const view = await buildCompanyRedomiciliationView({
         guild: interaction.guild,
         user: interaction.user,
         selectedCountryLabel,
         selectedTaxRateLabel,
-        jurisdictionContent,
+        infrastructureTitle: infrastructureContent.title,
+        infrastructureDescription: infrastructureContent.description,
+        taskState,
         confirmDisabled: false
       });
 

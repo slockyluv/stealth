@@ -1,5 +1,5 @@
 export function buildRedomiciliationJurisdictionContent(industryKey: string): string {
-  const infrastructureByIndustry: Record<string, { title: string; description: string }> = {
+  const infrastructureByIndustry = {
     payment_system: {
       title: '**Строительство инфраструктуры**',
       description: '> *Вам необходимо построить инфраструктуру, требуемую для старта деятельности вашей компании.*'
@@ -20,12 +20,13 @@ export function buildRedomiciliationJurisdictionContent(industryKey: string): st
       title: '**Строительство инфраструктуры**',
       description: '> *Вам необходимо построить инфраструктуру, требуемую для старта деятельности вашей компании.*'
     }
-  };
+  } as const;
 
+  const fallbackInfrastructure = infrastructureByIndustry.payment_system;
   const infrastructure =
-    infrastructureByIndustry[industryKey as keyof typeof infrastructureByIndustry] ?? infrastructureByIndustry.payment_system;
-  const infrastructureTitle = infrastructure.title;
-  const infrastructureDescription = infrastructure.description;
+    infrastructureByIndustry[industryKey as keyof typeof infrastructureByIndustry] ?? fallbackInfrastructure;
+  const infrastructureTitle = infrastructure.title ?? fallbackInfrastructure.title;
+  const infrastructureDescription = infrastructure.description ?? fallbackInfrastructure.description;
 
   return [
     '**Смена юрисдикции**',

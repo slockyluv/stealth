@@ -2147,7 +2147,7 @@ export async function buildCompanyActivityView(options: {
   });
 
   const headerContent = [
-    `**${formatEmoji('filialscomp')} Деятельность компании**`,
+    `# ${formatEmoji('filialscomp')} Деятельность компании`,
     '',
     '```Расширяйте географию деятельности своей компании в различных странах мира чтобы масштабироваться и увеличить собственный заработок.```'
   ].join('\n');
@@ -2186,7 +2186,7 @@ export async function buildCompanyActivityView(options: {
     activityComponents.push(buildSeparator());
   } else {
     for (const entry of entries) {
-      const registeredUser = entry.registeredUserId ? `<@${entry.registeredUserId}>` : '*Не выбрано*';
+      const registeredUser = entry.registeredUserId ? `<@${entry.registeredUserId}>` : 'Отсутствует';
       const entryContent = [
         `> **${entry.countryLabel}**`,
         `**Пользователь:** *${registeredUser}*`,
@@ -2421,8 +2421,9 @@ export async function buildRedomiciliationInfrastructureActionView(options: {
     doneLabel: string;
   }>;
   completedItems: Set<string>;
+  prices: Record<string, bigint>;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, infrastructureTitle, actionHeader, items, completedItems } = options;
+  const { guild, user, infrastructureTitle, actionHeader, items, completedItems, prices } = options;
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
@@ -2450,7 +2451,10 @@ export async function buildRedomiciliationInfrastructureActionView(options: {
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `**${item.label}**`
+          content: [
+            `**${item.label}**`,
+            `**Цена: ${formatBudgetValue(prices[item.key] ?? 0n)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
         }
       ],
       accessory: itemButton
@@ -2473,6 +2477,42 @@ export async function buildRedomiciliationInfrastructureActionView(options: {
     { type: ComponentType.TextDisplay, content: [subHeader, '\u200b'].join('\n') },
     buildSeparator(),
     ...itemComponents,
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildRedomiciliationPurchaseResultView(options: {
+  guild: Guild;
+  user: User;
+  title: string;
+  price: bigint;
+  backTarget: 'infrastructure' | 'redomicile';
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, title, price, backTarget } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(
+      backTarget === 'infrastructure'
+        ? buildCustomId('companyFinance', 'redomicileInfrastructureStart', user.id)
+        : buildCustomId('companyFinance', 'redomicileOpen', user.id)
+    )
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: `**Цена:** *${formatBudgetValue(price)}* ${formatEmoji('stackmoney')}` },
     buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);

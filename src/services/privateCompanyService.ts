@@ -4,6 +4,7 @@ import { getContinent } from '../discord/features/settings/countriesView.js';
 import { prisma } from '../database/prisma.js';
 import { normalizeCountryKey, type CountryBudgetChangeType } from './countryProfileService.js';
 import type { CountryRegistrationRecord } from './countryRegistrationService.js';
+import type { RedomiciliationInfrastructureItemKey } from './redomiciliationService.js';
 
 export const COMPANY_PER_COUNTRY_LIMIT = 1;
 
@@ -84,6 +85,50 @@ export type ManufacturingEquipmentKey = keyof Pick<
   typeof MANUFACTURING_ONBOARDING_PRICES,
   'mainEquipment' | 'supportEquipment'
 >;
+
+export function getRedomiciliationInfrastructurePrice(
+  industryKey: string,
+  item: RedomiciliationInfrastructureItemKey
+): bigint | null {
+  switch (industryKey) {
+    case 'payment_system':
+      return item === 'mainOffice'
+        ? PAYMENT_SYSTEM_ONBOARDING_PRICES.mainOffice
+        : item === 'serverInfrastructure'
+          ? PAYMENT_SYSTEM_ONBOARDING_PRICES.serverInfrastructure
+          : null;
+    case 'investment_exchange':
+      return item === 'mainOffice'
+        ? INVESTMENT_EXCHANGE_ONBOARDING_PRICES.mainOffice
+        : item === 'serverInfrastructure'
+          ? INVESTMENT_EXCHANGE_ONBOARDING_PRICES.serverInfrastructure
+          : null;
+    case 'crypto_exchange':
+      return item === 'mainOffice'
+        ? CRYPTO_EXCHANGE_ONBOARDING_PRICES.mainOffice
+        : item === 'serverInfrastructure'
+          ? CRYPTO_EXCHANGE_ONBOARDING_PRICES.serverInfrastructure
+          : null;
+    case 'construction':
+      return item === 'mainEquipment'
+        ? CONSTRUCTION_ONBOARDING_PRICES.mainEquipment
+        : item === 'supportEquipment'
+          ? CONSTRUCTION_ONBOARDING_PRICES.supportEquipment
+          : null;
+    case 'manufacturing':
+      return item === 'mainOffice'
+        ? MANUFACTURING_ONBOARDING_PRICES.mainOffice
+        : item === 'productionInfrastructure'
+          ? MANUFACTURING_ONBOARDING_PRICES.productionInfrastructure
+          : item === 'mainEquipment'
+            ? MANUFACTURING_ONBOARDING_PRICES.mainEquipment
+            : item === 'supportEquipment'
+              ? MANUFACTURING_ONBOARDING_PRICES.supportEquipment
+              : null;
+    default:
+      return null;
+  }
+}
 
 const COMPANY_FEE_FIELDS: Record<CompanyFeeKey, keyof Prisma.PrivateCompanyUncheckedUpdateInput> = {
   paymentTransfer: 'paymentTransferFeeRate',
@@ -815,6 +860,53 @@ export type PaymentSystemPurchaseResult =
   | { status: 'insufficientFunds'; company: PrivateCompanyRecord; price: bigint }
   | { status: 'alreadyCompleted'; company: PrivateCompanyRecord; price: bigint }
   | { status: 'success'; company: PrivateCompanyRecord; price: bigint };
+
+export type RedomiciliationInfrastructurePurchaseResult =
+  | { status: 'notFound' | 'notAllowed'; price: bigint }
+  | { status: 'insufficientFunds'; company: PrivateCompanyRecord; price: bigint }
+  | { status: 'success'; company: PrivateCompanyRecord; price: bigint };
+
+export async function purchaseRedomiciliationInfrastructure(
+  guildId: string,
+  userId: string,
+  item: RedomiciliationInfrastructureItemKey
+): Promise<RedomiciliationInfrastructurePurchaseResult> {
+  return prisma.$transaction(async (tx) => {
+    const company = await tx.privateCompany.findFirst({
+      where: {
+        guildId: BigInt(guildId),
+        ownerId: BigInt(userId),
+        isActive: true
+      },
+      orderBy: {
+        registeredAt: 'desc'
+      }
+    });
+
+    if (!company) {
+      return { status: 'notFound', price: 0n };
+    }
+
+    const price = getRedomiciliationInfrastructurePrice(company.industryKey, item);
+    if (price === null) {
+      return { status: 'notAllowed', price: 0n };
+    }
+
+    const currentBudget = company.budget ?? 0n;
+    if (currentBudget < price) {
+      return { status: 'insufficientFunds', company, price };
+    }
+
+    const updated = await tx.privateCompany.update({
+      where: { id: company.id },
+      data: {
+        budget: currentBudget - price
+      }
+    });
+
+    return { status: 'success', company: updated, price };
+  });
+}
 
 export async function buildPaymentSystemInfrastructure(
   guildId: string,

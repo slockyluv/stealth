@@ -17,6 +17,7 @@ import {
   buildPaymentSystemInfrastructure,
   buildManufacturingInfrastructure,
   findIndustryByKey,
+  getRedomiciliationInfrastructurePrice,
   getUserActiveCompany,
   markCryptoExchangeLegalNewsDone,
   markCryptoExchangeLegalNewsStarted,
@@ -28,6 +29,7 @@ import {
   markManufacturingLegalNewsStarted,
   markPaymentSystemLegalNewsDone,
   markPaymentSystemLegalNewsStarted,
+  purchaseRedomiciliationInfrastructure,
   redomiciliateCompany,
   orderCryptoExchangeWebDevelopment,
   orderConstructionWebDevelopment,
@@ -68,6 +70,7 @@ import {
   buildRedomiciliationInfrastructureActionView,
   buildRedomiciliationInteractionView,
   buildRedomiciliationJurisdictionActionView,
+  buildRedomiciliationPurchaseResultView,
   buildPaymentSystemInfrastructureView,
   buildPaymentSystemLegalNewsActionView,
   buildPaymentSystemPurchaseResultView,
@@ -88,6 +91,7 @@ import {
   markRedomiciliationInfrastructureItemDone,
   markRedomiciliationTaskDone,
   markRedomiciliationTaskStarted,
+  type RedomiciliationInfrastructureItemKey,
   type RedomiciliationSelection
 } from '../../../services/redomiciliationService.js';
 
@@ -1055,13 +1059,23 @@ export const companyFinanceRedomicileInfrastructureStartButton: ButtonHandler = 
       markRedomiciliationTaskStarted(interaction.guildId, userId, 'infrastructure');
       const infrastructureContent = getRedomiciliationInfrastructureContent(company.industryKey);
       const infrastructureState = getRedomiciliationInfrastructureState(interaction.guildId, userId);
+      const infrastructurePrices = Object.fromEntries(
+        infrastructureContent.items.map((item) => [
+          item.key,
+          getRedomiciliationInfrastructurePrice(
+            company.industryKey,
+            item.key as RedomiciliationInfrastructureItemKey
+          ) ?? 0n
+        ])
+      );
       const view = await buildRedomiciliationInfrastructureActionView({
         guild: interaction.guild,
         user: interaction.user,
         infrastructureTitle: infrastructureContent.title,
         actionHeader: infrastructureContent.actionHeader,
         items: infrastructureContent.items,
-        completedItems: infrastructureState
+        completedItems: infrastructureState,
+        prices: infrastructurePrices
       });
 
       await interaction.editReply({ components: view });
@@ -1133,21 +1147,80 @@ export const companyFinanceRedomicileInfrastructureBuildButton: ButtonHandler = 
         return;
       }
 
-      const infrastructureState = markRedomiciliationInfrastructureItemDone(interaction.guildId, userId, item.key);
-      const infrastructureCompleted = infrastructureContent.items.every((entry) => infrastructureState.has(entry.key));
+      const infrastructurePrices = Object.fromEntries(
+        infrastructureContent.items.map((entry) => [
+          entry.key,
+          getRedomiciliationInfrastructurePrice(
+            company.industryKey,
+            entry.key as RedomiciliationInfrastructureItemKey
+          ) ?? 0n
+        ])
+      );
+      const infrastructureState = getRedomiciliationInfrastructureState(interaction.guildId, userId);
+
+      if (infrastructureState.has(item.key)) {
+        const view = await buildRedomiciliationInfrastructureActionView({
+          guild: interaction.guild,
+          user: interaction.user,
+          infrastructureTitle: infrastructureContent.title,
+          actionHeader: infrastructureContent.actionHeader,
+          items: infrastructureContent.items,
+          completedItems: infrastructureState,
+          prices: infrastructurePrices
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const result = await purchaseRedomiciliationInfrastructure(interaction.guildId, userId, item.key);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const isEquipmentPurchase = item.key === 'mainEquipment' || item.key === 'supportEquipment';
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildRedomiciliationPurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для ${
+            isEquipmentPurchase ? 'закупки техники' : 'строительства инфраструктуры'
+          }!**`,
+          price: result.price,
+          backTarget: 'infrastructure'
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const updatedState = markRedomiciliationInfrastructureItemDone(interaction.guildId, userId, item.key);
+      const infrastructureCompleted = infrastructureContent.items.every((entry) => updatedState.has(entry.key));
       if (infrastructureCompleted) {
         markRedomiciliationTaskDone(interaction.guildId, userId, 'infrastructure');
       }
 
-      const view = await buildRedomiciliationInfrastructureActionView({
+      const view = await buildRedomiciliationPurchaseResultView({
         guild: interaction.guild,
         user: interaction.user,
-        infrastructureTitle: infrastructureContent.title,
-        actionHeader: infrastructureContent.actionHeader,
-        items: infrastructureContent.items,
-        completedItems: infrastructureState
+        title: `**${formatEmoji('slide_d')} Вы успешно ${
+          isEquipmentPurchase ? 'приобрели' : 'построили'
+        } __${item.label}__.**`,
+        price: result.price,
+        backTarget: 'infrastructure'
       });
-
       await interaction.editReply({ components: view });
     } catch (error) {
       logger.error(error);

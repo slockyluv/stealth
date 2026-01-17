@@ -4,6 +4,7 @@ import { applicationDecisionModal, applicationSubmitModal } from './applications
 import { settingsCountriesEditModal } from './settingsCountries.js';
 import { profileEditModal } from './profile.js';
 import {
+  companyFinanceActivityEditModal,
   companyFinanceFeeEditModal,
   companyFinanceRedomicileEditModal,
   financeForeignTaxEditModal,
@@ -23,5 +24,6 @@ export const modalHandlers: ModalHandler[] = [
   financeForeignTaxEditModal,
   companyFinanceFeeEditModal,
   companyFinanceRedomicileEditModal,
+  companyFinanceActivityEditModal,
   companyNameModal
 ];

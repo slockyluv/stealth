@@ -2235,6 +2235,314 @@ export async function buildCompanyActivityView(options: {
   return [container];
 }
 
+export async function buildCompanyActivityCountrySelectionView(options: {
+  guild: Guild;
+  user: User;
+  selectedCountryLabel: string;
+  nextDisabled: boolean;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, selectedCountryLabel, nextDisabled } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const headerContent = `# ${formatEmoji('linkalt')} Выбор страны:`;
+
+  const editButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'activityEdit', user.id),
+    label: 'Изменить',
+    emoji: formatEmoji('edit')
+  };
+
+  const selectionSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          `**${formatEmoji('worldpulse')} Страна взаимодействия:**`,
+          `*${selectedCountryLabel || 'Не выбрано'}*`
+        ].join('\n')
+      }
+    ],
+    accessory: editButton
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'activityBack', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const nextButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'activityNext', user.id))
+    .setLabel('Далее')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('slide_d'))
+    .setDisabled(nextDisabled);
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: headerContent },
+    buildSeparator(),
+    selectionSection,
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, nextButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildCompanyActivityInteractionView(options: {
+  guild: Guild;
+  user: User;
+  selectedCountryLabel: string;
+  geographyStarted: boolean;
+  geographyDone: boolean;
+  infrastructureReady: boolean;
+  infrastructureDone: boolean;
+  selectionDisabled: boolean;
+}): Promise<TopLevelComponentData[]> {
+  const {
+    guild,
+    user,
+    selectedCountryLabel,
+    geographyStarted,
+    geographyDone,
+    infrastructureReady,
+    infrastructureDone,
+    selectionDisabled
+  } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const headerContent = `**${formatEmoji('linkalt')} Взаимодействие:**`;
+  const countryContent = [
+    `**${formatEmoji('worldpulse')} Страна взаимодействия:**`,
+    `*${selectedCountryLabel || 'Не выбрано'}*`
+  ].join('\n');
+
+  const geographyAction = geographyStarted ? 'activityGeographyDone' : 'activityGeographyStart';
+  const geographyLabel = geographyDone || geographyStarted ? 'Выполнено' : 'Выполнить';
+  const geographyEmoji = geographyDone || geographyStarted ? 'slide_d' : 'bolt';
+
+  const geographyButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', geographyAction, user.id),
+    label: geographyLabel,
+    emoji: formatEmoji(geographyEmoji),
+    disabled: selectionDisabled || geographyDone
+  };
+
+  const geographySection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          '**1. Расширение географии**',
+          '> *Напишите подробную новость о начале деятельности Вашей компании в выбранном государстве.*'
+        ].join('\n')
+      }
+    ],
+    accessory: geographyButton
+  };
+
+  const infrastructureAction = infrastructureReady ? 'activityInfrastructureDone' : 'activityInfrastructureStart';
+  const infrastructureLabel = infrastructureDone || infrastructureReady ? 'Выполнено' : 'Выполнить';
+  const infrastructureEmoji = infrastructureDone || infrastructureReady ? 'slide_d' : 'bolt';
+
+  const infrastructureButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', infrastructureAction, user.id),
+    label: infrastructureLabel,
+    emoji: formatEmoji(infrastructureEmoji),
+    disabled: selectionDisabled || infrastructureDone
+  };
+
+  const infrastructureSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          '**2. Строительство инфраструктуры**',
+          '*Вам необходимо построить инфраструктуру, необходимую для ведения деятельности компании в выбранном государстве*'
+        ].join('\n')
+      }
+    ],
+    accessory: infrastructureButton
+  };
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'activityInteractionReturn', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: headerContent },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: countryContent },
+    buildSeparator(),
+    geographySection,
+    buildSeparator(),
+    infrastructureSection,
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildCompanyActivityGeographyActionView(options: {
+  guild: Guild;
+  user: User;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const title = `**${formatEmoji('worldpulse')} География деятельности**`;
+  const content =
+    '```Вы приступили к выполнению действия. Вам необходимо написать подробную новость о том, что Ваша компания начинает свою деятельность компании на территории выбранного государства. Текст должен быть красиво стилистически оформлен и содержать прикрепленную картинку, соответствующую тематике.```';
+  const note =
+    '> *После успешного выполнения действия вам необходимо вернуться в меню интерфейса "Взаимодействие" и нажать кнопку Выполнено.*';
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'activityInteractionReturn', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: note },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildCompanyActivityInfrastructureActionView(options: {
+  guild: Guild;
+  user: User;
+  items: Array<{
+    key: string;
+    label: string;
+    actionLabel: string;
+    doneLabel: string;
+  }>;
+  completedItems: Set<string>;
+  prices: Record<string, bigint>;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, items, completedItems, prices } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const title = `**${formatEmoji('towercrane')} Строительство инфраструктуры**`;
+  const itemComponents: ComponentInContainerData[] = [];
+
+  items.forEach((item, index) => {
+    const completed = completedItems.has(item.key);
+    const itemButton: ButtonComponentData = {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      customId: buildCustomId('companyFinance', 'activityInfrastructureBuild', item.key, user.id),
+      label: completed ? item.doneLabel : item.actionLabel,
+      emoji: formatEmoji(completed ? 'slide_d' : 'buybutton'),
+      disabled: completed
+    };
+
+    itemComponents.push({
+      type: ComponentType.Section,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: [
+            `**${item.label}**`,
+            `**Цена: ${formatBudgetValue(prices[item.key] ?? 0n)} ${formatEmoji('stackmoney')}**`
+          ].join('\n')
+        }
+      ],
+      accessory: itemButton
+    });
+
+    if (index < items.length - 1) {
+      itemComponents.push(buildSeparator());
+    }
+  });
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'activityInteractionReturn', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    ...itemComponents,
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildCompanyActivityInfrastructurePurchaseResultView(options: {
+  guild: Guild;
+  user: User;
+  title: string;
+  price: bigint;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, title, price } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('companyFinance', 'activityInfrastructureStart', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: `**Цена:** *${formatBudgetValue(price)}* ${formatEmoji('stackmoney')}` },
+    buildSeparator(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
 export async function buildCompanyRedomiciliationView(options: {
   guild: Guild;
   user: User;

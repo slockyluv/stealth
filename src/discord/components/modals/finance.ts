@@ -20,10 +20,20 @@ import {
   updateCompanyFeeRateForUser,
   type CompanyFeeKey
 } from '../../../services/privateCompanyService.js';
-import { buildCompanyFinanceView, buildCompanyRedomiciliationView, buildGovernmentBudgetView } from '../../features/financeView.js';
+import {
+  buildCompanyActivityCountrySelectionView,
+  buildCompanyFinanceView,
+  buildCompanyRedomiciliationView,
+  buildGovernmentBudgetView
+} from '../../features/financeView.js';
 import { getRedomiciliationInfrastructureContent } from '../../features/financeRedomiciliation.js';
 import { resolveEmojiIdentifier } from '../../features/settings/countriesView.js';
 import { logger } from '../../../shared/logger.js';
+import {
+  clearCompanyActivityTasks,
+  getCompanyActivitySelection,
+  setCompanyActivitySelection
+} from '../../../services/companyActivityService.js';
 import {
   clearRedomiciliationTasks,
   getRedomiciliationInfrastructureState,
@@ -459,6 +469,109 @@ export const companyFinanceRedomicileEditModal: ModalHandler = {
       logger.error(error);
       await interaction.followUp({
         components: buildWarningView(formatEmoji, 'Не удалось обновить редомициляцию. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityEditModal: ModalHandler = {
+  key: 'companyFinance:activityEditModal',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Форма доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная форма.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта форма доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const countryInput = interaction.fields.getTextInputValue('activity-country').trim();
+    if (!countryInput) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Введите название страны.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const lookup = findCountryByQuery(countryInput) ?? findCountryByPartialQuery(countryInput);
+    if (!lookup) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Страна не найдена. Попробуйте другое название.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const company = await getUserActiveCompany(interaction.guildId, userId);
+    if (!company) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const nextSelection = {
+      countryName: lookup.country.name,
+      countryKey: normalizeCountryKey(lookup.country.name),
+      continentId: lookup.continentId
+    };
+
+    const previousSelection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (
+      previousSelection &&
+      (previousSelection.countryKey !== nextSelection.countryKey || previousSelection.continentId !== nextSelection.continentId)
+    ) {
+      clearCompanyActivityTasks(interaction.guildId, userId);
+    }
+
+    setCompanyActivitySelection(interaction.guildId, userId, nextSelection);
+
+    await interaction.deferUpdate();
+
+    try {
+      const selectedCountryLabel = `${resolveEmojiIdentifier(lookup.country.emoji, formatEmoji)} | ${lookup.country.name}`;
+      const view = await buildCompanyActivityCountrySelectionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        nextDisabled: false
+      });
+
+      await interaction.editReply({
+        components: view,
+        flags: MessageFlags.IsComponentsV2
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить выбор страны. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }

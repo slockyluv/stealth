@@ -47,6 +47,11 @@ import {
 } from '../../../services/privateCompanyService.js';
 import {
   buildCompanyActivityView,
+  buildCompanyActivityCountrySelectionView,
+  buildCompanyActivityGeographyActionView,
+  buildCompanyActivityInfrastructureActionView,
+  buildCompanyActivityInfrastructurePurchaseResultView,
+  buildCompanyActivityInteractionView,
   buildCompanyFinanceView,
   buildCompanyRedomiciliationView,
   buildFinanceView,
@@ -77,11 +82,20 @@ import {
   buildPaymentSystemWebDevelopmentView
 } from '../../features/financeView.js';
 import { buildCompanyProfileView } from '../../features/companyProfileView.js';
+import { getCompanyActivityInfrastructureContent } from '../../features/financeActivity.js';
 import { getRedomiciliationInfrastructureContent } from '../../features/financeRedomiciliation.js';
 import { resolveEmojiIdentifier, type Country } from '../../features/settings/countriesView.js';
 import { collectPopulationTaxForCountry } from '../../../services/populationTaxService.js';
 import { logger } from '../../../shared/logger.js';
 import { formatDateTime } from '../../../shared/time.js';
+import {
+  getCompanyActivityInfrastructureState,
+  getCompanyActivitySelection,
+  getCompanyActivityTaskState,
+  markCompanyActivityInfrastructureItemDone,
+  markCompanyActivityTaskDone,
+  markCompanyActivityTaskStarted
+} from '../../../services/companyActivityService.js';
 import {
   clearRedomiciliationTasks,
   clearRedomiciliationSelection,
@@ -120,6 +134,27 @@ async function resolveRedomiciliationSelectionLabels(options: {
   }
 
   return { selectedCountryLabel, selectedTaxRateLabel };
+}
+
+async function resolveActivitySelectionLabel(options: {
+  formatEmoji: EmojiFormatter;
+  selection: Awaited<ReturnType<typeof getCompanyActivitySelection>> | null;
+}): Promise<string> {
+  const { selection, formatEmoji } = options;
+  let selectedCountryLabel = 'Не выбрано';
+
+  if (!selection) {
+    return selectedCountryLabel;
+  }
+
+  const selectedCountryLookup = findCountryByKey(selection.countryName);
+  if (selectedCountryLookup) {
+    selectedCountryLabel = `${resolveEmojiIdentifier(selectedCountryLookup.country.emoji, formatEmoji)} | ${selectedCountryLookup.country.name}`;
+  } else {
+    selectedCountryLabel = selection.countryName;
+  }
+
+  return selectedCountryLabel;
 }
 
 export const financeBudgetButton: ButtonHandler = {
@@ -679,10 +714,850 @@ export const companyFinanceBranchesStartButton: ButtonHandler = {
       return;
     }
 
-    await interaction.reply({
-      components: buildWarningView(formatEmoji, 'Функция запуска деятельности в новой стране будет добавлена позже.'),
-      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    await interaction.deferUpdate();
+
+    try {
+      const selection = getCompanyActivitySelection(interaction.guildId, userId);
+      const selectedCountryLabel = await resolveActivitySelectionLabel({
+        formatEmoji,
+        selection
+      });
+
+      const view = await buildCompanyActivityCountrySelectionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        nextDisabled: !selection
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть выбор страны. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityBackButton: ButtonHandler = {
+  key: 'companyFinance:activityBack',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
     });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      await renderCompanyActivityView({
+        interaction,
+        formatEmoji,
+        userId,
+        page: 1
+      });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось вернуться к географии деятельности. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityEditButton: ButtonHandler = {
+  key: 'companyFinance:activityEdit',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const input = new TextInputBuilder()
+      .setCustomId('activity-country')
+      .setLabel('Название страны')
+      .setPlaceholder('Введите часть или полное название страны')
+      .setRequired(true)
+      .setStyle(TextInputStyle.Short);
+
+    const modal = new ModalBuilder()
+      .setCustomId(buildCustomId('companyFinance', 'activityEditModal', userId))
+      .setTitle('Выбор страны')
+      .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+
+    await interaction.showModal(modal);
+  }
+};
+
+export const companyFinanceActivityNextButton: ButtonHandler = {
+  key: 'companyFinance:activityNext',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const selectedCountryLabel = await resolveActivitySelectionLabel({
+        formatEmoji,
+        selection
+      });
+
+      const taskState = getCompanyActivityTaskState(interaction.guildId, userId);
+      const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);
+      const infrastructureState = getCompanyActivityInfrastructureState(interaction.guildId, userId);
+      const infrastructureReady = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
+
+      const view = await buildCompanyActivityInteractionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        geographyStarted: taskState.geographyStarted,
+        geographyDone: taskState.geographyDone,
+        infrastructureReady,
+        infrastructureDone: taskState.infrastructureDone,
+        selectionDisabled: false
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть взаимодействие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityInteractionBackButton: ButtonHandler = {
+  key: 'companyFinance:activityInteractionBack',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const selection = getCompanyActivitySelection(interaction.guildId, userId);
+      const selectedCountryLabel = await resolveActivitySelectionLabel({
+        formatEmoji,
+        selection
+      });
+
+      const view = await buildCompanyActivityCountrySelectionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        nextDisabled: !selection
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть выбор страны. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityInteractionReturnButton: ButtonHandler = {
+  key: 'companyFinance:activityInteractionReturn',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const selectedCountryLabel = await resolveActivitySelectionLabel({
+        formatEmoji,
+        selection
+      });
+
+      const taskState = getCompanyActivityTaskState(interaction.guildId, userId);
+      const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);
+      const infrastructureState = getCompanyActivityInfrastructureState(interaction.guildId, userId);
+      const infrastructureReady = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
+
+      const view = await buildCompanyActivityInteractionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        geographyStarted: taskState.geographyStarted,
+        geographyDone: taskState.geographyDone,
+        infrastructureReady,
+        infrastructureDone: taskState.infrastructureDone,
+        selectionDisabled: false
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть взаимодействие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityGeographyStartButton: ButtonHandler = {
+  key: 'companyFinance:activityGeographyStart',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      markCompanyActivityTaskStarted(interaction.guildId, userId, 'geography');
+
+      const view = await buildCompanyActivityGeographyActionView({
+        guild: interaction.guild,
+        user: interaction.user
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityGeographyDoneButton: ButtonHandler = {
+  key: 'companyFinance:activityGeographyDone',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      markCompanyActivityTaskDone(interaction.guildId, userId, 'geography');
+
+      const selectedCountryLabel = await resolveActivitySelectionLabel({
+        formatEmoji,
+        selection
+      });
+
+      const taskState = getCompanyActivityTaskState(interaction.guildId, userId);
+      const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);
+      const infrastructureState = getCompanyActivityInfrastructureState(interaction.guildId, userId);
+      const infrastructureReady = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
+
+      const view = await buildCompanyActivityInteractionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        geographyStarted: taskState.geographyStarted,
+        geographyDone: taskState.geographyDone,
+        infrastructureReady,
+        infrastructureDone: taskState.infrastructureDone,
+        selectionDisabled: false
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityInfrastructureStartButton: ButtonHandler = {
+  key: 'companyFinance:activityInfrastructureStart',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      markCompanyActivityTaskStarted(interaction.guildId, userId, 'infrastructure');
+      const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);
+      const infrastructureState = getCompanyActivityInfrastructureState(interaction.guildId, userId);
+      const infrastructurePrices = Object.fromEntries(
+        infrastructureContent.items.map((item) => [
+          item.key,
+          getRedomiciliationInfrastructurePrice(
+            company.industryKey,
+            item.key as RedomiciliationInfrastructureItemKey
+          ) ?? 0n
+        ])
+      );
+
+      const view = await buildCompanyActivityInfrastructureActionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        actionHeader: infrastructureContent.actionHeader,
+        items: infrastructureContent.items,
+        completedItems: infrastructureState,
+        prices: infrastructurePrices
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось открыть действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityInfrastructureBuildButton: ButtonHandler = {
+  key: 'companyFinance:activityInfrastructureBuild',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const itemKey = ctx.customId.args[0];
+    const userId = ctx.customId.args[1];
+    if (!itemKey || !userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);
+      const item = infrastructureContent.items.find((entry) => entry.key === itemKey);
+      if (!item) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const infrastructurePrices = Object.fromEntries(
+        infrastructureContent.items.map((entry) => [
+          entry.key,
+          getRedomiciliationInfrastructurePrice(
+            company.industryKey,
+            entry.key as RedomiciliationInfrastructureItemKey
+          ) ?? 0n
+        ])
+      );
+      const infrastructureState = getCompanyActivityInfrastructureState(interaction.guildId, userId);
+
+      if (infrastructureState.has(item.key)) {
+        const view = await buildCompanyActivityInfrastructureActionView({
+          guild: interaction.guild,
+          user: interaction.user,
+          actionHeader: infrastructureContent.actionHeader,
+          items: infrastructureContent.items,
+          completedItems: infrastructureState,
+          prices: infrastructurePrices
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      const result = await purchaseRedomiciliationInfrastructure(interaction.guildId, userId, item.key);
+
+      if (result.status === 'notFound') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (result.status === 'notAllowed') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Эта функция недоступна для компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const isEquipmentPurchase = item.key === 'mainEquipment' || item.key === 'supportEquipment';
+
+      if (result.status === 'insufficientFunds') {
+        const view = await buildCompanyActivityInfrastructurePurchaseResultView({
+          guild: interaction.guild,
+          user: interaction.user,
+          title: `**${formatEmoji('staff_warn')} У вашей компании недостаточно средств для ${
+            isEquipmentPurchase ? 'закупки техники' : 'строительства инфраструктуры'
+          }!**`,
+          price: result.price
+        });
+        await interaction.editReply({ components: view });
+        return;
+      }
+
+      markCompanyActivityInfrastructureItemDone(interaction.guildId, userId, item.key);
+
+      const view = await buildCompanyActivityInfrastructurePurchaseResultView({
+        guild: interaction.guild,
+        user: interaction.user,
+        title: `**${formatEmoji('slide_d')} Вы успешно ${isEquipmentPurchase ? 'приобрели' : 'построили'} __${item.label}__.**`,
+        price: result.price
+      });
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось выполнить покупку. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityInfrastructureDoneButton: ButtonHandler = {
+  key: 'companyFinance:activityInfrastructureDone',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);
+      const infrastructureState = getCompanyActivityInfrastructureState(interaction.guildId, userId);
+      const infrastructureReady = infrastructureContent.items.every((item) => infrastructureState.has(item.key));
+
+      if (!infrastructureReady) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Сначала завершите строительство инфраструктуры.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      markCompanyActivityTaskDone(interaction.guildId, userId, 'infrastructure');
+
+      const selectedCountryLabel = await resolveActivitySelectionLabel({
+        formatEmoji,
+        selection
+      });
+
+      const taskState = getCompanyActivityTaskState(interaction.guildId, userId);
+
+      const view = await buildCompanyActivityInteractionView({
+        guild: interaction.guild,
+        user: interaction.user,
+        selectedCountryLabel,
+        geographyStarted: taskState.geographyStarted,
+        geographyDone: taskState.geographyDone,
+        infrastructureReady,
+        infrastructureDone: taskState.infrastructureDone,
+        selectionDisabled: false
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось обновить действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
   }
 };
 

@@ -882,13 +882,6 @@ export const companyFinanceActivityNextButton: ButtonHandler = {
     }
 
     const selection = getCompanyActivitySelection(interaction.guildId, userId);
-    if (!selection) {
-      await interaction.reply({
-        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
-      return;
-    }
 
     await interaction.deferUpdate();
 
@@ -902,10 +895,12 @@ export const companyFinanceActivityNextButton: ButtonHandler = {
         return;
       }
 
-      const selectedCountryLabel = await resolveActivitySelectionLabel({
-        formatEmoji,
-        selection
-      });
+      const selectedCountryLabel = selection
+        ? await resolveActivitySelectionLabel({
+            formatEmoji,
+            selection
+          })
+        : '';
 
       const taskState = getCompanyActivityTaskState(interaction.guildId, userId);
       const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);
@@ -1032,13 +1027,6 @@ export const companyFinanceActivityInteractionReturnButton: ButtonHandler = {
     }
 
     const selection = getCompanyActivitySelection(interaction.guildId, userId);
-    if (!selection) {
-      await interaction.reply({
-        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-      });
-      return;
-    }
 
     await interaction.deferUpdate();
 
@@ -1052,10 +1040,12 @@ export const companyFinanceActivityInteractionReturnButton: ButtonHandler = {
         return;
       }
 
-      const selectedCountryLabel = await resolveActivitySelectionLabel({
-        formatEmoji,
-        selection
-      });
+      const selectedCountryLabel = selection
+        ? await resolveActivitySelectionLabel({
+            formatEmoji,
+            selection
+          })
+        : '';
 
       const taskState = getCompanyActivityTaskState(interaction.guildId, userId);
       const infrastructureContent = getCompanyActivityInfrastructureContent(company.industryKey);

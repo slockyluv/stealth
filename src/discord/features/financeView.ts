@@ -2377,7 +2377,7 @@ export async function buildCompanyActivityInteractionView(options: {
         type: ComponentType.TextDisplay,
         content: [
           '**2. Строительство инфраструктуры**',
-          '*Вам необходимо построить инфраструктуру, необходимую для ведения деятельности компании в выбранном государстве*'
+          '> *Вам необходимо построить инфраструктуру, необходимую для ведения деятельности компании в выбранном государстве*'
         ].join('\n')
       }
     ],
@@ -2445,6 +2445,7 @@ export async function buildCompanyActivityGeographyActionView(options: {
 export async function buildCompanyActivityInfrastructureActionView(options: {
   guild: Guild;
   user: User;
+  actionHeader: string;
   items: Array<{
     key: string;
     label: string;
@@ -2454,7 +2455,7 @@ export async function buildCompanyActivityInfrastructureActionView(options: {
   completedItems: Set<string>;
   prices: Record<string, bigint>;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, items, completedItems, prices } = options;
+  const { guild, user, actionHeader, items, completedItems, prices } = options;
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,

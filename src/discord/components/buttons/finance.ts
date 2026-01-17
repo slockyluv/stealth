@@ -30,6 +30,7 @@ import {
   markPaymentSystemLegalNewsDone,
   markPaymentSystemLegalNewsStarted,
   purchaseRedomiciliationInfrastructure,
+  
   redomiciliateCompany,
   orderCryptoExchangeWebDevelopment,
   orderConstructionWebDevelopment,
@@ -46,6 +47,7 @@ import {
   type PaymentSystemInfrastructureKey
 } from '../../../services/privateCompanyService.js';
 import {
+  buildCompanyActivityConfirmationView,
   buildCompanyActivityView,
   buildCompanyActivityCountrySelectionView,
   buildCompanyActivityGeographyActionView,
@@ -85,10 +87,13 @@ import { buildCompanyProfileView } from '../../features/companyProfileView.js';
 import { getCompanyActivityInfrastructureContent } from '../../features/financeActivity.js';
 import { getRedomiciliationInfrastructureContent } from '../../features/financeRedomiciliation.js';
 import { resolveEmojiIdentifier, type Country } from '../../features/settings/countriesView.js';
+import { addCompanyActivityCountry, getCompanyActivityCountries } from '../../../services/companyActivityCountryService.js';
 import { collectPopulationTaxForCountry } from '../../../services/populationTaxService.js';
 import { logger } from '../../../shared/logger.js';
 import { formatDateTime } from '../../../shared/time.js';
 import {
+  clearCompanyActivitySelection,
+  clearCompanyActivityTasks,
   getCompanyActivityInfrastructureState,
   getCompanyActivitySelection,
   getCompanyActivityTaskState,
@@ -1545,6 +1550,129 @@ export const companyFinanceActivityInfrastructureDoneButton: ButtonHandler = {
       logger.error(error);
       await interaction.followUp({
         components: buildWarningView(formatEmoji, 'Не удалось обновить действие. Попробуйте позже.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+    }
+  }
+};
+
+export const companyFinanceActivityConfirmButton: ButtonHandler = {
+  key: 'companyFinance:activityConfirm',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const userId = ctx.customId.args[0];
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу профиля.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selection = getCompanyActivitySelection(interaction.guildId, userId);
+    if (!selection) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала выберите страну взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const taskState = getCompanyActivityTaskState(interaction.guildId, userId);
+    if (!taskState.geographyDone || !taskState.infrastructureDone) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Сначала завершите все задания взаимодействия.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const selectedCountryLookup = findCountryByKey(selection.countryKey);
+    if (!selectedCountryLookup) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Выбранная страна не найдена.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+
+    try {
+      const company = await getUserActiveCompany(interaction.guildId, userId);
+      if (!company) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Пользователь не зарегистрирован как владелец компании.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      if (company.countryKey === selection.countryKey) {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Компания уже ведет деятельность в этой стране.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const result = await addCompanyActivityCountry({
+        guildId: interaction.guildId,
+        company,
+        country: selectedCountryLookup.country,
+        continentId: selection.continentId
+      });
+
+      if (result.status === 'alreadyExists') {
+        await interaction.followUp({
+          components: buildWarningView(formatEmoji, 'Компания уже ведет деятельность в этой стране.'),
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+      }
+
+      const profile = await getCountryProfile(interaction.guildId, selectedCountryLookup.country);
+      const selectedCountryLabel = `${resolveEmojiIdentifier(
+        selectedCountryLookup.country.emoji,
+        formatEmoji
+      )} | ${selectedCountryLookup.country.name}`;
+
+      clearCompanyActivitySelection(interaction.guildId, userId);
+      clearCompanyActivityTasks(interaction.guildId, userId);
+
+      const view = await buildCompanyActivityConfirmationView({
+        guild: interaction.guild,
+        selectedCountryLabel,
+        foreignTaxRate: profile.foreignCompanyTaxRate
+      });
+
+      await interaction.editReply({ components: view });
+    } catch (error) {
+      logger.error(error);
+      await interaction.followUp({
+        components: buildWarningView(formatEmoji, 'Не удалось подтвердить расширение. Попробуйте позже.'),
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
       });
     }
@@ -5617,6 +5745,29 @@ async function resolveCompanyActivityEntries(options: {
       startedAt: company.registeredAt
     });
   }
+
+  const activityCountries = await getCompanyActivityCountries(guildId, company.id);
+  const activityEntries = await Promise.all(
+    activityCountries
+      .filter((record) => record.countryKey !== company.countryKey)
+      .map(async (record) => {
+        const lookup = findCountryByKey(record.countryKey);
+        const country = lookup?.country;
+        const labelEmoji = country ? resolveEmojiIdentifier(country.emoji, formatEmoji) : '🏳️';
+        const labelName = country?.name ?? record.countryName;
+        const countryLabel = `${labelEmoji} | ${labelName}`;
+        const profile = country ? await getCountryProfile(guildId, country) : null;
+
+        return {
+          countryLabel,
+          registeredUserId: profile?.registeredUserId ? profile.registeredUserId.toString() : undefined,
+          taxRate: profile?.foreignCompanyTaxRate ?? 0,
+          startedAt: record.startedAt
+        };
+      })
+  );
+
+  entries.push(...activityEntries);
 
   const totalPages = Math.max(1, Math.ceil(entries.length / 5));
   const page = Math.min(totalPages, Math.max(1, Math.trunc(requestedPage)));

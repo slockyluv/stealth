@@ -186,6 +186,25 @@ model PrivateCompany {
   @@index([guildId, ownerId])
 }
 
+model CompanyActivityCountry {
+  id                   BigInt      @id @default(autoincrement())
+  guildId              BigInt
+  companyId            BigInt
+  companyName          String
+  companyIndustryKey   String
+  companyIndustryLabel String
+  countryName          String
+  countryKey           String
+  continent            ContinentId
+  startedAt            DateTime    @default(now())
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@unique([guildId, companyId, countryKey])
+  @@index([guildId, countryKey])
+  @@index([guildId, companyId])
+}
+
 model GuildUserLevel {
   guildId          BigInt
   userId           BigInt

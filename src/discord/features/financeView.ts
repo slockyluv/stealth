@@ -2384,6 +2384,26 @@ export async function buildCompanyActivityInteractionView(options: {
     accessory: infrastructureButton
   };
 
+  const confirmButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('companyFinance', 'activityConfirm', user.id),
+    label: 'Подтвердить',
+    emoji: formatEmoji('slide_d'),
+    disabled: selectionDisabled || !geographyDone || !infrastructureDone
+  };
+
+  const confirmSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: ['**3. Подтверждение**', '> *Подтвердите запуск деятельности компании в выбранной стране.*'].join('\n')
+      }
+    ],
+    accessory: confirmButton
+  };
+
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('companyFinance', 'activityInteractionReturn', user.id))
     .setLabel('Назад')
@@ -2399,7 +2419,41 @@ export async function buildCompanyActivityInteractionView(options: {
     buildSeparator(),
     infrastructureSection,
     buildSeparator(),
+    confirmSection,
+    buildSeparator(),
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+  ]);
+
+  return [container];
+}
+
+export async function buildCompanyActivityConfirmationView(options: {
+  guild: Guild;
+  selectedCountryLabel: string;
+  foreignTaxRate: number;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, selectedCountryLabel, foreignTaxRate } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const title = `**${formatEmoji('slide_d')} Деятельность вашей компании успешно расширилась!**`;
+  const details = [
+    `**${formatEmoji('worldpulse')} Государство:**`,
+    `> *${selectedCountryLabel}*`,
+    '',
+    `**${formatEmoji('taxation')} Налог на прибыль:**`,
+    `> *${foreignTaxRate}%*`
+  ].join('\n');
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: title },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: details },
+    buildSeparator()
   ]);
 
   return [container];

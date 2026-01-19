@@ -56,7 +56,7 @@ export const payMethodSelect: SelectMenuHandler = {
     await interaction.deferUpdate();
 
     try {
-      const paymentSystemId = BigInt(selected);
+      const paymentSystemId = selected === 'cash' ? null : BigInt(selected);
       await upsertPayTransferDraft(interaction.guildId, userId, {
         paymentSystemCompanyId: paymentSystemId
       });

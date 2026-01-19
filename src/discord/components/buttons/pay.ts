@@ -138,7 +138,8 @@ export const payEditMethodButton: ButtonHandler = {
     const view = await buildPayTransferMethodView({
       guild: interaction.guild,
       user: interaction.user,
-      paymentSystems
+      paymentSystems,
+      selectedPaymentSystemId: viewData.paymentSystem?.company.id ?? null
     });
 
     await interaction.editReply({

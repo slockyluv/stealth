@@ -17,6 +17,7 @@ import { MESSAGE_SEPARATOR_COMPONENT } from '../features/applications/config.js'
 import { resolveEmojiIdentifier } from './settings/countriesView.js';
 import { findCountryByKey } from '../../services/countryRegistrationService.js';
 import { getIndustryMarker } from '../../services/privateCompanyService.js';
+import { CASH_TRANSFER_FEE_RATE } from '../../services/payTransferService.js';
 import type { PaymentSystemEntry, TransferEntity } from '../../services/payTransferService.js';
 
 function formatNumber(value: bigint): string {
@@ -100,7 +101,7 @@ export async function buildPayTransferView(options: {
 
   const paymentSystemLabel = paymentSystem
     ? await resolvePaymentSystemLabel(paymentSystem, formatEmoji)
-    : 'Передача наличными средствами';
+    : 'Наличные средства';
   const amountLine = amount ? `> *${formatNumber(amount)}*` : '> *Не указана*';
 
   const headerContent = [
@@ -189,8 +190,9 @@ export async function buildPayTransferMethodView(options: {
   guild: Guild;
   user: User;
   paymentSystems: PaymentSystemEntry[];
+  selectedPaymentSystemId: bigint | null;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, paymentSystems } = options;
+  const { guild, user, paymentSystems, selectedPaymentSystemId } = options;
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
     guildId: guild.id,
@@ -205,10 +207,16 @@ export async function buildPayTransferMethodView(options: {
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(buildCustomId('pay', 'methodSelect', user.id))
-    .setPlaceholder(paymentSystems.length ? 'Выберите платежную систему' : 'Нет доступных платежных систем')
-    .setDisabled(paymentSystems.length === 0);
+    .setPlaceholder('Выберите платежную систему');
 
-  for (const entry of paymentSystems.slice(0, 25)) {
+  const cashOption = new StringSelectMenuOptionBuilder()
+    .setLabel('Наличные средства')
+    .setValue('cash')
+    .setDescription(`Комиссия: ${CASH_TRANSFER_FEE_RATE}%`)
+    .setDefault(selectedPaymentSystemId === null);
+  selectMenu.addOptions(cashOption);
+
+  for (const entry of paymentSystems.slice(0, 24)) {
     const countryLookup = findCountryByKey(entry.company.countryName);
     const emoji = countryLookup ? resolveEmojiIdentifier(countryLookup.country.emoji, formatEmoji) : undefined;
     const marker = getIndustryMarker(entry.company.industryKey) ?? '';
@@ -217,7 +225,8 @@ export async function buildPayTransferMethodView(options: {
     const option = new StringSelectMenuOptionBuilder()
       .setLabel(label)
       .setValue(entry.company.id.toString())
-      .setDescription(`Комиссия: ${entry.feeRate}%`);
+      .setDescription(`Комиссия: ${entry.feeRate}%`)
+      .setDefault(entry.company.id === selectedPaymentSystemId);
     if (emoji) {
       option.setEmoji(emoji);
     }
@@ -251,7 +260,7 @@ export async function buildPayTransferSuccessView(options: {
   const recipientLabel = await resolveEntityLabel(recipientEntity, formatEmoji);
   const paymentSystemLabel = paymentSystem
     ? await resolvePaymentSystemLabel(paymentSystem, formatEmoji)
-    : 'Передача наличными средствами';
+    : 'Наличные средства';
 
   const headerContent = [
     `# ${formatEmoji('moneytransfer')} Денежный перевод`,

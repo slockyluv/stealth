@@ -144,23 +144,16 @@ export async function resolvePayTransferViewData(
   const senderPaymentSystems = await getPaymentSystemsForCountry(guildId, senderEntity.countryKey);
 
   let paymentSystem: PaymentSystemEntry | null = null;
-  const firstPaymentSystem = senderPaymentSystems[0];
   if (draft?.paymentSystemCompanyId) {
     const matched =
       senderPaymentSystems.find((entry) => entry.company.id === draft.paymentSystemCompanyId) ?? null;
     if (matched) {
       paymentSystem = matched;
-    } else if (firstPaymentSystem) {
-      paymentSystem = firstPaymentSystem;
+    } else {
       await upsertPayTransferDraft(guildId, userId, {
-        paymentSystemCompanyId: firstPaymentSystem.company.id
+        paymentSystemCompanyId: null
       });
     }
-  } else if (firstPaymentSystem) {
-    paymentSystem = firstPaymentSystem;
-    await upsertPayTransferDraft(guildId, userId, {
-      paymentSystemCompanyId: firstPaymentSystem.company.id
-    });
   }
 
   const recipientEntity =

@@ -233,10 +233,17 @@ export async function buildPayTransferMethodView(options: {
     selectMenu.addOptions(option);
   }
 
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('pay', 'back', user.id))
+    .setLabel('Назад')
+    .setEmoji(formatEmoji('undonew'))
+    .setStyle(ButtonStyle.Secondary);
+
   return buildContainer([
     { type: ComponentType.TextDisplay, content: headerContent },
     { ...MESSAGE_SEPARATOR_COMPONENT },
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON(),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
   ]);
 }
 

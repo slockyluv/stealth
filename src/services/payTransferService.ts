@@ -1,5 +1,5 @@
 import { prisma } from '../database/prisma.js';
-import { normalizeCountryKey } from './countryProfileService.js';
+import { clearCountryProfileCache, normalizeCountryKey } from './countryProfileService.js';
 import {
   findCountryByKey,
   findCountryByPartialQuery,
@@ -114,7 +114,7 @@ export async function resolveTransferEntity(guildId: string, userId: string): Pr
       type: 'company',
       userId,
       company,
-      countryKey: normalizeCountryKey(company.countryName),
+      countryKey: company.countryKey,
       countryName: company.countryName
     };
   }
@@ -128,7 +128,7 @@ export async function resolveTransferEntity(guildId: string, userId: string): Pr
     type: 'country',
     userId,
     registration,
-    countryKey: normalizeCountryKey(registration.countryName),
+    countryKey: registration.countryKey,
     countryName: registration.countryName
   };
 }
@@ -313,7 +313,7 @@ export async function performPayTransfer(options: {
               where: {
                 guildId_countryName: {
                   guildId: BigInt(options.guildId),
-                  countryName: normalizeCountryKey(senderEntity.countryName)
+                  countryName: senderEntity.countryKey
                 }
               }
             });
@@ -333,7 +333,7 @@ export async function performPayTransfer(options: {
           where: {
             guildId_countryName: {
               guildId: BigInt(options.guildId),
-              countryName: normalizeCountryKey(senderEntity.countryName)
+              countryName: senderEntity.countryKey
             }
           },
           data: { budget: { decrement: options.amount } }
@@ -350,7 +350,7 @@ export async function performPayTransfer(options: {
           where: {
             guildId_countryName: {
               guildId: BigInt(options.guildId),
-              countryName: normalizeCountryKey(recipientEntity.countryName)
+              countryName: recipientEntity.countryKey
             }
           },
           data: { budget: { increment: receivedAmount } }
@@ -389,6 +389,10 @@ export async function performPayTransfer(options: {
       return { status: 'error', reason: 'Недостаточно средств для перевода.' };
     }
     return { status: 'error', reason: 'Не удалось выполнить перевод. Попробуйте позже.' };
+  }
+
+  if (senderEntity.type === 'country' || recipientEntity.type === 'country') {
+    clearCountryProfileCache();
   }
 
   return {

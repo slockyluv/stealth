@@ -23,6 +23,14 @@ function formatNumber(value: bigint): string {
   return value.toLocaleString('ru-RU');
 }
 
+function clampSelectLabel(value: string, maxLength = 25): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed.length ? trimmed : 'Платежная система';
+  }
+  return `${trimmed.slice(0, maxLength - 1)}…`;
+}
+
 function buildContainer(components: ComponentInContainerData[]): TopLevelComponentData[] {
   return [
     {
@@ -205,8 +213,9 @@ export async function buildPayTransferMethodView(options: {
     const emoji = countryLookup ? resolveEmojiIdentifier(countryLookup.country.emoji, formatEmoji) : undefined;
     const marker = getIndustryMarker(entry.company.industryKey) ?? '';
     const markerText = marker ? `${marker} ` : '';
+    const label = clampSelectLabel(`${markerText}${entry.company.name}`);
     const option = new StringSelectMenuOptionBuilder()
-      .setLabel(`${markerText}${entry.company.name}`.trim())
+      .setLabel(label)
       .setValue(entry.company.id.toString())
       .setDescription(`Комиссия: ${entry.feeRate}%`);
     if (emoji) {

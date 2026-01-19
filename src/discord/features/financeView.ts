@@ -48,13 +48,23 @@ function formatBudgetValue(budget: bigint): string {
   return budget.toLocaleString('ru-RU');
 }
 
+function formatCompanyCount(count: number): string {
+  const value = Math.max(0, Math.trunc(count));
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${value} компания`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${value} компании`;
+  return `${value} компаний`;
+}
+
 export async function buildFinanceView(options: {
   guild: Guild;
   user: User;
   registration: CountryRegistrationRecord;
   profile: CountryProfile;
+  foreignCompaniesCount: number;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, profile } = options;
+  const { guild, user, profile, foreignCompaniesCount } = options;
 
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
@@ -98,11 +108,31 @@ export async function buildFinanceView(options: {
 
   const treasuryHeaderContent = [`# ${formatEmoji('governmentbudget')} Казна`, ''].join('\n');
 
-  const treasuryContent = [
-    `> *${formatBudgetValue(profile.budget)}* ${formatEmoji('stackmoney')}`,
-    '',
-    `**${formatEmoji('goldres')} Золотовалютные резервы:**`,
-    '> В будущем',
+  const treasuryContent = `> *${formatBudgetValue(profile.budget)}* ${formatEmoji('stackmoney')}`;
+
+  const foreignCompaniesButton: ButtonComponentData = {
+    type: ComponentType.Button,
+    style: ButtonStyle.Secondary,
+    customId: buildCustomId('finance', 'foreignCompanies', user.id),
+    label: 'Список',
+    emoji: formatEmoji('nav')
+  };
+
+  const foreignCompaniesSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [
+          `**${formatEmoji('filialscomp')} Иностранные компании:**`,
+          `> ${formatCompanyCount(foreignCompaniesCount)}`
+        ].join('\n')
+      }
+    ],
+    accessory: foreignCompaniesButton
+  };
+
+  const treasuryAssetsContent = [
     '',
     `**${formatEmoji('bitcoin')} Криптовалютные резервы:**`,
     '> В будущем',
@@ -132,8 +162,87 @@ export async function buildFinanceView(options: {
     { type: ComponentType.TextDisplay, content: treasuryHeaderContent },
     governmentBudgetSection,
     { type: ComponentType.TextDisplay, content: treasuryContent },
+    foreignCompaniesSection,
+    { type: ComponentType.TextDisplay, content: treasuryAssetsContent },
     buildSeparator(),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
+  ]);
+
+  return [container];
+}
+
+export type ForeignCompaniesEntry = {
+  name: string;
+  ownerLabel: string;
+  registrationLabel: string;
+  industryLabel: string;
+  startedAt: Date;
+};
+
+export async function buildForeignCompaniesView(options: {
+  guild: Guild;
+  user: User;
+  entries: ForeignCompaniesEntry[];
+  page: number;
+  totalPages: number;
+}): Promise<TopLevelComponentData[]> {
+  const { guild, user, entries, page, totalPages } = options;
+
+  const formatEmoji = await createEmojiFormatter({
+    client: guild.client,
+    guildId: guild.id,
+    guildEmojis: guild.emojis.cache.values()
+  });
+
+  const headerContent = `**${formatEmoji('filialscomp')} Иностранные компании**`;
+  const descriptionContent =
+    '```Юридическое лицо, зарегистрированное в другом государстве, созданное для ведения предпринимательской деятельности с целью получения прибыли.```';
+  const listHeaderContent = `**${formatEmoji('nav')} Список**`;
+
+  const listComponents: ComponentInContainerData[] = [];
+
+  if (!entries.length) {
+    listComponents.push({ type: ComponentType.TextDisplay, content: '*Компании не найдены.*' });
+    listComponents.push(buildSeparator());
+  } else {
+    for (const entry of entries) {
+      const content = [
+        `> **${entry.name}**`,
+        `**Пользователь:** *${entry.ownerLabel}*`,
+        `**Страна регистрации:** *${entry.registrationLabel}*`,
+        `**Отрасль:** *${entry.industryLabel}*`,
+        `**Начало деятельности:** *${formatDateTime(entry.startedAt)}*`
+      ].join('\n');
+      listComponents.push({ type: ComponentType.TextDisplay, content });
+      listComponents.push(buildSeparator());
+    }
+  }
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('finance', 'foreignCompaniesBack', user.id))
+    .setLabel('Назад')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('undonew'));
+
+  const prevButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('finance', 'foreignCompaniesPrev', user.id, String(page)))
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('anglesmallleft'))
+    .setDisabled(page <= 1);
+
+  const nextButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('finance', 'foreignCompaniesNext', user.id, String(page)))
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji(formatEmoji('anglesmallright'))
+    .setDisabled(page >= totalPages);
+
+  const container = buildContainer([
+    { type: ComponentType.TextDisplay, content: headerContent },
+    { type: ComponentType.TextDisplay, content: descriptionContent },
+    buildSeparator(),
+    { type: ComponentType.TextDisplay, content: listHeaderContent },
+    ...listComponents,
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, prevButton, nextButton).toJSON()
   ]);
 
   return [container];

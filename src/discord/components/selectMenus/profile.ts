@@ -4,6 +4,7 @@ import { createEmojiFormatter } from '../../emoji.js';
 import { buildWarningView } from '../../responses/messageBuilders.js';
 import { getUserRegistration, findCountryByKey } from '../../../services/countryRegistrationService.js';
 import { getCountryProfile } from '../../../services/countryProfileService.js';
+import { getForeignCompanyActivitiesInCountry } from '../../../services/companyActivityCountryService.js';
 import { buildProfileView } from '../../features/profileView.js';
 import { buildFinanceView } from '../../features/financeView.js';
 import { logger } from '../../../shared/logger.js';
@@ -80,7 +81,10 @@ export const profileTabSelect: SelectMenuHandler = {
               guild: interaction.guild,
               user: interaction.user,
               registration,
-              profile
+              profile,
+              foreignCompaniesCount: (
+                await getForeignCompanyActivitiesInCountry(interaction.guildId, registration.countryKey)
+              ).length
             })
           : await buildProfileView({
               guild: interaction.guild,

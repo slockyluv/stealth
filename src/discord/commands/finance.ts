@@ -11,6 +11,7 @@ import { createEmojiFormatter } from '../emoji.js';
 import { buildWarningView } from '../responses/messageBuilders.js';
 import { getUserRegistration, findCountryByKey } from '../../services/countryRegistrationService.js';
 import { getCountryProfile } from '../../services/countryProfileService.js';
+import { getForeignCompanyActivitiesInCountry } from '../../services/companyActivityCountryService.js';
 import { getUserActiveCompany } from '../../services/privateCompanyService.js';
 import { buildCompanyFinanceView, buildFinanceView } from '../features/financeView.js';
 import { logger } from '../../shared/logger.js';
@@ -52,11 +53,13 @@ async function resolveFinanceView(options: {
   }
 
   const profileData = await getCountryProfile(guildId, countryLookup.country);
+  const foreignCompanies = await getForeignCompanyActivitiesInCountry(guildId, registration.countryKey);
   const view = await buildFinanceView({
     guild,
     user,
     registration,
-    profile: profileData
+    profile: profileData,
+    foreignCompaniesCount: foreignCompanies.length
   });
 
   return { view };

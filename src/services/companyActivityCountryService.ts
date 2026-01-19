@@ -5,6 +5,10 @@ import { normalizeCountryKey } from './countryProfileService.js';
 import type { PrivateCompanyRecord } from './privateCompanyService.js';
 
 export type CompanyActivityCountryRecord = Prisma.CompanyActivityCountryGetPayload<{}>;
+export type ForeignCompanyActivityEntry = {
+  activity: CompanyActivityCountryRecord;
+  company: PrivateCompanyRecord | null;
+};
 
 export async function addCompanyActivityCountry(options: {
   guildId: string;
@@ -63,4 +67,35 @@ export async function getCompanyActivityCountries(
     },
     orderBy: { startedAt: 'desc' }
   });
+}
+
+export async function getForeignCompanyActivitiesInCountry(
+  guildId: string,
+  countryKey: string
+): Promise<ForeignCompanyActivityEntry[]> {
+  const normalizedKey = normalizeCountryKey(countryKey);
+  const activityEntries = await prisma.companyActivityCountry.findMany({
+    where: {
+      guildId: BigInt(guildId),
+      countryKey: normalizedKey
+    },
+    orderBy: { startedAt: 'desc' }
+  });
+
+  if (!activityEntries.length) {
+    return [];
+  }
+
+  const companyIds = [...new Set(activityEntries.map((entry) => entry.companyId))];
+  const companies = await prisma.privateCompany.findMany({
+    where: { id: { in: companyIds } }
+  });
+  const companyMap = new Map(companies.map((company) => [company.id, company]));
+
+  return activityEntries
+    .map((activity) => ({
+      activity,
+      company: companyMap.get(activity.companyId) ?? null
+    }))
+    .filter((entry) => (entry.company ? entry.company.countryKey !== normalizedKey : true));
 }

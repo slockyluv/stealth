@@ -269,3 +269,40 @@ model GuildMemberDailyStat {
   @@unique([guildId, date])
   @@index([guildId, date])
 }
+
+model PayTransferDraft {
+  id                     BigInt   @id @default(autoincrement())
+  guildId                BigInt
+  userId                 BigInt
+  recipientUserId        BigInt?
+  amount                 BigInt?
+  paymentSystemCompanyId BigInt?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([guildId, userId])
+  @@index([guildId])
+}
+
+model PayTransfer {
+  id                     BigInt   @id @default(autoincrement())
+  guildId                BigInt
+  senderUserId           BigInt
+  recipientUserId        BigInt
+  senderEntityType       String
+  recipientEntityType    String
+  senderCompanyId        BigInt?
+  recipientCompanyId     BigInt?
+  senderCountryKey       String
+  recipientCountryKey    String
+  amount                 BigInt
+  feeRate                Int
+  feeAmount              BigInt
+  receivedAmount         BigInt
+  method                 String
+  paymentSystemCompanyId BigInt?
+  createdAt              DateTime @default(now())
+
+  @@index([guildId, senderUserId])
+  @@index([guildId, recipientUserId])
+}

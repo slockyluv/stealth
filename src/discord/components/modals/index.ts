@@ -12,6 +12,7 @@ import {
   financeTaxationEditModal
 } from './finance.js';
 import { companyNameModal } from './companyRegistration.js';
+import { payRecipientModal } from './pay.js';
 
 export const modalHandlers: ModalHandler[] = [
   settingsEmojiColorModal,
@@ -25,5 +26,6 @@ export const modalHandlers: ModalHandler[] = [
   companyFinanceFeeEditModal,
   companyFinanceRedomicileEditModal,
   companyFinanceActivityEditModal,
-  companyNameModal
+  companyNameModal,
+  payRecipientModal
 ];

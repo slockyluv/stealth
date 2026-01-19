@@ -111,6 +111,7 @@ import {
 import { ownerPanelResetCompaniesButton, ownerPanelResetCountriesButton } from './ownerPanel.js';
 import { marryAcceptButton, marryDivorceButton, marryRejectButton } from './marry.js';
 import { topPageButton } from './top.js';
+import { payBackButton, payEditMethodButton, payEditRecipientButton, payTransferButton } from './pay.js';
 
 export const buttonHandlers: ButtonHandler[] = [
   demoHelloButton,
@@ -221,5 +222,9 @@ export const buttonHandlers: ButtonHandler[] = [
   marryAcceptButton,
   marryRejectButton,
   marryDivorceButton,
-  topPageButton
+  topPageButton,
+  payEditRecipientButton,
+  payEditMethodButton,
+  payBackButton,
+  payTransferButton
 ];

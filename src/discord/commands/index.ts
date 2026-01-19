@@ -19,6 +19,7 @@ import { ownerpanel } from './ownerpanel.js';
 import { stats } from './stats.js';
 import { marry } from './marry.js';
 import { top } from './top.js';
+import { pay } from './pay.js';
 
 export const commands = [
   ping,
@@ -48,5 +49,6 @@ export const commands = [
   ownerpanel,
   stats,
   marry,
-  top
+  top,
+  pay
 ];

@@ -27,6 +27,7 @@ export const ALLOW_ADD_ROLE: AllowList = [];
 export const ALLOW_TAKE_ROLE: AllowList = [];
 export const ALLOW_TEMP_ROLE: AllowList = [];
 export const ALLOW_MONEY: AllowList = [];
+export const ALLOW_PAY: AllowList = [];
 export const ALLOW_OWNERPANEL: AllowList = ['owner'];
 
 const NO_PERMISSIONS_MESSAGE = 'У вас нет прав для использования этой команды.';

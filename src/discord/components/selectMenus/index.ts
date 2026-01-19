@@ -14,6 +14,7 @@ import { companyCountrySelect } from './companyCountry.js';
 import { companyProfileTabSelect } from './companyProfile.js';
 import { companyExistingSelect } from './companyExisting.js';
 import { topSectionSelect } from './top.js';
+import { payMethodSelect } from './pay.js';
 
 export const selectMenuHandlers: SelectMenuHandler[] = [
   settingsSectionSelect,
@@ -33,5 +34,6 @@ export const selectMenuHandlers: SelectMenuHandler[] = [
   applicationReviewSelect,
   profileTabSelect,
   companyProfileTabSelect,
-  topSectionSelect
+  topSectionSelect,
+  payMethodSelect
 ];

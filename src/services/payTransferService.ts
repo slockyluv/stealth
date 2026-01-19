@@ -290,15 +290,21 @@ export async function performPayTransfer(options: {
   const recipientPaymentSystems = await getPaymentSystemsForCountry(options.guildId, recipientEntity.countryKey);
   const recipientPaymentIds = new Set(recipientPaymentSystems.map((entry) => entry.company.id));
 
-  const preferred =
-    options.preferredPaymentSystemId !== undefined && options.preferredPaymentSystemId !== null
-      ? senderPaymentSystems.find((entry) => entry.company.id === options.preferredPaymentSystemId) ?? null
-      : senderPaymentSystems.length > 0
-        ? senderPaymentSystems[0]
-        : null;
+  const hasPreferredSelection =
+    options.preferredPaymentSystemId !== undefined && options.preferredPaymentSystemId !== null;
+  const preferred = hasPreferredSelection
+    ? senderPaymentSystems.find((entry) => entry.company.id === options.preferredPaymentSystemId) ?? null
+    : null;
 
-  const canUsePreferred = preferred ? recipientPaymentIds.has(preferred.company.id) : false;
-  const method: 'payment_system' | 'cash' = canUsePreferred ? 'payment_system' : 'cash';
+  if (hasPreferredSelection && preferred && !recipientPaymentIds.has(preferred.company.id)) {
+    return {
+      status: 'error',
+      reason:
+        'Пользователь не может получить перевод по выбранной вами платежной системе! Выберите другую платежную систему или "Наличные средства".'
+    };
+  }
+
+  const method: 'payment_system' | 'cash' = preferred ? 'payment_system' : 'cash';
   const rawFeeRate = method === 'payment_system' ? preferred?.feeRate ?? 0 : CASH_TRANSFER_FEE_RATE;
   const feeRate = Math.max(0, Math.min(100, rawFeeRate));
   const feeAmount = (options.amount * BigInt(feeRate)) / 100n;

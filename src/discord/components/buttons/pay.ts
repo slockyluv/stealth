@@ -20,6 +20,7 @@ import {
 import { logger } from '../../../shared/logger.js';
 
 const RECIPIENT_INPUT_ID = 'pay-recipient-input';
+const AMOUNT_INPUT_ID = 'pay-amount-input';
 
 async function buildMainView(guildId: string, userId: string, guild: Guild, user: User) {
   const viewData = await resolvePayTransferViewData(guildId, userId);
@@ -32,6 +33,7 @@ async function buildMainView(guildId: string, userId: string, guild: Guild, user
     user,
     recipientEntity: viewData.recipientEntity,
     paymentSystem: viewData.paymentSystem,
+    amount: viewData.amount,
     feeRate: viewData.feeRate
   });
 }
@@ -143,6 +145,56 @@ export const payEditMethodButton: ButtonHandler = {
       components: view,
       flags: MessageFlags.IsComponentsV2
     });
+  }
+};
+
+export const payEditAmountButton: ButtonHandler = {
+  key: 'pay:editAmount',
+
+  async execute(interaction, ctx) {
+    const formatEmoji = await createEmojiFormatter({
+      client: interaction.client,
+      guildId: interaction.guildId ?? interaction.client.application?.id ?? 'global',
+      guildEmojis: interaction.guild?.emojis.cache.values()
+    });
+
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Кнопка доступна только внутри сервера.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const [userId] = ctx.customId.args;
+    if (!userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Некорректная кнопка.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    if (interaction.user.id !== userId) {
+      await interaction.reply({
+        components: buildWarningView(formatEmoji, 'Эта кнопка доступна только владельцу перевода.'),
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+      });
+      return;
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId(buildCustomId('pay', 'amountModal', userId))
+      .setTitle('Сумма перевода');
+
+    const input = new TextInputBuilder()
+      .setCustomId(AMOUNT_INPUT_ID)
+      .setLabel('Сумма')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+    await interaction.showModal(modal);
   }
 };
 

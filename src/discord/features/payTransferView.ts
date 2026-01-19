@@ -75,9 +75,10 @@ export async function buildPayTransferView(options: {
   user: User;
   recipientEntity: TransferEntity | null;
   paymentSystem: PaymentSystemEntry | null;
+  amount: bigint | null;
   feeRate: number;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, recipientEntity, paymentSystem, feeRate } = options;
+  const { guild, user, recipientEntity, paymentSystem, amount, feeRate } = options;
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
     guildId: guild.id,
@@ -92,6 +93,7 @@ export async function buildPayTransferView(options: {
   const paymentSystemLabel = paymentSystem
     ? await resolvePaymentSystemLabel(paymentSystem, formatEmoji)
     : 'Передача наличными средствами';
+  const amountLine = amount ? `> *${formatNumber(amount)}*` : '> *Не указана*';
 
   const headerContent = [
     `# ${formatEmoji('moneytransfer')} Денежный перевод`,
@@ -133,6 +135,23 @@ export async function buildPayTransferView(options: {
     }
   };
 
+  const amountSection: SectionComponentData = {
+    type: ComponentType.Section,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: [`**${formatEmoji('opendollar')} Сумма перевода:**`, amountLine].join('\n')
+      }
+    ],
+    accessory: {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      label: 'Изменить',
+      emoji: formatEmoji('edit'),
+      customId: buildCustomId('pay', 'editAmount', user.id)
+    }
+  };
+
   const backButton = new ButtonBuilder()
     .setCustomId(buildCustomId('pay', 'back', user.id))
     .setLabel('Назад')
@@ -151,6 +170,7 @@ export async function buildPayTransferView(options: {
     { type: ComponentType.TextDisplay, content: `# ${formatEmoji('investment')} Данные перевода:` },
     recipientSection,
     methodSection,
+    amountSection,
     { type: ComponentType.TextDisplay, content: `${formatEmoji('taxation')} Комиссия:\n> ${feeRate}%` },
     { ...MESSAGE_SEPARATOR_COMPONENT },
     new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, transferButton).toJSON()

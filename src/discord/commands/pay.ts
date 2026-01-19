@@ -38,6 +38,7 @@ async function buildPayViewPayload(options: {
     user: options.user,
     recipientEntity: viewData.recipientEntity,
     paymentSystem: viewData.paymentSystem,
+    amount: viewData.amount,
     feeRate: viewData.feeRate
   });
 
@@ -76,8 +77,8 @@ export const pay: Command = {
     const amount = amountValue !== null ? BigInt(amountValue) : null;
 
     await upsertPayTransferDraft(interaction.guildId, interaction.user.id, {
-      recipientUserId: recipient?.id ?? undefined,
-      amount
+      recipientUserId: recipient?.id ?? null,
+      amount: amount ?? null
     });
 
     try {
@@ -130,8 +131,8 @@ export const pay: Command = {
     const amount = parseAmount(amountArg);
 
     await upsertPayTransferDraft(message.guildId, message.author.id, {
-      recipientUserId: recipientMention?.id ?? undefined,
-      amount
+      recipientUserId: recipientMention?.id ?? null,
+      amount: amount ?? null
     });
 
     try {

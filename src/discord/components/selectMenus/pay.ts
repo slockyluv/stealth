@@ -75,6 +75,7 @@ export const payMethodSelect: SelectMenuHandler = {
         user: interaction.user,
         recipientEntity: viewData.recipientEntity,
         paymentSystem: viewData.paymentSystem,
+        amount: viewData.amount,
         feeRate: viewData.feeRate
       });
 

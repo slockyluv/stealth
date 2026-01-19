@@ -60,6 +60,7 @@ export type PayTransferViewData = {
   senderEntity: TransferEntity;
   recipientEntity: TransferEntity | null;
   paymentSystem: PaymentSystemEntry | null;
+  amount: bigint | null;
   feeRate: number;
 };
 
@@ -172,6 +173,7 @@ export async function resolvePayTransferViewData(
     senderEntity,
     recipientEntity,
     paymentSystem,
+    amount: draft?.amount ?? null,
     feeRate
   };
 }

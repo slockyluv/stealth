@@ -99,6 +99,7 @@ export const payRecipientModal: ModalHandler = {
         user: interaction.user,
         recipientEntity: viewData.recipientEntity,
         paymentSystem: viewData.paymentSystem,
+        paymentSystemSelected: viewData.paymentSystemSelected,
         amount: viewData.amount,
         feeRate: viewData.feeRate
       });
@@ -183,6 +184,7 @@ export const payAmountModal: ModalHandler = {
         user: interaction.user,
         recipientEntity: viewData.recipientEntity,
         paymentSystem: viewData.paymentSystem,
+        paymentSystemSelected: viewData.paymentSystemSelected,
         amount: viewData.amount,
         feeRate: viewData.feeRate
       });

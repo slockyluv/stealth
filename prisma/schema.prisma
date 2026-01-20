@@ -277,6 +277,7 @@ model PayTransferDraft {
   recipientUserId        BigInt?
   amount                 BigInt?
   paymentSystemCompanyId BigInt?
+  paymentSystemSelected  Boolean  @default(false)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

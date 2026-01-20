@@ -33,6 +33,7 @@ async function buildMainView(guildId: string, userId: string, guild: Guild, user
     user,
     recipientEntity: viewData.recipientEntity,
     paymentSystem: viewData.paymentSystem,
+    paymentSystemSelected: viewData.paymentSystemSelected,
     amount: viewData.amount,
     feeRate: viewData.feeRate
   });

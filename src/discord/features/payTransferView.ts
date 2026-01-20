@@ -84,10 +84,11 @@ export async function buildPayTransferView(options: {
   user: User;
   recipientEntity: TransferEntity | null;
   paymentSystem: PaymentSystemEntry | null;
+  paymentSystemSelected: boolean;
   amount: bigint | null;
   feeRate: number;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, recipientEntity, paymentSystem, amount, feeRate } = options;
+  const { guild, user, recipientEntity, paymentSystem, paymentSystemSelected, amount, feeRate } = options;
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
     guildId: guild.id,
@@ -99,9 +100,11 @@ export async function buildPayTransferView(options: {
     ? `> *<@${recipientEntity.userId}> (${recipientLabel})*`
     : '> *Не выбран*';
 
-  const paymentSystemLabel = paymentSystem
-    ? await resolvePaymentSystemLabel(paymentSystem, formatEmoji)
-    : 'Наличные средства';
+  const paymentSystemLabel = paymentSystemSelected
+    ? paymentSystem
+      ? await resolvePaymentSystemLabel(paymentSystem, formatEmoji)
+      : 'Наличные средства'
+    : 'Не выбрано';
   const amountLine = amount ? `> *${formatNumber(amount)}*` : '> *Не указана*';
 
   const headerContent = [

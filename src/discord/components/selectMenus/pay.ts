@@ -58,7 +58,8 @@ export const payMethodSelect: SelectMenuHandler = {
     try {
       const paymentSystemId = selected === 'cash' ? null : BigInt(selected);
       await upsertPayTransferDraft(interaction.guildId, userId, {
-        paymentSystemCompanyId: paymentSystemId
+        paymentSystemCompanyId: paymentSystemId,
+        paymentSystemSelected: true
       });
 
       const viewData = await resolvePayTransferViewData(interaction.guildId, userId);
@@ -75,6 +76,7 @@ export const payMethodSelect: SelectMenuHandler = {
         user: interaction.user,
         recipientEntity: viewData.recipientEntity,
         paymentSystem: viewData.paymentSystem,
+        paymentSystemSelected: viewData.paymentSystemSelected,
         amount: viewData.amount,
         feeRate: viewData.feeRate
       });

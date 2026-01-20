@@ -18,6 +18,7 @@ export type PayTransferDraftRecord = {
   recipientUserId: bigint | null;
   amount: bigint | null;
   paymentSystemCompanyId: bigint | null;
+  paymentSystemSelected: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -60,6 +61,7 @@ export type PayTransferViewData = {
   senderEntity: TransferEntity;
   recipientEntity: TransferEntity | null;
   paymentSystem: PaymentSystemEntry | null;
+  paymentSystemSelected: boolean;
   amount: bigint | null;
   feeRate: number;
 };
@@ -82,6 +84,7 @@ export async function upsertPayTransferDraft(
     recipientUserId?: string | null;
     amount?: bigint | null;
     paymentSystemCompanyId?: bigint | null;
+    paymentSystemSelected?: boolean;
   }
 ): Promise<PayTransferDraftRecord> {
   return prisma.payTransferDraft.upsert({
@@ -96,13 +99,15 @@ export async function upsertPayTransferDraft(
       userId: BigInt(userId),
       recipientUserId: data.recipientUserId ? BigInt(data.recipientUserId) : null,
       amount: data.amount ?? null,
-      paymentSystemCompanyId: data.paymentSystemCompanyId ?? null
+      paymentSystemCompanyId: data.paymentSystemCompanyId ?? null,
+      paymentSystemSelected: data.paymentSystemSelected ?? false
     },
     update: {
       recipientUserId: data.recipientUserId !== undefined ? (data.recipientUserId ? BigInt(data.recipientUserId) : null) : undefined,
       amount: data.amount !== undefined ? data.amount : undefined,
       paymentSystemCompanyId:
-        data.paymentSystemCompanyId !== undefined ? data.paymentSystemCompanyId : undefined
+        data.paymentSystemCompanyId !== undefined ? data.paymentSystemCompanyId : undefined,
+      paymentSystemSelected: data.paymentSystemSelected !== undefined ? data.paymentSystemSelected : undefined
     }
   });
 }
@@ -142,6 +147,7 @@ export async function resolvePayTransferViewData(
 
   const draft = await getPayTransferDraft(guildId, userId);
   const senderPaymentSystems = await getPaymentSystemsForCountry(guildId, senderEntity.countryKey);
+  let paymentSystemSelected = draft?.paymentSystemSelected ?? false;
 
   let paymentSystem: PaymentSystemEntry | null = null;
   if (draft?.paymentSystemCompanyId) {
@@ -151,8 +157,10 @@ export async function resolvePayTransferViewData(
       paymentSystem = matched;
     } else {
       await upsertPayTransferDraft(guildId, userId, {
-        paymentSystemCompanyId: null
+        paymentSystemCompanyId: null,
+        paymentSystemSelected: false
       });
+      paymentSystemSelected = false;
     }
   }
 
@@ -166,6 +174,7 @@ export async function resolvePayTransferViewData(
     senderEntity,
     recipientEntity,
     paymentSystem,
+    paymentSystemSelected,
     amount: draft?.amount ?? null,
     feeRate
   };

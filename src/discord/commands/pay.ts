@@ -38,6 +38,7 @@ async function buildPayViewPayload(options: {
     user: options.user,
     recipientEntity: viewData.recipientEntity,
     paymentSystem: viewData.paymentSystem,
+    paymentSystemSelected: viewData.paymentSystemSelected,
     amount: viewData.amount,
     feeRate: viewData.feeRate
   });

@@ -198,18 +198,17 @@ export async function getPaymentSystemsForCountry(
       companyIndustryKey: 'payment_system'
     }
   });
-
-  if (!activities.length) return [];
-
   const companyIds = [...new Set(activities.map((entry) => entry.companyId))];
-  const companies = await prisma.privateCompany.findMany({
-    where: {
-      id: { in: companyIds },
-      isActive: true,
-      industryKey: 'payment_system'
-    },
-    orderBy: { name: 'asc' }
-  });
+  const companies = companyIds.length
+    ? await prisma.privateCompany.findMany({
+        where: {
+          id: { in: companyIds },
+          isActive: true,
+          industryKey: 'payment_system'
+        },
+        orderBy: { name: 'asc' }
+      })
+    : [];
 
   const paymentSystems = companies.map((company) => ({
     company,
@@ -218,8 +217,11 @@ export async function getPaymentSystemsForCountry(
 
   const includeCompanyId = options?.includeCompanyId ?? null;
   if (includeCompanyId && !paymentSystems.some((entry) => entry.company.id === includeCompanyId)) {
-    const includeCompany = await prisma.privateCompany.findUnique({
-      where: { id: includeCompanyId }
+    const includeCompany = await prisma.privateCompany.findFirst({
+      where: {
+        id: includeCompanyId,
+        guildId: BigInt(guildId)
+      }
     });
     if (includeCompany?.isActive && includeCompany.industryKey === 'payment_system') {
       paymentSystems.push({

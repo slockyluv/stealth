@@ -146,7 +146,12 @@ export async function resolvePayTransferViewData(
   if (!senderEntity) return null;
 
   const draft = await getPayTransferDraft(guildId, userId);
-  const senderPaymentSystems = await getPaymentSystemsForCountry(guildId, senderEntity.countryKey);
+  const senderPaymentSystems = await getPaymentSystemsForCountry(guildId, senderEntity.countryKey, {
+    includeCompanyId:
+      senderEntity.type === 'company' && senderEntity.company.industryKey === 'payment_system'
+        ? senderEntity.company.id
+        : null
+  });
   let paymentSystemSelected = draft?.paymentSystemSelected ?? false;
 
   let paymentSystem: PaymentSystemEntry | null = null;
@@ -182,7 +187,8 @@ export async function resolvePayTransferViewData(
 
 export async function getPaymentSystemsForCountry(
   guildId: string,
-  countryKey: string
+  countryKey: string,
+  options?: { includeCompanyId?: bigint | null }
 ): Promise<PaymentSystemEntry[]> {
   const normalizedKey = normalizeCountryKey(countryKey);
   const activities = await prisma.companyActivityCountry.findMany({
@@ -205,10 +211,25 @@ export async function getPaymentSystemsForCountry(
     orderBy: { name: 'asc' }
   });
 
-  return companies.map((company) => ({
+  const paymentSystems = companies.map((company) => ({
     company,
     feeRate: company.paymentTransferFeeRate ?? 0
   }));
+
+  const includeCompanyId = options?.includeCompanyId ?? null;
+  if (includeCompanyId && !paymentSystems.some((entry) => entry.company.id === includeCompanyId)) {
+    const includeCompany = await prisma.privateCompany.findUnique({
+      where: { id: includeCompanyId }
+    });
+    if (includeCompany?.isActive && includeCompany.industryKey === 'payment_system') {
+      paymentSystems.push({
+        company: includeCompany,
+        feeRate: includeCompany.paymentTransferFeeRate ?? 0
+      });
+    }
+  }
+
+  return paymentSystems;
 }
 
 export async function findRecipientUserIdByQuery(
@@ -295,7 +316,12 @@ export async function performPayTransfer(options: {
     return { status: 'error', reason: 'Нельзя отправлять перевод самому себе.' };
   }
 
-  const senderPaymentSystems = await getPaymentSystemsForCountry(options.guildId, senderEntity.countryKey);
+  const senderPaymentSystems = await getPaymentSystemsForCountry(options.guildId, senderEntity.countryKey, {
+    includeCompanyId:
+      senderEntity.type === 'company' && senderEntity.company.industryKey === 'payment_system'
+        ? senderEntity.company.id
+        : null
+  });
   const recipientPaymentSystems = await getPaymentSystemsForCountry(options.guildId, recipientEntity.countryKey);
   const recipientPaymentIds = new Set(recipientPaymentSystems.map((entry) => entry.company.id));
 
@@ -305,7 +331,12 @@ export async function performPayTransfer(options: {
     ? senderPaymentSystems.find((entry) => entry.company.id === options.preferredPaymentSystemId) ?? null
     : null;
 
-  if (hasPreferredSelection && preferred && !recipientPaymentIds.has(preferred.company.id)) {
+  const senderIsPreferredPaymentSystem =
+    senderEntity.type === 'company' &&
+    senderEntity.company.industryKey === 'payment_system' &&
+    preferred?.company.id === senderEntity.company.id;
+
+  if (hasPreferredSelection && preferred && !recipientPaymentIds.has(preferred.company.id) && !senderIsPreferredPaymentSystem) {
     return {
       status: 'error',
       reason:

@@ -195,8 +195,9 @@ export async function buildPayTransferMethodView(options: {
   user: User;
   paymentSystems: PaymentSystemEntry[];
   selectedPaymentSystemId: bigint | null;
+  paymentSystemSelected: boolean;
 }): Promise<TopLevelComponentData[]> {
-  const { guild, user, paymentSystems, selectedPaymentSystemId } = options;
+  const { guild, user, paymentSystems, selectedPaymentSystemId, paymentSystemSelected } = options;
   const formatEmoji = await createEmojiFormatter({
     client: guild.client,
     guildId: guild.id,
@@ -216,7 +217,9 @@ export async function buildPayTransferMethodView(options: {
   const cashOption = new StringSelectMenuOptionBuilder()
     .setLabel('Наличные средства')
     .setValue('cash')
-    .setDescription(`Комиссия: ${CASH_TRANSFER_FEE_RATE}%`);
+    .setDescription(`Комиссия: ${CASH_TRANSFER_FEE_RATE}%`)
+    .setEmoji(formatEmoji('stackmoney'))
+    .setDefault(paymentSystemSelected && selectedPaymentSystemId === null);
   selectMenu.addOptions(cashOption);
 
   for (const entry of paymentSystems.slice(0, 24)) {

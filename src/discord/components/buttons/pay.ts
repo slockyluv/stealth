@@ -135,12 +135,18 @@ export const payEditMethodButton: ButtonHandler = {
 
     await interaction.deferUpdate();
 
-    const paymentSystems = await getPaymentSystemsForCountry(interaction.guildId, viewData.senderEntity.countryKey);
+    const paymentSystems = await getPaymentSystemsForCountry(interaction.guildId, viewData.senderEntity.countryKey, {
+      includeCompanyId:
+        viewData.senderEntity.type === 'company' && viewData.senderEntity.company.industryKey === 'payment_system'
+          ? viewData.senderEntity.company.id
+          : null
+    });
     const view = await buildPayTransferMethodView({
       guild: interaction.guild,
       user: interaction.user,
       paymentSystems,
-      selectedPaymentSystemId: viewData.paymentSystem?.company.id ?? null
+      selectedPaymentSystemId: viewData.paymentSystem?.company.id ?? null,
+      paymentSystemSelected: viewData.paymentSystemSelected
     });
 
     await interaction.editReply({
@@ -376,7 +382,12 @@ export const payTransferButton: ButtonHandler = {
       return;
     }
 
-    const paymentSystems = await getPaymentSystemsForCountry(interaction.guildId, result.senderEntity.countryKey);
+    const paymentSystems = await getPaymentSystemsForCountry(interaction.guildId, result.senderEntity.countryKey, {
+      includeCompanyId:
+        result.senderEntity.type === 'company' && result.senderEntity.company.industryKey === 'payment_system'
+          ? result.senderEntity.company.id
+          : null
+    });
     const paymentSystem =
       result.paymentSystemCompanyId !== null
         ? paymentSystems.find((entry) => entry.company.id === result.paymentSystemCompanyId) ?? null

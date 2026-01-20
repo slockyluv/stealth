@@ -72,12 +72,18 @@ export const payMethodSelect: SelectMenuHandler = {
         return;
       }
 
-      const paymentSystems = await getPaymentSystemsForCountry(interaction.guildId, viewData.senderEntity.countryKey);
+      const paymentSystems = await getPaymentSystemsForCountry(interaction.guildId, viewData.senderEntity.countryKey, {
+        includeCompanyId:
+          viewData.senderEntity.type === 'company' && viewData.senderEntity.company.industryKey === 'payment_system'
+            ? viewData.senderEntity.company.id
+            : null
+      });
       const view = await buildPayTransferMethodView({
         guild: interaction.guild,
         user: interaction.user,
         paymentSystems,
-        selectedPaymentSystemId: viewData.paymentSystem?.company.id ?? null
+        selectedPaymentSystemId: viewData.paymentSystem?.company.id ?? null,
+        paymentSystemSelected: viewData.paymentSystemSelected
       });
 
       await interaction.editReply({

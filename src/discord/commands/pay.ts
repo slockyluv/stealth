@@ -79,7 +79,9 @@ export const pay: Command = {
 
     await upsertPayTransferDraft(interaction.guildId, interaction.user.id, {
       recipientUserId: recipient?.id ?? null,
-      amount: amount ?? null
+      amount: amount ?? null,
+      paymentSystemCompanyId: null,
+      paymentSystemSelected: false
     });
 
     try {
@@ -133,7 +135,9 @@ export const pay: Command = {
 
     await upsertPayTransferDraft(message.guildId, message.author.id, {
       recipientUserId: recipientMention?.id ?? null,
-      amount: amount ?? null
+      amount: amount ?? null,
+      paymentSystemCompanyId: null,
+      paymentSystemSelected: false
     });
 
     try {

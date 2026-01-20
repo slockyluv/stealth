@@ -105,7 +105,9 @@ export async function buildPayTransferView(options: {
       ? await resolvePaymentSystemLabel(paymentSystem, formatEmoji)
       : 'Наличные средства'
     : 'Не выбрано';
-  const amountLine = amount ? `> *${formatNumber(amount)}*` : '> *Не указана*';
+  const amountLine = amount
+    ? `> *${formatNumber(amount)}* ${formatEmoji('stackmoney')}`
+    : '> *Не указана*';
 
   const headerContent = [
     `# ${formatEmoji('moneytransfer')} Денежный перевод`,
@@ -179,7 +181,6 @@ export async function buildPayTransferView(options: {
   return buildContainer([
     { type: ComponentType.TextDisplay, content: headerContent },
     { ...MESSAGE_SEPARATOR_COMPONENT },
-    { type: ComponentType.TextDisplay, content: `# ${formatEmoji('investment')} Данные перевода:` },
     recipientSection,
     methodSection,
     amountSection,
@@ -215,8 +216,7 @@ export async function buildPayTransferMethodView(options: {
   const cashOption = new StringSelectMenuOptionBuilder()
     .setLabel('Наличные средства')
     .setValue('cash')
-    .setDescription(`Комиссия: ${CASH_TRANSFER_FEE_RATE}%`)
-    .setDefault(selectedPaymentSystemId === null);
+    .setDescription(`Комиссия: ${CASH_TRANSFER_FEE_RATE}%`);
   selectMenu.addOptions(cashOption);
 
   for (const entry of paymentSystems.slice(0, 24)) {
@@ -242,11 +242,17 @@ export async function buildPayTransferMethodView(options: {
     .setEmoji(formatEmoji('undonew'))
     .setStyle(ButtonStyle.Secondary);
 
+  const confirmButton = new ButtonBuilder()
+    .setCustomId(buildCustomId('pay', 'confirmMethod', user.id))
+    .setLabel('Подтвердить')
+    .setEmoji(formatEmoji('slide_d'))
+    .setStyle(ButtonStyle.Secondary);
+
   return buildContainer([
     { type: ComponentType.TextDisplay, content: headerContent },
     { ...MESSAGE_SEPARATOR_COMPONENT },
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON(),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton).toJSON()
+    new ActionRowBuilder<ButtonBuilder>().addComponents(backButton, confirmButton).toJSON()
   ]);
 }
 
@@ -281,17 +287,19 @@ export async function buildPayTransferSuccessView(options: {
   return buildContainer([
     { type: ComponentType.TextDisplay, content: headerContent },
     { ...MESSAGE_SEPARATOR_COMPONENT },
-    { type: ComponentType.TextDisplay, content: `# ${formatEmoji('investment')} Данные перевода:` },
     { type: ComponentType.TextDisplay, content: `**${formatEmoji('user')} Получатель:**` },
     { type: ComponentType.TextDisplay, content: `> *<@${recipientEntity.userId}> (${recipientLabel})*` },
     { type: ComponentType.TextDisplay, content: `**${formatEmoji('transactionglobe')} Способ перевода:**` },
     { type: ComponentType.TextDisplay, content: `> *${paymentSystemLabel}*` },
     { ...MESSAGE_SEPARATOR_COMPONENT },
     { type: ComponentType.TextDisplay, content: `**${formatEmoji('opendollar')} Сумма перевода:**` },
-    { type: ComponentType.TextDisplay, content: `> *${formatNumber(amount)}*` },
+    { type: ComponentType.TextDisplay, content: `> *__${formatNumber(amount)}__* ${formatEmoji('stackmoney')}` },
     { type: ComponentType.TextDisplay, content: `**${formatEmoji('taxation')} Комиссия:**` },
-    { type: ComponentType.TextDisplay, content: `> *${formatNumber(feeAmount)} (${feeRate}%)*` },
+    {
+      type: ComponentType.TextDisplay,
+      content: `> *__${formatNumber(feeAmount)}__* ${formatEmoji('stackmoney')} (${feeRate}%)`
+    },
     { type: ComponentType.TextDisplay, content: `**${formatEmoji('cashout')} Получено:**` },
-    { type: ComponentType.TextDisplay, content: `> *${formatNumber(receivedAmount)}*` }
+    { type: ComponentType.TextDisplay, content: `> *__${formatNumber(receivedAmount)}__* ${formatEmoji('stackmoney')}` }
   ]);
 }

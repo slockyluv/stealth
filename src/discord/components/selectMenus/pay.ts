@@ -3,10 +3,11 @@ import type { SelectMenuHandler } from '../../../types/component.js';
 import { createEmojiFormatter } from '../../emoji.js';
 import { buildWarningView } from '../../responses/messageBuilders.js';
 import {
+  getPaymentSystemsForCountry,
   resolvePayTransferViewData,
   upsertPayTransferDraft
 } from '../../../services/payTransferService.js';
-import { buildPayTransferView } from '../../features/payTransferView.js';
+import { buildPayTransferMethodView } from '../../features/payTransferView.js';
 import { logger } from '../../../shared/logger.js';
 
 export const payMethodSelect: SelectMenuHandler = {
@@ -71,14 +72,12 @@ export const payMethodSelect: SelectMenuHandler = {
         return;
       }
 
-      const view = await buildPayTransferView({
+      const paymentSystems = await getPaymentSystemsForCountry(interaction.guildId, viewData.senderEntity.countryKey);
+      const view = await buildPayTransferMethodView({
         guild: interaction.guild,
         user: interaction.user,
-        recipientEntity: viewData.recipientEntity,
-        paymentSystem: viewData.paymentSystem,
-        paymentSystemSelected: viewData.paymentSystemSelected,
-        amount: viewData.amount,
-        feeRate: viewData.feeRate
+        paymentSystems,
+        selectedPaymentSystemId: viewData.paymentSystem?.company.id ?? null
       });
 
       await interaction.editReply({

@@ -105,7 +105,8 @@ export const finance: Command = {
 
       await interaction.reply({
         components: result.view,
-        flags: MessageFlags.IsComponentsV2
+        flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { users: [] }
       });
     } catch (error) {
       logger.error(error);
@@ -155,7 +156,8 @@ export const finance: Command = {
       if (!message.channel?.isSendable()) return;
       await message.channel.send({
         components: result.view,
-        flags: MessageFlags.IsComponentsV2
+        flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { users: [] }
       });
     } catch (error) {
       logger.error(error);

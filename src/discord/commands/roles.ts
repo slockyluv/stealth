@@ -178,7 +178,7 @@ function buildRoleListView(options: { formatEmoji: (name: string) => string; rol
   const { formatEmoji, roles } = options;
   const components: ComponentInContainerData[] = [];
 
-  components.push(buildTextLine(`**${formatEmoji('list')} Список ролей**`));
+  components.push(buildTextLine(`**${formatEmoji('rectanglelist')} Список ролей**`));
   components.push(
     buildTextLine('*Найдено несколько ролей, подходящих под запрос. Выберите номер нужной роли или "отмена"!*')
   );

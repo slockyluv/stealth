@@ -124,7 +124,7 @@ export async function buildFinanceView(options: {
     style: ButtonStyle.Secondary,
     customId: buildCustomId('finance', 'foreignCompanies', user.id),
     label: 'Список',
-    emoji: formatEmoji('nav')
+    emoji: formatEmoji('rectanglelist')
   };
 
   const foreignCompaniesSection: SectionComponentData = {
@@ -206,7 +206,7 @@ export async function buildForeignCompaniesView(options: {
   const headerContent = `**${formatEmoji('filialscomp')} Иностранные компании**`;
   const descriptionContent =
     '```Юридическое лицо, зарегистрированное в другом государстве, созданное для ведения предпринимательской деятельности с целью получения прибыли.```';
-  const listHeaderContent = `**${formatEmoji('nav')} Список**`;
+  const listHeaderContent = `**${formatEmoji('rectanglelist')} Список**`;
 
   const listComponents: ComponentInContainerData[] = [];
 
@@ -308,7 +308,7 @@ export async function buildGovernmentBudgetView(options: {
       {
         type: ComponentType.TextDisplay,
         content: [
-          `**${formatEmoji('taxation')} Налог компаний резидентов:**`,
+          `**・ Компании резиденты:**`,
           `> ${profile.residentCompanyTaxRate}%`,
           ''
         ].join('\n')
@@ -330,7 +330,7 @@ export async function buildGovernmentBudgetView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: [`**${formatEmoji('taxation')} Налог иностранных компаний:**`, `> ${profile.foreignCompanyTaxRate}%`].join(
+        content: [`**・ Иностранные компании:**`, `> ${profile.foreignCompanyTaxRate}%`].join(
           '\n'
         )
       }
@@ -351,7 +351,7 @@ export async function buildGovernmentBudgetView(options: {
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: [`**${formatEmoji('taxation')} Налоги населения:**`, `> *${profile.populationTaxRate}%*`].join('\n')
+        content: [`**・ Население:**`, `> *${profile.populationTaxRate}%*`].join('\n')
       }
     ],
     accessory: editTaxButton
@@ -451,7 +451,7 @@ export async function buildCompanyFinanceView(options: {
     style: ButtonStyle.Secondary,
     customId: buildCustomId('companyFinance', 'branchesInfo', user.id),
     label: 'Список',
-    emoji: formatEmoji('list')
+    emoji: formatEmoji('rectanglelist')
   };
 
   const branchesSection: SectionComponentData = {
@@ -555,13 +555,23 @@ export async function buildCompanyFinanceView(options: {
         .setEmoji(formatEmoji('wallet'))
     );
 
+  const financeSections: ComponentInContainerData[] = [
+    { type: ComponentType.TextDisplay, content: companyBalanceContent },
+    buildSpacer(),
+    branchesSection
+  ];
+
+  if (feeComponents.length > 0) {
+    const spacedFees = feeComponents.flatMap((component) => [buildSpacer(), component]);
+    financeSections.push(...spacedFees);
+  }
+
+  financeSections.push(buildSpacer(), { type: ComponentType.TextDisplay, content: taxationContent });
+
   const container = buildContainer([
     header,
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: companyBalanceContent },
-    branchesSection,
-    ...feeComponents,
-    { type: ComponentType.TextDisplay, content: taxationContent },
+    ...financeSections,
     buildSeparator(),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()
   ]);

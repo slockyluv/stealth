@@ -95,18 +95,22 @@ export async function buildFinanceView(options: {
     emoji: formatEmoji('mouseclick')
   };
 
+  const treasuryContent = `> *${formatBudgetValue(profile.budget)}* ${formatEmoji('stackmoney')}`;
+
   const governmentBudgetSection: SectionComponentData = {
     type: ComponentType.Section,
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: `**${formatEmoji('governmentbudget')} Государственный бюджет:**`
+        content: [
+          `**${formatEmoji('governmentbudget')} Государственный бюджет:**`,
+          treasuryContent,
+          ''
+        ].join('\n')
       }
     ],
     accessory: governmentBudgetButton
   };
-
-  const treasuryContent = `> *${formatBudgetValue(profile.budget)}* ${formatEmoji('stackmoney')}`;
 
   const foreignCompaniesButton: ButtonComponentData = {
     type: ComponentType.Button,
@@ -132,7 +136,6 @@ export async function buildFinanceView(options: {
   };
 
   const treasuryAssetsContent = [
-    '',
     `**${formatEmoji('bitcoin')} Криптовалютные резервы:**`,
     '> В будущем',
     '',
@@ -159,7 +162,6 @@ export async function buildFinanceView(options: {
     header,
     buildSeparator(),
     governmentBudgetSection,
-    { type: ComponentType.TextDisplay, content: treasuryContent },
     foreignCompaniesSection,
     { type: ComponentType.TextDisplay, content: treasuryAssetsContent },
     buildSeparator(),

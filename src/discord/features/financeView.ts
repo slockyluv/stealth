@@ -140,7 +140,7 @@ export async function buildFinanceView(options: {
     '> В будущем',
     '',
     `**${formatEmoji('investment')} Ценные бумаги:**`,
-    '> В будущем'
+    '> В будущем',
   ].join('\n');
 
   const selectMenu = new StringSelectMenuBuilder()

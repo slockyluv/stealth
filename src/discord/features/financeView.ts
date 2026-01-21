@@ -37,6 +37,13 @@ function buildSeparator(): ComponentInContainerData {
   };
 }
 
+function buildSpacer(): ComponentInContainerData {
+  return {
+    type: ComponentType.Separator,
+    divider: false
+  };
+}
+
 function buildContainer(components: ComponentInContainerData[]): TopLevelComponentData {
   return {
     type: ComponentType.Container,
@@ -162,7 +169,9 @@ export async function buildFinanceView(options: {
     header,
     buildSeparator(),
     governmentBudgetSection,
+    buildSpacer(),
     foreignCompaniesSection,
+    buildSpacer(),
     { type: ComponentType.TextDisplay, content: treasuryAssetsContent },
     buildSeparator(),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu).toJSON()

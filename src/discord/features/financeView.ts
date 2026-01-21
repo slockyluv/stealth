@@ -92,7 +92,7 @@ export async function buildFinanceView(options: {
     style: ButtonStyle.Secondary,
     customId: buildCustomId('finance', 'budget', user.id),
     label: 'Перейти',
-    emoji: formatEmoji('linkalt')
+    emoji: formatEmoji('mouseclick')
   };
 
   const governmentBudgetSection: SectionComponentData = {
@@ -105,8 +105,6 @@ export async function buildFinanceView(options: {
     ],
     accessory: governmentBudgetButton
   };
-
-  const treasuryHeaderContent = [`# ${formatEmoji('governmentbudget')} Казна`, ''].join('\n');
 
   const treasuryContent = `> *${formatBudgetValue(profile.budget)}* ${formatEmoji('stackmoney')}`;
 
@@ -125,7 +123,8 @@ export async function buildFinanceView(options: {
         type: ComponentType.TextDisplay,
         content: [
           `**${formatEmoji('filialscomp')} Иностранные компании:**`,
-          `> ${formatCompanyCount(foreignCompaniesCount)}`
+          `> ${formatCompanyCount(foreignCompaniesCount)}`,
+          ''
         ].join('\n')
       }
     ],
@@ -159,7 +158,6 @@ export async function buildFinanceView(options: {
   const container = buildContainer([
     header,
     buildSeparator(),
-    { type: ComponentType.TextDisplay, content: treasuryHeaderContent },
     governmentBudgetSection,
     { type: ComponentType.TextDisplay, content: treasuryContent },
     foreignCompaniesSection,
@@ -278,10 +276,9 @@ export async function buildGovernmentBudgetView(options: {
   };
 
   const budgetContent = [
-    `# ${formatEmoji('governmentbudget')} Государственный бюджет:`,
-    '',
     `**${formatEmoji('sackdollar')} Денежные средства:**`,
-    `> ${formatBudgetValue(profile.budget)} ${formatEmoji('stackmoney')}`
+    `> ${formatBudgetValue(profile.budget)} ${formatEmoji('stackmoney')}`,
+    ''
   ].join('\n');
 
   const taxationHeader = [`**${formatEmoji('documentgavel')} Налоговые ставки:**`, ''].join('\n');
@@ -428,8 +425,6 @@ export async function buildCompanyFinanceView(options: {
   };
 
   const companyBalanceContent = [
-    `# ${formatEmoji('opendollar')} Информация`,
-    '',
     `**${formatEmoji('sackdollar')} Бюджет компании:**`,
     `> ${formatBudgetValue(company.budget)} ${formatEmoji('stackmoney')}`,
     '',
